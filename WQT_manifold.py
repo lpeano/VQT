@@ -2077,7 +2077,15 @@ def update(frame, target_file_handle=None):
             esponente_visualizzato = np.sign(chi) * (15.0 + np.log(np.abs(chi) - 13.5) * 5.0) - 35.0
             
         esponente_per_dtau = (chi_sat_ev - 35.0) if np.abs(chi_sat_ev) < 15.0 else (np.sign(chi_sat_ev) * (15.0 + np.log(np.abs(chi_sat_ev) - 13.5) * 5.0) - 35.0)
-        fattore_allungamento_dtau = 10**(esponente_per_dtau + 35.0)
+        
+        # PROTEZIONE ANTI-OVERFLOW: anche qui limitiamo esponente
+        esponente_dtau_totale = esponente_per_dtau + 35.0
+        if np.abs(esponente_dtau_totale) > 100:
+            # Regime estremo: usa valore saturato per evitare warning
+            fattore_allungamento_dtau = 1e100 if esponente_dtau_totale > 100 else 1e-100
+        else:
+            fattore_allungamento_dtau = 10**esponente_dtau_totale
+            
         d_tau_dinamico = min(0.02 + 0.005 * (fattore_allungamento_dtau ** 0.05), 1.5)  
 
         # ========================================================================
@@ -2107,9 +2115,18 @@ def update(frame, target_file_handle=None):
         # Calcolo dell'esponente per scale visualizzate
         esponente_visualizzato = (chi - 35.0) if np.abs(chi) < 15.0 else (np.sign(chi) * (15.0 + np.log(np.abs(chi) - 13.5) * 5.0) - 35.0)
         
-        # PROTEZIONE ANTI-OVERFLOW: Clampa esponente per evitare 10^308 (float64 max)
-        esponente_safe = np.clip(esponente_visualizzato + 35.0, -300, 300)
-        fattore_allungamento_reale = 10**(esponente_safe)
+        # PROTEZIONE ANTI-OVERFLOW: Limitiamo a ±100 per evitare RuntimeWarning
+        # Float64 può teoricamente arrivare a 10^308, ma già 10^300 genera warning
+        # Range ±100 copre da scala sub-Planck a cosmologica senza overflow
+        esponente_reale = esponente_visualizzato + 35.0
+        esponente_safe = np.clip(esponente_reale, -100, 100)
+        
+        # Se esponente clippato, gestiamo esplicitamente senza calcolare 10**x
+        if np.abs(esponente_reale) > 100:
+            # Regime estremo: usa inf/0 invece di calcolo esatto
+            fattore_allungamento_reale = np.inf if esponente_reale > 100 else 0.0
+        else:
+            fattore_allungamento_reale = 10**(esponente_safe)
         
         # Osservabili geometriche emergenti
         invariante_reticolo = 1.0 / (risoluzione_base * (th[1] - th[0]))
@@ -2670,9 +2687,25 @@ def update(frame, target_file_handle=None):
         # Conversione tempo assoluto (adimensionale) in secondi fisici
         # Calibrazione dinamica basata sulla scala metrica del manifold
         # Il tempo caratteristico della scala è T ~ L/c dove L = 10^esponente metri
-        scala_metri = 10**esponente_visualizzato
+        
+        # PROTEZIONE ANTI-OVERFLOW: Gestione sicura per esponenti estremi
+        # Float64 supporta fino a 10^308, ma già 10^300 genera RuntimeWarning
+        # Soluzione: limitiamo a ±100 (range da scala subatomica a cosmologica)
         c_luce = 299792458.0  # m/s
-        tempo_caratteristico = scala_metri / c_luce  # tempo di attraversamento luce
+        
+        if np.abs(esponente_visualizzato) > 100:
+            # REGIME ESTREMO: Gestione esplicita con inf per evitare warning
+            # Scale > 10^100 m (molto oltre orizzonte osservabile ~10^26 m)
+            # Scale < 10^-100 m (molto sotto lunghezza di Planck ~10^-35 m)
+            if esponente_visualizzato > 100:
+                tempo_caratteristico = np.inf  # Scala cosmologica estrema → tempo infinito
+            else:
+                tempo_caratteristico = 0.0     # Scala quantistica estrema → tempo nullo
+        else:
+            # REGIME NORMALE: Calcolo standard senza overflow
+            esponente_safe_time = esponente_visualizzato  # già nel range sicuro
+            scala_metri = 10**esponente_safe_time
+            tempo_caratteristico = scala_metri / c_luce  # tempo di attraversamento luce
         
         # Il tempo emergente è normalizzato rispetto al tempo caratteristico della scala
         tempo_fisico_sec = tempo_assoluto_adimensionale * tempo_caratteristico
