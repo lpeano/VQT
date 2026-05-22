@@ -1985,6 +1985,7 @@ def log_evento_visivo(tipo_evento, descrizione, tempo_emergente, metrica_exp, hu
 
 
 f_playback_handle = None
+playback_usa_24_campi = False  # Flag per compatibilità formato HDF5
 ultimo_errore_frame = -1
 
 # Variabili globali per tracking eventi
@@ -1996,7 +1997,7 @@ def update(frame, target_file_handle=None):
     global stato_attuale, lambda_affine_corrente, complessita_precedente, tempo_emergente_cumulativo
     global curvatura_scalare_precedente, torsione_precedente
     global punti_complessita, punti_G, punti_Z, animazione_in_esecuzione, velocita_precedente, suono_inversione_fatto
-    global f_playback_handle, ultimo_errore_frame
+    global f_playback_handle, playback_usa_24_campi, ultimo_errore_frame
     global evento_vuoto_quantistico_attivo, evento_inversione_temporale_precedente
     global limiti_plot_history, rm_ema, bounce_zoom_factor, last_rm_derivative  # Sistema rendering dinamico
     global scat_dx, scat_sx, linea_mat, linea_spa  # Plot objects ricreatati dopo ax.cla()
@@ -2007,6 +2008,8 @@ def update(frame, target_file_handle=None):
                 f_playback_handle = h5py.File(file_data_path, 'r', libver='latest', swmr=True)
             except OSError:
                 f_playback_handle = h5py.File(file_data_path, 'r')
+            # Leggi flag formato dati
+            playback_usa_24_campi = f_playback_handle.attrs.get('usa_24_campi_locali', False)
                 
         if frame >= f_playback_handle['telemetria_scalare'].shape[0]:
             return scat_dx, scat_sx, linea_mat, linea_spa, linea_fft, linea_z, linea_g, linea_fractal
@@ -2019,16 +2022,35 @@ def update(frame, target_file_handle=None):
             esponente_visualizzato = meta['esponente']
             tempo_assoluto_adimensionale = meta['tempo_assol']
             d_tau_dinamico = meta['d_tau']
-            velocita_chi = meta['v_chi']
+            
+            # Compatibilità con entrambi i formati HDF5 (scalare e 24 campi)
+            if playback_usa_24_campi:
+                velocita_chi = meta['v_chi_medio']
+                chi_value = meta['chi_medio']
+                # Per rendering usa chi_vettore se disponibile, altrimenti media
+                if 'chi_vettore' in meta.dtype.names:
+                    stato_attuale = meta['chi_vettore']  # Array 24 elementi
+                else:
+                    stato_attuale = [chi_value, velocita_chi]
+            else:
+                velocita_chi = meta['v_chi']
+                chi_value = meta['chi_lineare']
+                stato_attuale = [chi_value, velocita_chi]
+            
             H_fisica = meta['h_fisica']
             tempo_emergente_cumulativo = tempo_assoluto_adimensionale * (H_fisica + 1e-43)  # Ricostruzione tempo emergente
-            stato_attuale = [meta['chi_lineare'], meta['v_chi']]
             
             # RIGENERAZIONE ISTANTANEA PROCEDURALE: Ricreo i vettori 3D in tempo reale dalle coordinate scalari
-            Xdx, Ydx, Zdx, Xsx, Ysx, Zsx, _, _, th, pdx, psx = genera_mappatura(stato_attuale[0], frame)
+            # genera_mappatura accetta sia scalare che array 24 elementi
+            if playback_usa_24_campi and isinstance(stato_attuale, np.ndarray) and stato_attuale.shape == (24,):
+                Xdx, Ydx, Zdx, Xsx, Ysx, Zsx, _, _, th, pdx, psx = genera_mappatura(stato_attuale, frame)
+            else:
+                Xdx, Ydx, Zdx, Xsx, Ysx, Zsx, _, _, th, pdx, psx = genera_mappatura(chi_value if not isinstance(stato_attuale, list) else stato_attuale[0], frame)
             
             # Leggi contorsione se disponibile, altrimenti calcola in tempo reale
-            if 'contorsione_k' in meta.dtype.names:
+            if 'contorsione_k_medio' in meta.dtype.names:
+                contorsione_k = meta['contorsione_k_medio']
+            elif 'contorsione_k' in meta.dtype.names:
                 contorsione_k = meta['contorsione_k']
             else:
                 # Calcolo in tempo reale per compatibilità con vecchi file HDF5
@@ -2043,7 +2065,9 @@ def update(frame, target_file_handle=None):
                     contorsione_k = 0.0
             
             # Leggi chiusura spinoriale se disponibile
-            if 'chiusura_spinore' in meta.dtype.names:
+            if 'chiusura_spinore_medio' in meta.dtype.names:
+                chiusura_spinore = meta['chiusura_spinore_medio']
+            elif 'chiusura_spinore' in meta.dtype.names:
                 chiusura_spinore = meta['chiusura_spinore']
             else:
                 # Calcolo in tempo reale per compatibilità con vecchi file HDF5
@@ -2779,11 +2803,26 @@ if args.headless:
                 
             with f_check:
                 meta = f_check['telemetria_scalare'][start_frame - 1]
-                stato_attuale = [meta['chi_lineare'], meta['v_chi']]
+                usa_24_file = f_check.attrs.get('usa_24_campi_locali', False)
+                
+                # Compatibilità con entrambi i formati
+                if usa_24_file:
+                    if 'chi_vettore' in meta.dtype.names:
+                        stato_attuale = np.concatenate([meta['chi_vettore'], meta['vel_vettore']])  # 48 elementi
+                    else:
+                        stato_attuale = [meta['chi_medio'], meta['v_chi_medio']]
+                else:
+                    stato_attuale = [meta['chi_lineare'], meta['v_chi']]
+                
                 lambda_affine_corrente = (start_frame - 1) * 0.1  # Parametro affine accumulato
                 tempo_emergente_cumulativo = meta['tempo_assol'] * (meta['g_geo'] + 1e-43)  # Ricostruzione tempo emergente
                 print(f"\n[RESUME RESILIENTE] Rilevato blocco interrotto. Arretramento al blocco sicuro: {start_frame}")
-                print(f"[STATO RIPRISTINATO] Chi: {stato_attuale[0]:.4f} | V_Chi: {stato_attuale[1]:.4f}")
+                if usa_24_file and len(stato_attuale) == 48:
+                    chi_mean = np.mean(stato_attuale[::2])
+                    v_mean = np.mean(stato_attuale[1::2])
+                    print(f"[STATO RIPRISTINATO 24 CAMPI] Chi medio: {chi_mean:.4f} | V_Chi medio: {v_mean:.4f}")
+                else:
+                    print(f"[STATO RIPRISTINATO] Chi: {stato_attuale[0]:.4f} | V_Chi: {stato_attuale[1]:.4f}")
                 print(f"[PARAMETRO AFFINE] \u03bb = {lambda_affine_corrente:.4f} | Tempo Emergente = {tempo_emergente_cumulativo:.6e}")
 
     if start_frame >= NUM_TOTAL_FRAMES:
