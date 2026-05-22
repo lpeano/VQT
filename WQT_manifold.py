@@ -592,6 +592,29 @@ MATRICE_ACCOPPIAMENTO_LEECH = costruisci_matrice_accoppiamento_leech()
 KAPPA_COUPLING_24 = 0.15  # Accoppiamento debole/medio → formazione strutture
 
 # ============================================================================
+# SISTEMA TERMODINAMICO APERTO - SEPARAZIONE FASI
+# ============================================================================
+# Parametri per indurre separazione tra materia (SX) e spazio (DX)
+
+# DIFFUSIONE TRA VICINI ADIACENTI
+# Coefficiente flux operator: scambio densità chiralità tra i-1, i, i+1
+COEFF_DIFFUSIONE_VICINI = 0.08  # Flusso locale tra segmenti adiacenti
+
+# BIASING LOCALE BASATO SU TORSIONE
+# Segmenti con alta torsione accumulano più chiralità SX (materia)
+SOGLIA_TORSIONE_720 = 4.0 * np.pi  # 720° in radianti (chiusura spinoriale)
+COEFF_BIASING_TORSIONE = 0.25  # Intensità accumulo materia in regioni ad alta torsione
+
+# PENALITÀ OMOGENEITÀ
+# Termine energetico che penalizza configurazioni troppo omogenee
+# Spinge il sistema a creare gradienti di densità (separazione fasi)
+PENALITA_OMOGENEITA = 0.12  # Forza anti-omogeneità
+
+# CONSERVAZIONE CARICA SPINORIALE
+# Il trasporto di chiralità rispetta la conservazione totale sul reticolo
+# Σᵢ χᵢ = costante (a meno di termini fonte/pozzo esterni)
+
+# ============================================================================
 
 # STATO INIZIALE DEL SISTEMA
 # ---------------------------
@@ -1406,10 +1429,16 @@ def equazione_stato_einstein_cartan(lambda_affine, stato_metrico, scatolamento, 
 # EQUAZIONE DI EINSTEIN-CARTAN PER 24 CAMPI LOCALI ACCOPPIATI
 # ============================================================================
 
+# Variabili globali per logging flussi (aggiornate ogni step)
+flussi_netto_SX_globale = np.zeros(24)
+varianza_chi_globale = 0.0
+torsione_media_globale = 0.0
+
 def equazione_estado_einstein_cartan_24_campi(lambda_affine, stato_vettoriale, scatolamento, 
                                                errore_chiusura_locale, contorsione_locale):
     """
     Evoluzione geometrodinamica per 24 campi χᵢ accoppiati topologicamente.
+    Sistema termodinamico APERTO con separazione fasi materia/spazio.
     
     ARCHITETTURA:
     -------------
@@ -1419,20 +1448,26 @@ def equazione_estado_einstein_cartan_24_campi(lambda_affine, stato_vettoriale, s
     
     I segmenti interagiscono tramite:
     - Accoppiamento topologico (matrice 24×24)
-    - Diffusione di torsione tra vicini
+    - Diffusione esplicita tra vicini i-1, i, i+1
+    - Biasing locale basato su torsione (accumulo materia)
+    - Penalità omogeneità (formazione gradienti)
     - Forze locali (pressione, bounce, chiusura)
     
-    DINAMICA:
-    ---------
+    DINAMICA TERMODINAMICA:
+    ----------------------
     Per ogni segmento i:
     
-      d²χᵢ/dλ² = F_local[i] + F_coupling[i] + F_torsion[i] + F_closure[i]
+      d²χᵢ/dλ² = F_local[i] + F_coupling[i] + F_diffusion[i] + 
+                 F_biasing[i] + F_anti_homo[i] + F_torsion[i] + F_closure[i]
       
     dove:
-      - F_local[i]:    Pressione locale (ρ_SX - ρ_DX)
-      - F_coupling[i]: Σⱼ w_ij × (χⱼ - χᵢ)  (diffusione)
-      - F_torsion[i]:  Bounce locale (β × ρᵢ²)
-      - F_closure[i]:  Forza topologica (∮τds[i] → 4π)
+      - F_local[i]:      Pressione locale (ρ_SX - ρ_DX)
+      - F_coupling[i]:   Σⱼ w_ij × (χⱼ - χᵢ)  (accoppiamento globale)
+      - F_diffusion[i]:  Flusso tra vicini i-1, i, i+1 (trasporto locale)
+      - F_biasing[i]:    Accumulo materia in zone ad alta torsione
+      - F_anti_homo[i]:  Penalità configurazioni omogenee
+      - F_torsion[i]:    Bounce locale (β × ρᵢ²)
+      - F_closure[i]:    Forza topologica (∮τds[i] → 4π)
     
     Parametri:
     ----------
@@ -1451,7 +1486,15 @@ def equazione_estado_einstein_cartan_24_campi(lambda_affine, stato_vettoriale, s
     -----------
     derivata : ndarray, shape (48,)
         [dχ₀/dλ, dv₀/dλ, dχ₁/dλ, dv₁/dλ, ...]
+        
+    Effetti collaterali:
+    -------------------
+    Aggiorna variabili globali per logging:
+    - flussi_netto_SX_globale[24]: Flusso di chiralità per segmento
+    - varianza_chi_globale: Misura omogeneità sistema
+    - torsione_media_globale: Torsione media sul reticolo
     """
+    global flussi_netto_SX_globale, varianza_chi_globale, torsione_media_globale
     N_segmenti = segmenti_frattali  # 24
     
     # ========================================================================
@@ -1470,12 +1513,25 @@ def equazione_estado_einstein_cartan_24_campi(lambda_affine, stato_vettoriale, s
     f_dx = np.exp(+chi_sat * COEFFICIENTE_ACCOPPIAMENTO)
     f_sx = np.exp(-chi_sat * COEFFICIENTE_ACCOPPIAMENTO)
     
+    # ========================================================================
+    # 1B. BIASING LOCALE BASATO SU TORSIONE (Separazione Fasi)
+    # ========================================================================
+    # Segmenti con torsione locale alta (>720°) accumulano più chiralità SX (materia)
+    # Questo innesca la separazione tra regioni "dense" (materia) e "vuote" (spazio)
+    
+    # Normalizza contorsione rispetto a soglia 4π
+    eccesso_torsione = np.maximum(0, contorsione_locale - SOGLIA_TORSIONE_720)
+    
+    # Fattore di biasing: segmenti con alta torsione attraggono materia
+    biasing_materia = 1.0 + COEFF_BIASING_TORSIONE * np.tanh(eccesso_torsione / SOGLIA_TORSIONE_720)
+    
     # Densità locale per ogni segmento
     # IMPORTANTE: Non saturo con tanh - lascio crescere linearmente
     indicatore_densita = 1.0 + np.abs(chi_array) / 100.0
     
-    # Densità base (materia vs spazio)
-    densita_materia = (f_sx - f_dx) * scatolamento
+    # Densità base (materia vs spazio) CON BIASING
+    densita_materia_base = (f_sx - f_dx) * scatolamento
+    densita_materia = densita_materia_base * biasing_materia  # Amplificata da torsione
     
     # Densità da torsione locale (include contorsione K²)
     densita_torsione = contorsione_locale * COEFFICIENTE_ACCOPPIAMENTO
@@ -1495,7 +1551,7 @@ def equazione_estado_einstein_cartan_24_campi(lambda_affine, stato_vettoriale, s
     pressione_repulsione_spin = BETA_REPULSIONE_SPIN * (densita_totale ** 2)  # REPULSIVA
     
     # ========================================================================
-    # 3. ACCOPPIAMENTO TOPOLOGICO TRA SEGMENTI
+    # 3. ACCOPPIAMENTO TOPOLOGICO TRA SEGMENTI (Globale)
     # ========================================================================
     # Ogni segmento "sente" i vicini tramite la matrice di accoppiamento
     # 
@@ -1514,6 +1570,59 @@ def equazione_estado_einstein_cartan_24_campi(lambda_affine, stato_vettoriale, s
     
     # Coefficiente che controlla la forza dell'accoppiamento
     forza_coupling *= KAPPA_COUPLING_24
+    
+    # ========================================================================
+    # 3B. DIFFUSIONE ESPLICITA TRA VICINI ADIACENTI (Flux Operator)
+    # ========================================================================
+    # Trasporto locale di chiralità tra segmenti contigui i-1, i, i+1
+    # Implementa equazione di diffusione discreta:
+    #
+    #   dχᵢ/dt ∝ (χᵢ₊₁ - 2χᵢ + χᵢ₋₁)  (Laplaciano discreto)
+    #
+    # Topologia TOROIDALE: segmento 0 è vicino a 23 (condizioni periodiche)
+    
+    forza_diffusione = np.zeros(N_segmenti)
+    flussi_netto = np.zeros(N_segmenti)  # Per logging
+    
+    for i in range(N_segmenti):
+        i_prev = (i - 1) % N_segmenti  # Vicino precedente (periodic)
+        i_next = (i + 1) % N_segmenti  # Vicino successivo (periodic)
+        
+        # Gradiente locale (flusso da vicini verso segmento i)
+        gradiente_prev = chi_array[i_prev] - chi_array[i]
+        gradiente_next = chi_array[i_next] - chi_array[i]
+        
+        # Laplaciano discreto (divergenza del flusso)
+        laplaciano = gradiente_prev + gradiente_next
+        
+        forza_diffusione[i] = COEFF_DIFFUSIONE_VICINI * laplaciano
+        
+        # Flusso netto per logging (positivo = accumulo, negativo = perdita)
+        flussi_netto[i] = forza_diffusione[i]
+    
+    # Aggiorna variabile globale per logging
+    flussi_netto_SX_globale[:] = flussi_netto
+    
+    # ========================================================================
+    # 3C. PENALITÀ OMOGENEITÀ (Anti-Equilibrio)
+    # ========================================================================
+    # Termine energetico che penalizza configurazioni omogenee
+    # Spinge il sistema a creare gradienti → separazione fasi
+    #
+    # Energia penalità: E_homo ∝ -σ²(χ)  (massima quando tutto uguale)
+    # Forza derivata:   F_i ∝ ∂E/∂χᵢ = (χᵢ - <χ>)
+    
+    chi_medio = np.mean(chi_array)
+    varianza_chi = np.var(chi_array)  # Misura omogeneità
+    
+    # Forza proporzionale a deviazione dalla media
+    # Segmenti sopra media vengono "spinti su", sotto media "tirati giù"
+    # → Amplifica differenze invece di sopprimerle
+    forza_anti_omogeneita = PENALITA_OMOGENEITA * (chi_array - chi_medio)
+    
+    # Aggiorna variabili globali per logging
+    varianza_chi_globale = varianza_chi
+    torsione_media_globale = np.mean(contorsione_locale)
     
     # ========================================================================
     # 4. FORZA DI CHIUSURA SPINORIALE LOCALE (4π vincolo)
@@ -1538,14 +1647,18 @@ def equazione_estado_einstein_cartan_24_campi(lambda_affine, stato_vettoriale, s
     # ========================================================================
     # 6. ACCELERAZIONE TOTALE PER OGNI SEGMENTO
     # ========================================================================
-    # Somma di tutte le forze
+    # Somma di tutte le forze (termodinamica aperta)
     
     accelerazione = (
         pressione_repulsione_spin - pressione_gravitazionale +  # Fisica locale
-        forza_coupling +                                         # Accoppiamento vicini
+        forza_coupling +                                         # Accoppiamento globale (matrice 24×24)
+        forza_diffusione +                                       # Diffusione vicini adiacenti
+        forza_anti_omogeneita +                                  # Penalità omogeneità (separazione fasi)
         forza_chiusura +                                         # Vincolo topologico
         forza_richiamo                                           # Richiamo armonico
     )
+    
+    # NOTA: Il biasing da torsione è già incluso in densita_materia (step 1B)
     
     # Damping locale (stabilità numerica)
     # AUMENTATO per sistema 24-campi: maggiore damping previene divergenza
@@ -1713,6 +1826,11 @@ suono_inversione_fatto = False
 # File di log per tracciare la stabilità topologica
 log_stabilita_path = os.path.join(os.path.dirname(__file__), 'stabilita.log')
 log_stabilita_file = None
+
+# File di log per tracciare i flussi di chiralità tra segmenti (sistema termodinamico)
+log_flussi_path = os.path.join(os.path.dirname(__file__), 'flussi_24campi.log')
+log_flussi_file = None
+
 if args.headless or args.film:
     # Apri il file di log in modalità append con encoding UTF-8
     log_stabilita_file = open(log_stabilita_path, 'w', encoding='utf-8')  # UTF-8 per supportare π
@@ -1722,6 +1840,21 @@ if args.headless or args.film:
     log_stabilita_file.write(f"{'Frame':<8} {'Lambda':<12} {'Chi':<12} {'K (norm)':<15} {'Errore 4π':<15} {'ρ_total':<12} {'Rapp R/A':<12} {'Status':<20}\n")
     log_stabilita_file.write("-" * 120 + "\n")
     log_stabilita_file.flush()
+    
+    # Log flussi di chiralità (separazione fasi)
+    log_flussi_file = open(log_flussi_path, 'w', encoding='utf-8')
+    log_flussi_file.write("=" * 140 + "\n")
+    log_flussi_file.write(f"LOG FLUSSI CHIRALITÀ 24 CAMPI - Sistema Termodinamico Aperto - Avvio: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+    log_flussi_file.write("=" * 140 + "\n")
+    log_flussi_file.write("LEGENDA:\n")
+    log_flussi_file.write("  • Flusso Netto SX: Accumulo/perdita chiralità per segmento (+ = materia, - = spazio)\n")
+    log_flussi_file.write("  • Varianza χ: Misura omogeneità (alta = separazione fasi attiva, bassa = sistema omogeneo)\n")
+    log_flussi_file.write("  • Torsione Media: <K²> su reticolo (alta = regioni ad alta curvatura)\n")
+    log_flussi_file.write("  • Max|Flusso|: Intensità massima trasporto tra vicini\n")
+    log_flussi_file.write("=" * 140 + "\n")
+    log_flussi_file.write(f"{'Frame':<8} {'Lambda':<12} {'Var(χ)':<15} {'K_medio':<15} {'Max|Flusso|':<15} {'Segmento Max':<15} {'Separazione':<20}\n")
+    log_flussi_file.write("-" * 140 + "\n")
+    log_flussi_file.flush()
 
 
 def genera_mappatura(log_r, frame):
@@ -2283,6 +2416,35 @@ def update(frame, target_file_handle=None):
                 f"{densita_energia_totale_local:<12.6e} {rapporto_repulsione_attrazione:<12.6e} {status:<20}\n"
             )
             log_stabilita_file.flush()  # Forza scrittura immediata
+        
+        # ========================================================================
+        # LOGGING FLUSSI CHIRALITÀ (Sistema Termodinamico Aperto)
+        # ========================================================================
+        # Logga i flussi di chiralità tra segmenti per monitorare separazione fasi
+        if log_flussi_file is not None and USA_24_CAMPI_LOCALI:
+            # Estrai valori dalle variabili globali aggiornate da equazione_estado_einstein_cartan_24_campi()
+            varianza = varianza_chi_globale
+            torsione_media = torsione_media_globale
+            max_flusso = np.max(np.abs(flussi_netto_SX_globale))
+            idx_max_flusso = np.argmax(np.abs(flussi_netto_SX_globale))
+            
+            # Determina status separazione fasi
+            if varianza < 1.0:
+                sep_status = "OMOGENEO (bassa var)"
+            elif varianza < 10.0:
+                sep_status = "TRANSIZIONE"
+            elif varianza < 100.0:
+                sep_status = "CLUSTERING ATTIVO ⚡"
+            else:
+                sep_status = "SEPARAZIONE FASI! ★"
+            
+            # Scrivi log flussi
+            log_flussi_file.write(
+                f"{frame:<8} {lambda_affine_corrente:<12.6f} {varianza:<15.6e} "
+                f"{torsione_media:<15.6e} {max_flusso:<15.6e} "
+                f"{idx_max_flusso:<15} {sep_status:<20}\n"
+            )
+            log_flussi_file.flush()  # Forza scrittura immediata
         
         # ========================================================================
         # STEP 3: EVOLUZIONE TEMPORALE CON FISICA DELLA TORSIONE (MODULO 3)
@@ -2872,6 +3034,23 @@ if args.headless:
         log_stabilita_file.close()
         print(f"[LOG STABILITÀ] File salvato in: {log_stabilita_path}")
     
+    # Chiudi file di log flussi chiralità
+    if log_flussi_file is not None:
+        log_flussi_file.write("=" * 140 + "\n")
+        log_flussi_file.write(f"Fine simulazione: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        log_flussi_file.write("=" * 140 + "\n")
+        
+        # Statistiche finali separazione fasi
+        log_flussi_file.write("\nSTATISTICHE FINALI SEPARAZIONE FASI:\n")
+        log_flussi_file.write(f"  • Varianza finale χ: {varianza_chi_globale:.6e}\n")
+        log_flussi_file.write(f"  • Torsione media finale: {torsione_media_globale:.6e}\n")
+        log_flussi_file.write(f"  • Flusso massimo finale: {np.max(np.abs(flussi_netto_SX_globale)):.6e}\n")
+        log_flussi_file.write(f"  • Conservazione carica: Σχᵢ = {np.sum(stato_attuale[::2]) if USA_24_CAMPI_LOCALI else 'N/A (modo scalare)'}\n")
+        log_flussi_file.write("=" * 140 + "\n")
+        
+        log_flussi_file.close()
+        print(f"[LOG FLUSSI] File salvato in: {log_flussi_path}")
+    
 elif args.playback:
     print("\n[PLAYBACK HDF5] Analisi dell'albero binario in corso...")
     
@@ -3036,6 +3215,14 @@ elif args.film:
         log_stabilita_file.write("=" * 80 + "\n")
         log_stabilita_file.close()
         print(f"[LOG STABILITÀ] File salvato in: {log_stabilita_path}")
+    
+    # Chiudi file di log flussi chiralità
+    if log_flussi_file is not None:
+        log_flussi_file.write("=" * 140 + "\n")
+        log_flussi_file.write(f"Fine simulazione: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        log_flussi_file.write("=" * 140 + "\n")
+        log_flussi_file.close()
+        print(f"[LOG FLUSSI] File salvato in: {log_flussi_path}")
 
 else:
     ax_btn = fig.add_axes([0.45, 0.04, 0.1, 0.04])
