@@ -102,6 +102,11 @@ args = parser.parse_args()
 # --- CALCOLO QUOTA TOTALE FRAME PRE-ALLOCAZIONE ---
 NUM_TOTAL_FRAMES = args.fps * args.duration
 
+# --- FLAG MODALITÀ ARCHITETTURA ---
+# True: 24 campi locali accoppiati (Leech lattice)
+# False: campo globale scalare (compatibilità)
+USA_24_CAMPI_LOCALI = True
+
 if sys.platform.startswith('win'):
     import winsound
     def riproduci_suono(frequenza): winsound.Beep(frequenza, 300)  
@@ -122,6 +127,27 @@ SCALARI_DTYPE = np.dtype([
     ('h_fisica', 'f8'),  # Parametro di Hubble con segno (espansione/contrazione)
     ('contorsione_k', 'f8'),  # Norma del tensore di contorsione K_λμν
     ('chiusura_spinore', 'f8')  # Errore di chiusura topologica (0 = perfetta)
+])
+
+# --- STRUTTURA DATI PER 24 CAMPI LOCALI ---
+SCALARI_24_DTYPE = np.dtype([
+    ('frame_id', 'i8'),
+    ('rm', 'f8'),
+    ('g_geo', 'f8'),
+    ('z_geo', 'f8'),
+    ('esponente', 'f8'),
+    ('tempo_assol', 'f8'),
+    ('d_tau', 'f8'),
+    ('v_chi_medio', 'f8'),
+    ('chi_medio', 'f8'),
+    ('h_fisica', 'f8'),
+    ('contorsione_k_medio', 'f8'),
+    ('chiusura_spinore_medio', 'f8'),
+    # Campi vettoriali (24 elementi)
+    ('chi_vettore', 'f8', (24,)),
+    ('vel_vettore', 'f8', (24,)),
+    ('contorsione_locale', 'f8', (24,)),
+    ('chiusura_locale', 'f8', (24,))
 ])
 
 # --- PULIZIA FLAG CONSISTENZA HDF5 ---
@@ -162,16 +188,20 @@ def clear_hdf5_consistency_flags(file_path):
 # --- INIZIALIZZAZIONE STRUTTURA PRE-ALLOCATA FISSA ---
 def inizializza_hdf5_matrix(file_path, num_frames, check_corruption=False):
     """Pre-alloca l'intero file HDF5 con dimensioni fisse per eliminare il padding su Windows."""
+    # Scelta dtype in base alla modalità
+    dtype_telemetria = SCALARI_24_DTYPE if USA_24_CAMPI_LOCALI else SCALARI_DTYPE
+    
     if not os.path.exists(file_path):
         with h5py.File(file_path, 'w', libver='latest') as f:
             f.attrs['creato_il'] = datetime.now().isoformat()
             f.attrs['risoluzione_reticolo'] = 2400
             f.attrs['num_total_frames'] = num_frames
+            f.attrs['usa_24_campi_locali'] = USA_24_CAMPI_LOCALI
             
             # Eliminazione dataset vettoriali 3D dal DB per una compressione procedurale (~1600x)
             # Salviamo solo lo "scheletro" matematico per rigenerare la geometria al volo
             f.create_dataset('telemetria_scalare', shape=(num_frames,), maxshape=(None,),
-                             dtype=SCALARI_DTYPE, chunks=(2048,))
+                             dtype=dtype_telemetria, chunks=(2048,))
     else:
         # Controllo corruzione SOLO se richiesto esplicitamente (modalità headless)
         # NON bloccare l'accesso SWMR durante playback concorrente!
@@ -248,16 +278,38 @@ def flush_chunk_buffer(f_handle):
     start_f = chunk_buffer['frames'][0]
     end_f = start_f + len(chunk_buffer['frames'])
     
-    f_handle['telemetria_scalare'][start_f:end_f] = np.array(chunk_buffer['scalari'], dtype=SCALARI_DTYPE)
+    # Scelta dtype in base alla modalità
+    dtype_telemetria = SCALARI_24_DTYPE if USA_24_CAMPI_LOCALI else SCALARI_DTYPE
+    f_handle['telemetria_scalare'][start_f:end_f] = np.array(chunk_buffer['scalari'], dtype=dtype_telemetria)
     
     for k in chunk_buffer:
         chunk_buffer[k].clear()
 
-def append_stato_hdf5(f_handle, frame, Xdx, Ydx, Zdx, Xsx, Ysx, Zsx, th, pdx, psx, rm, g_geo, z_geo, esp, t_assol, dtau, vchi, chi_lineare, h_fis, contorsione_k=0.0, chiusura_spinore=0.0):
+def append_stato_hdf5(f_handle, frame, Xdx, Ydx, Zdx, Xsx, Ysx, Zsx, th, pdx, psx, rm, g_geo, z_geo, esp, t_assol, dtau, vchi, chi_lineare, h_fis, contorsione_k=0.0, chiusura_spinore=0.0, chi_vettore=None, vel_vettore=None, contorsione_locale=None, chiusura_locale=None):
     """Scrittura ottimizzata a blocchi in memoria per impedire la frammentazione SWMR."""
     global chunk_buffer
     
-    record_scalari = np.array((frame, rm, g_geo, z_geo, esp, t_assol, dtau, vchi, chi_lineare, h_fis, contorsione_k, chiusura_spinore), dtype=SCALARI_DTYPE)
+    if USA_24_CAMPI_LOCALI:
+        # Modalità 24 campi: scrivi record esteso
+        # Prepara array vuoti se non forniti
+        chi_vec = chi_vettore if chi_vettore is not None else np.zeros(24)
+        vel_vec = vel_vettore if vel_vettore is not None else np.zeros(24)
+        cont_loc = contorsione_locale if contorsione_locale is not None else np.zeros(24)
+        chiu_loc = chiusura_locale if chiusura_locale is not None else np.zeros(24)
+        
+        record_scalari = np.array(
+            (frame, rm, g_geo, z_geo, esp, t_assol, dtau, vchi, chi_lineare, h_fis, 
+             contorsione_k, chiusura_spinore,
+             chi_vec, vel_vec, cont_loc, chiu_loc),
+            dtype=SCALARI_24_DTYPE
+        )
+    else:
+        # Modalità scalare: usa formato originale
+        record_scalari = np.array(
+            (frame, rm, g_geo, z_geo, esp, t_assol, dtau, vchi, chi_lineare, h_fis, contorsione_k, chiusura_spinore), 
+            dtype=SCALARI_DTYPE
+        )
+    
     chunk_buffer['scalari'].append(record_scalari)
     chunk_buffer['frames'].append(frame)
     
@@ -301,9 +353,18 @@ def find_last_written_frame(file_path, handle=None):
         print(f"[AVVISO] Errore durante la lettura del file HDF5: {e}")
         return -1
 
-# Inizializza il file HDF5, ma controlla corruzione solo in modalità headless
-# In modalità playback, permetti accesso SWMR concorrente anche se writer è attivo
-file_data_path = inizializza_hdf5_matrix(args.db, NUM_TOTAL_FRAMES, check_corruption=args.headless)
+# Inizializza il file HDF5 SOLO se NON siamo in modalità playback
+# In modalità playback, accediamo al file in sola lettura, non lo modifichiamo
+if args.playback:
+    # In playback: verifica solo che il file esista
+    file_data_path = args.db
+    if not os.path.exists(file_data_path):
+        print(f"[ERRORE] File HDF5 non trovato: {file_data_path}")
+        sys.exit(1)
+    print(f"[PLAYBACK] Lettura da: {file_data_path}")
+else:
+    # In modalità normale/headless: inizializza e controlla corruzione
+    file_data_path = inizializza_hdf5_matrix(args.db, NUM_TOTAL_FRAMES, check_corruption=args.headless)
 
 # ============================================================================
 # SEZIONE 1: CONFIGURAZIONE GEOMETRICA DEL MANIFOLD
@@ -401,6 +462,135 @@ OMEGA_RICHIAMO = 1.0  # Coefficiente potenziale armonico di richiamo (AUMENTATO)
 #
 # Con ω = 1.0, quando χ = -500k, F_richiamo = +500k (forza repulsiva forte).
 # Questo deve bilanciarsi con P_totale per permettere oscillazioni stabili.
+# ============================================================================
+
+# ============================================================================
+# SEZIONE 24 CAMPI LOCALI - TRANSIZIONE DA GLOBALE A GRANULARE
+# ============================================================================
+#
+# Il sistema evolve da un modello a campo unico (χ scalare) a un modello
+# con 24 campi locali accoppiati (χ_vettore), uno per ogni segmento del
+# reticolo di Leech.
+#
+# FISICA:
+# -------
+# - Ogni segmento i ha il proprio χᵢ e densità (ρ_SX[i], ρ_DX[i])
+# - I segmenti interagiscono tramite accoppiamento topologico
+# - La torsione si propaga tra vicini (diffusione geometrica)
+# - Emergono clustering spontanei e bounce locali asincroni
+#
+# VANTAGGI:
+# ---------
+# - Anisotropia locale → formazione di strutture
+# - Bounce quantistico per segmento (non globale)
+# - Clustering di materia dove K² è alta
+# - Propagazione di perturbazioni (onde)
+# ============================================================================
+
+def costruisci_matrice_accoppiamento_leech():
+    """
+    Costruisce la matrice di accoppiamento topologico per i 24 segmenti del reticolo di Leech.
+    
+    TOPOLOGIA:
+    ----------
+    I 24 segmenti sono disposti su un cerchio (topologia toroidale).
+    Ogni segmento interagisce con i vicini con forza decrescente con la distanza:
+    
+        w_ij ∝ 1 / (dist_ij² + ε)
+    
+    dove dist_ij è la distanza minima sul cerchio (considerando periodicità).
+    
+    ACCOPPIAMENTO:
+    --------------
+    - Vicini immediati (dist=1): peso massimo ~0.5
+    - Vicini secondi (dist=2): peso ~0.12
+    - Opposti (dist=12): peso minimo ~0.002
+    
+    La matrice è normalizzata per righe: Σⱼ w_ij = 1
+    
+    Restituisce:
+    -----------
+    W : ndarray, shape (24, 24)
+        Matrice di accoppiamento normalizzata.
+    """
+    N = segmenti_frattali  # 24
+    W = np.zeros((N, N))
+    
+    for i in range(N):
+        for j in range(N):
+            if i != j:
+                # Distanza minima sul cerchio (topologia toroidale)
+                diff = abs(i - j)
+                dist_circle = min(diff, N - diff)
+                
+                # Peso inversamente proporzionale al quadrato della distanza
+                # +0.1 per evitare divisione per zero e saturare accoppiamento forte
+                W[i, j] = 1.0 / (dist_circle**2 + 0.1)
+    
+    # Normalizzazione per righe: ogni segmento "distribuisce" forza totale = 1
+    somma_righe = W.sum(axis=1, keepdims=True)
+    W_normalizzata = np.where(somma_righe > 0, W / somma_righe, 0.0)
+    
+    return W_normalizzata
+
+
+def calcola_chiralita_locale_24_segmenti(chi_vettore, contorsione_locale):
+    """
+    Calcola densità DX (spazio) e SX (materia) per ciascuno dei 24 segmenti.
+    
+    FISICA:
+    -------
+    Ogni segmento ha densità locale dipendente da:
+    1. Il proprio χᵢ (potenziale di scala)
+    2. La propria contorsione K²ᵢ (torsione geometrica)
+    
+    Dove la contorsione è alta → materia si concentra (ρ_SX alta)
+    Dove la contorsione è bassa → spazio si dilata (ρ_DX alta)
+    
+    Parametri:
+    ----------
+    chi_vettore : ndarray, shape (24,)
+        Potenziale di scala per ogni segmento.
+    contorsione_locale : ndarray, shape (24,)
+        Norma del tensore di contorsione K²ᵢ per segmento.
+        
+    Restituisce:
+    -----------
+    densita_dx : ndarray, shape (24,)
+        Densità di espansione (spazio) per segmento.
+    densita_sx : ndarray, shape (24,)
+        Densità di condensazione (materia) per segmento.
+    """
+    # Saturazione locale (evita divergenze numeriche)
+    chi_sat = 150.0 * np.tanh(chi_vettore / 150.0)
+    
+    # Fattori chirali fondamentali (come nel modello globale)
+    f_dx_base = np.exp(+chi_sat * COEFFICIENTE_ACCOPPIAMENTO)
+    f_sx_base = np.exp(-chi_sat * COEFFICIENTE_ACCOPPIAMENTO)
+    
+    # Modulazione topologica basata sulla contorsione locale
+    # La torsione "piega" lo spazio-tempo favorendo la concentrazione di materia
+    K_media = np.mean(contorsione_locale) + 1e-12
+    modulazione_torsione = 1.0 + 0.5 * np.tanh(contorsione_locale / K_media)
+    
+    # Densità finali:
+    # - SX aumenta dove K² è alta (materia attirata dalla curvatura)
+    # - DX diminuisce dove K² è alta (spazio si contrae)
+    densita_sx = f_sx_base * modulazione_torsione
+    densita_dx = f_dx_base / modulazione_torsione
+    
+    return densita_dx, densita_sx
+
+
+# Costruzione matrice di accoppiamento (calcolata una volta all'avvio)
+MATRICE_ACCOPPIAMENTO_LEECH = costruisci_matrice_accoppiamento_leech()
+
+# Coefficiente che controlla la forza dell'accoppiamento tra segmenti
+# DEBOLE (0.05-0.1) → forte anisotropia, clustering pronunciato
+# MEDIO (0.2-0.5) → bilanciamento tra locale e globale
+# FORTE (0.8-1.0) → tende verso comportamento omogeneo (come modello originale)
+KAPPA_COUPLING_24 = 0.15  # Accoppiamento debole/medio → formazione strutture
+
 # ============================================================================
 
 # STATO INIZIALE DEL SISTEMA
@@ -1211,6 +1401,171 @@ def equazione_stato_einstein_cartan(lambda_affine, stato_metrico, scatolamento, 
     # Il tempo fisico emerge dalla geometria attraverso H_fisica.
     return [velocita_chi, accelerazione_finale]
 
+
+# ============================================================================
+# EQUAZIONE DI EINSTEIN-CARTAN PER 24 CAMPI LOCALI ACCOPPIATI
+# ============================================================================
+
+def equazione_estado_einstein_cartan_24_campi(lambda_affine, stato_vettoriale, scatolamento, 
+                                               errore_chiusura_locale, contorsione_locale):
+    """
+    Evoluzione geometrodinamica per 24 campi χᵢ accoppiati topologicamente.
+    
+    ARCHITETTURA:
+    -------------
+    Ogni segmento i del reticolo di Leech ha:
+    - χᵢ: Potenziale di scala locale
+    - vᵢ: Velocità locale dχᵢ/dλ
+    
+    I segmenti interagiscono tramite:
+    - Accoppiamento topologico (matrice 24×24)
+    - Diffusione di torsione tra vicini
+    - Forze locali (pressione, bounce, chiusura)
+    
+    DINAMICA:
+    ---------
+    Per ogni segmento i:
+    
+      d²χᵢ/dλ² = F_local[i] + F_coupling[i] + F_torsion[i] + F_closure[i]
+      
+    dove:
+      - F_local[i]:    Pressione locale (ρ_SX - ρ_DX)
+      - F_coupling[i]: Σⱼ w_ij × (χⱼ - χᵢ)  (diffusione)
+      - F_torsion[i]:  Bounce locale (β × ρᵢ²)
+      - F_closure[i]:  Forza topologica (∮τds[i] → 4π)
+    
+    Parametri:
+    ----------
+    lambda_affine : float
+        Parametro affine (non tempo).
+    stato_vettoriale : ndarray, shape (48,)
+        Stato: [χ₀, v₀, χ₁, v₁, ..., χ₂₃, v₂₃]
+    scatolamento : float
+        Parametro di confinamento cosmologico.
+    errore_chiusura_locale : ndarray, shape (24,)
+        Errore da 4π per ogni segmento.
+    contorsione_locale : ndarray, shape (24,)
+        Norma K² per ogni segmento.
+        
+    Restituisce:
+    -----------
+    derivata : ndarray, shape (48,)
+        [dχ₀/dλ, dv₀/dλ, dχ₁/dλ, dv₁/dλ, ...]
+    """
+    N_segmenti = segmenti_frattali  # 24
+    
+    # ========================================================================
+    # ESTRAZIONE STATO
+    # ========================================================================
+    # Stato vettoriale: [χ₀, v₀, χ₁, v₁, ...] → separare χ e v
+    chi_array = stato_vettoriale[::2]   # Indici pari: χᵢ  (shape: 24)
+    vel_array = stato_vettoriale[1::2]  # Indici dispari: vᵢ (shape: 24)
+    
+    # ========================================================================
+    # 1. GEOMETRIA LOCALE PER OGNI SEGMENTO
+    # ========================================================================
+    # Calcolo fattori chirali locali (come modello globale, ma per ogni i)
+    
+    chi_sat = 150.0 * np.tanh(chi_array / 150.0)
+    f_dx = np.exp(+chi_sat * COEFFICIENTE_ACCOPPIAMENTO)
+    f_sx = np.exp(-chi_sat * COEFFICIENTE_ACCOPPIAMENTO)
+    
+    # Densità locale per ogni segmento
+    # IMPORTANTE: Non saturo con tanh - lascio crescere linearmente
+    indicatore_densita = 1.0 + np.abs(chi_array) / 100.0
+    
+    # Densità base (materia vs spazio)
+    densita_materia = (f_sx - f_dx) * scatolamento
+    
+    # Densità da torsione locale (include contorsione K²)
+    densita_torsione = contorsione_locale * COEFFICIENTE_ACCOPPIAMENTO
+    
+    # Densità totale per segmento (T^00)
+    densita_totale = (densita_materia + densita_torsione) * indicatore_densita
+    
+    # ========================================================================
+    # 2. PRESSIONI LOCALI (T^ii)
+    # ========================================================================
+    
+    # Equazione di stato: P = w × ρ (w = -1/3 per relatività)
+    w = -1.0 / 3.0
+    pressione_gravitazionale = w * densita_totale  # ATTRATTIVA (negativa)
+    
+    # Pressione di repulsione spin (Einstein-Cartan): P_rep = β × ρ²
+    pressione_repulsione_spin = BETA_REPULSIONE_SPIN * (densita_totale ** 2)  # REPULSIVA
+    
+    # ========================================================================
+    # 3. ACCOPPIAMENTO TOPOLOGICO TRA SEGMENTI
+    # ========================================================================
+    # Ogni segmento "sente" i vicini tramite la matrice di accoppiamento
+    # 
+    # F_coupling[i] = κ × Σⱼ w_ij × (χⱼ - χᵢ)
+    #
+    # FISICA:
+    #   - Se χⱼ > χᵢ → vicino j "spinge" i verso espansione
+    #   - Se χⱼ < χᵢ → vicino j "tira" i verso contrazione
+    #   - Effetto: diffusione di densità/torsione tra segmenti
+    
+    forza_coupling = np.zeros(N_segmenti)
+    for i in range(N_segmenti):
+        # Differenza pesata con tutti i vicini
+        differenza_vicini = chi_array - chi_array[i]  # χⱼ - χᵢ per tutti j
+        forza_coupling[i] = np.dot(MATRICE_ACCOPPIAMENTO_LEECH[i, :], differenza_vicini)
+    
+    # Coefficiente che controlla la forza dell'accoppiamento
+    forza_coupling *= KAPPA_COUPLING_24
+    
+    # ========================================================================
+    # 4. FORZA DI CHIUSURA SPINORIALE LOCALE (4π vincolo)
+    # ========================================================================
+    # Ogni segmento deve soddisfare ∮τds = 4π localmente
+    # Se errore > 0 → forza contrattiva
+    # Se errore < 0 → forza espansiva
+    
+    k_chiusura_locale = 50.0
+    TARGET_4PI = 4.0 * np.pi
+    
+    # errore_chiusura_locale è normalizzato: riporto ad assoluto
+    errore_assoluto = errore_chiusura_locale * TARGET_4PI
+    forza_chiusura = -k_chiusura_locale * errore_assoluto
+    
+    # ========================================================================
+    # 5. FORZA DI RICHIAMO ARMONICO (Previene divergenza)
+    # ========================================================================
+    # Richiama ogni χᵢ verso equilibrio (χᵢ = 0)
+    forza_richiamo = -OMEGA_RICHIAMO * chi_array
+    
+    # ========================================================================
+    # 6. ACCELERAZIONE TOTALE PER OGNI SEGMENTO
+    # ========================================================================
+    # Somma di tutte le forze
+    
+    accelerazione = (
+        pressione_repulsione_spin - pressione_gravitazionale +  # Fisica locale
+        forza_coupling +                                         # Accoppiamento vicini
+        forza_chiusura +                                         # Vincolo topologico
+        forza_richiamo                                           # Richiamo armonico
+    )
+    
+    # Damping locale (stabilità numerica)
+    # AUMENTATO per sistema 24-campi: maggiore damping previene divergenza
+    damping = 0.6
+    forza_viscosa = -damping * vel_array
+    
+    accelerazione_finale = accelerazione + forza_viscosa
+    
+    # ========================================================================
+    # 7. COSTRUZIONE DERIVATA VETTORIALE
+    # ========================================================================
+    # Formato: [dχ₀/dλ, dv₀/dλ, dχ₁/dλ, dv₁/dλ, ...]
+    
+    derivata = np.zeros(2 * N_segmenti)  # 48 elementi
+    derivata[::2] = vel_array             # dχᵢ/dλ = vᵢ
+    derivata[1::2] = accelerazione_finale # dvᵢ/dλ = Fᵢ
+    
+    return derivata
+
+
 # --- 3. DEFINIZIONE STILI GRAFICI ---
 def set_style_3d(ax, title, color):
     ax.set_title(title, color=color, fontsize=9, weight='bold', pad=15)
@@ -1269,6 +1624,24 @@ scat_sx = ax_main.scatter([], [], [], color='#ff007f', s=1.5, alpha=0.9)
 
 punti_complessita = []; punti_G = []; punti_Z = []
 
+# ==============================================================================
+# SISTEMA DI RENDERING DINAMICO ADATTIVO
+# ==============================================================================
+# Gestisce la visualizzazione del manifold durante variazioni esponenziali di rm
+# causate da bounce quantistici, collassi gravitazionali, e transizioni di fase.
+#
+# Strategia multi-livello:
+# 1. EMA (Exponential Moving Average) per smooth tracking di rm
+# 2. Soft clipping per prevenire overflow durante picchi estremi
+# 3. Box aspect dinamico per mantenere proporzioni geometriche corrette
+# 4. Zoom adaptivo durante fasi di bounce (quando rapporto P_rep/P_grav >> 1)
+#
+limiti_plot_history = []     # Storia completa rm per diagnostica
+rm_ema = None                # Exponential Moving Average di rm
+ema_alpha = 0.3              # Peso per nuovi valori (0.3 = smoothing moderato)
+bounce_zoom_factor = 1.0     # Fattore zoom extra durante bounce (dinamico)
+last_rm_derivative = 0.0     # Derivata rm per rilevare accelerazioni
+
 text_info = fig.text(0.06, 0.96, "", color='#deff9a', fontname='monospace', fontsize=8, weight='bold', verticalalignment='top')
 text_regime = fig.text(0.50, 0.96, "", color='#ffb100', fontname='monospace', fontsize=9, weight='bold', verticalalignment='top', horizontalalignment='center')
 
@@ -1278,7 +1651,49 @@ legenda = ax_fft.legend(linee, etichette, loc='upper right', facecolor='#0f172a'
 for testo in legenda.get_texts(): testo.set_color('#64748b')
 
 # --- 5. ENGINE DI PROIEZIONE GEOMETRICA UNIFICATO ---
-stato_attuale = [-4.50, 1.0] 
+
+# INIZIALIZZAZIONE STATO DINAMICO: Scalare vs 24 Campi Locali
+# ------------------------------------------------------------
+if USA_24_CAMPI_LOCALI:
+    # MODALITÀ 24 CAMPI LOCALI
+    # ------------------------
+    # Stato: [χ₀, v₀, χ₁, v₁, ..., χ₂₃, v₂₃]  → shape (48,)
+    #
+    # Ogni segmento del reticolo di Leech ha:
+    # - χᵢ: potenziale di scala locale
+    # - vᵢ: velocità locale dχᵢ/dλ
+    #
+    # Condizioni iniziali: tutti i segmenti partono vicino alla scala di Planck
+    # con una piccola perturbazione casuale per rompere la simmetria
+    
+    chi_medio_iniziale = -4.50  # Scala di Planck
+    perturbazione_std = 0.3      # Deviazione standard della perturbazione casuale
+    
+    # Seed fisso per riproducibilità
+    np.random.seed(42)
+    
+    # Genera χᵢ iniziali con perturbazione casuale
+    chi_iniziale_24 = chi_medio_iniziale + np.random.normal(0, perturbazione_std, segmenti_frattali)
+    
+    # Velocità iniziali: leggera espansione + perturbazione casuale
+    vel_iniziale_24 = 1.0 + np.random.normal(0, 0.2, segmenti_frattali)
+    
+    # Costruzione stato vettoriale: [χ₀, v₀, χ₁, v₁, ...]
+    stato_attuale = np.zeros(2 * segmenti_frattali)  # 48 elementi
+    stato_attuale[::2] = chi_iniziale_24   # Indici pari: χᵢ
+    stato_attuale[1::2] = vel_iniziale_24  # Indici dispari: vᵢ
+    
+    print(f"\n[24 CAMPI LOCALI] Sistema inizializzato con {segmenti_frattali} segmenti accoppiati")
+    print(f"  χ medio: {np.mean(chi_iniziale_24):.3f} ± {np.std(chi_iniziale_24):.3f}")
+    print(f"  Perturbazione: ±{perturbazione_std} (rompe simmetria)")
+    print(f"  Accoppiamento κ: {KAPPA_COUPLING_24}")
+else:
+    # MODALITÀ CAMPO GLOBALE SCALARE (compatibilità con modello originale)
+    # --------------------------------------------------------------------
+    # Stato: [χ, v]  → shape (2,)
+    stato_attuale = [-4.50, 1.0] 
+    print("\n[CAMPO GLOBALE] Modalità compatibilità (χ scalare)")
+
 lambda_affine_corrente = 0.0  # Parametro affine, non tempo esterno
 complessita_precedente = None
 tempo_emergente_cumulativo = 0.0  # Orologio geometrico emergente
@@ -1310,18 +1725,54 @@ if args.headless or args.film:
 
 
 def genera_mappatura(log_r, frame):
-    """Genera la mappatura geometrica con perturbazione stocastica anti-congelamento."""
+    """
+    Genera la mappatura geometrica con supporto per χ scalare o vettoriale (24 campi).
+    
+    Parametri:
+    ----------
+    log_r : float o ndarray
+        - Se scalare: χ globale (compatibilità)
+        - Se array (24,): χᵢ per ogni segmento
+    frame : int
+        Numero del frame corrente
+        
+    Restituisce:
+    -----------
+    X_dx, Y_dx, Z_dx : ndarray
+        Coordinate 3D del lobo DX (espansione)
+    X_sx, Y_sx, Z_sx : ndarray
+        Coordinate 3D del lobo SX (materia)
+    r_m : float
+        Raggio metrico medio
+    freq : float
+        Frequenza base
+    theta, p_dx, p_sx : ndarray
+        Coordinate angolari e perturbazioni
+    """
+    # Gestione input: scalare vs vettoriale
+    if np.ndim(log_r) == 0:
+        # Modalità scalare (compatibilità)
+        chi_medio = float(log_r)
+        usa_variazione_locale = False
+    else:
+        # Modalità 24 campi locali
+        if len(log_r) != segmenti_frattali:
+            raise ValueError(f"log_r deve essere scalare o array di {segmenti_frattali} elementi")
+        chi_array = np.asarray(log_r)
+        chi_medio = np.mean(chi_array)  # Usa media per geometria base
+        usa_variazione_locale = True
+    
     # Perturbazione stocastica minima per evitare congelamento in minimi locali (regime de Sitter)
     perturbazione_antistasi = np.random.normal(0, 1e-15)
-    log_r_clamped = 150.0 * np.tanh((log_r + perturbazione_antistasi) / 150.0)
+    log_r_clamped = 150.0 * np.tanh((chi_medio + perturbazione_antistasi) / 150.0)
     f_dx = np.exp(log_r_clamped * COEFFICIENTE_ACCOPPIAMENTO)
     f_sx = np.exp(-log_r_clamped * COEFFICIENTE_ACCOPPIAMENTO)
     theta = np.linspace(0, 4 * np.pi, risoluzione_base)
     
-    if np.abs(log_r) < 15.0:
-        esponente = log_r - 35.0
+    if np.abs(chi_medio) < 15.0:
+        esponente = chi_medio - 35.0
     else:
-        esponente = np.sign(log_r) * (15.0 + np.log(np.abs(log_r) - 13.5) * 5.0) - 35.0
+        esponente = np.sign(chi_medio) * (15.0 + np.log(np.abs(chi_medio) - 13.5) * 5.0) - 35.0
     ordini_di_grandezza = max(0.0, esponente + 35.0)
     
     r_m = float(segmenti_frattali) * ACCORCIAMENTO_ANGOLARE * np.exp(log_r_clamped * COEFFICIENTE_ACCOPPIAMENTO)
@@ -1335,17 +1786,39 @@ def genera_mappatura(log_r, frame):
     foc_dx_f = np.zeros_like(theta_spazio)
     foc_sx_f = np.zeros_like(theta_materia)
     
+    # MODULAZIONE LOCALE PER 24 CAMPI
+    # Se usa_variazione_locale = True, moduliamo le ampiezze in base a χᵢ locale
+    if usa_variazione_locale:
+        # Dividi theta in 24 settori
+        punti_per_segmento = risoluzione_base // segmenti_frattali
+        modulazione_locale = np.ones(risoluzione_base)
+        
+        for i_seg in range(segmenti_frattali):
+            idx_start = i_seg * punti_per_segmento
+            idx_end = min((i_seg + 1) * punti_per_segmento, risoluzione_base)
+            
+            # Deviazione dal χ medio
+            delta_chi = chi_array[i_seg] - chi_medio
+            
+            # Modulazione: fattore moltiplicativo basato su deviazione locale
+            # Se χᵢ > χ_medio → amplifica (più denso)
+            # Se χᵢ < χ_medio → riduce (meno denso)
+            fattore_locale = 1.0 + 0.3 * np.tanh(delta_chi / 2.0)
+            modulazione_locale[idx_start:idx_end] = fattore_locale
+    else:
+        modulazione_locale = 1.0
+    
     for k in range(4):
         freq_k = 12.0 * (12.0 ** k)
         amp_k = 1.0 / (12.0 ** k)
         peso = 1.0 if k == 0 else np.clip(ordini_di_grandezza - (k - 1), 0.0, 1.0)
             
         if peso > 0.0:
-            env_dx_f += peso * amp_k * np.sin(freq_k * theta_spazio)
-            env_sx_f += peso * amp_k * np.sin(freq_k * theta_materia)
+            env_dx_f += peso * amp_k * np.sin(freq_k * theta_spazio) * modulazione_locale
+            env_sx_f += peso * amp_k * np.sin(freq_k * theta_materia) * modulazione_locale
             z_s_f += peso * amp_k * np.cos(freq_k * theta)
-            foc_dx_f += peso * amp_k * np.cos(freq_k * theta_spazio)
-            foc_sx_f += peso * amp_k * np.cos(freq_k * theta_materia)
+            foc_dx_f += peso * amp_k * np.cos(freq_k * theta_spazio) * modulazione_locale
+            foc_sx_f += peso * amp_k * np.cos(freq_k * theta_materia) * modulazione_locale
             
     env_dx = np.sqrt(float(segmenti_frattali)) * 0.3 * env_dx_f
     env_sx = np.sqrt(float(segmenti_frattali)) * 0.3 * env_sx_f
@@ -1525,6 +1998,8 @@ def update(frame, target_file_handle=None):
     global punti_complessita, punti_G, punti_Z, animazione_in_esecuzione, velocita_precedente, suono_inversione_fatto
     global f_playback_handle, ultimo_errore_frame
     global evento_vuoto_quantistico_attivo, evento_inversione_temporale_precedente
+    global limiti_plot_history, rm_ema, bounce_zoom_factor, last_rm_derivative  # Sistema rendering dinamico
+    global scat_dx, scat_sx, linea_mat, linea_spa  # Plot objects ricreatati dopo ax.cla()
     
     if args.playback:
         if f_playback_handle is None:
@@ -1610,7 +2085,18 @@ def update(frame, target_file_handle=None):
         # ========================================================================
         # Generiamo il manifold 3D basato sullo stato CORRENTE di χ
         # Questo rappresenta la configurazione geometrica PRIMA dell'evoluzione temporale
-        Xdx, Ydx, Zdx, Xsx, Ysx, Zsx, rm, fr, th, pdx, psx = genera_mappatura(chi, frame)
+        
+        # Estrazione χ corrente: scalare o vettoriale
+        if USA_24_CAMPI_LOCALI:
+            chi_array = stato_attuale[::2]   # Estrai χᵢ da stato vettoriale [χ₀,v₀,χ₁,v₁,...]
+            vel_array = stato_attuale[1::2]  # Estrai vᵢ
+            chi = np.mean(chi_array)         # Per compatibilità con telemetria
+            velocita_chi = np.mean(vel_array)
+            Xdx, Ydx, Zdx, Xsx, Ysx, Zsx, rm, fr, th, pdx, psx = genera_mappatura(chi_array, frame)
+        else:
+            chi = stato_attuale[0]
+            velocita_chi = stato_attuale[1]
+            Xdx, Ydx, Zdx, Xsx, Ysx, Zsx, rm, fr, th, pdx, psx = genera_mappatura(chi, frame)
         
         # Calcolo parametri geometrici dalla configurazione corrente
         mu_dx_ist = np.mean(np.abs(pdx))
@@ -1620,7 +2106,10 @@ def update(frame, target_file_handle=None):
         
         # Calcolo dell'esponente per scale visualizzate
         esponente_visualizzato = (chi - 35.0) if np.abs(chi) < 15.0 else (np.sign(chi) * (15.0 + np.log(np.abs(chi) - 13.5) * 5.0) - 35.0)
-        fattore_allungamento_reale = 10**(esponente_visualizzato + 35.0)
+        
+        # PROTEZIONE ANTI-OVERFLOW: Clampa esponente per evitare 10^308 (float64 max)
+        esponente_safe = np.clip(esponente_visualizzato + 35.0, -300, 300)
+        fattore_allungamento_reale = 10**(esponente_safe)
         
         # Osservabili geometriche emergenti
         invariante_reticolo = 1.0 / (risoluzione_base * (th[1] - th[0]))
@@ -1760,37 +2249,91 @@ def update(frame, target_file_handle=None):
         # I valori di contorsione_k e chiusura_spinore calcolati sopra
         # vengono ora usati per guidare l'evoluzione verso il frame successivo
         
+        # Inizializzazione variabili locali per 24 campi (usate sia in evoluzione che in HDF5)
+        if USA_24_CAMPI_LOCALI:
+            contorsione_locale = np.full(segmenti_frattali, contorsione_k)
+            errore_chiusura_locale = np.full(segmenti_frattali, chiusura_spinore)
+        
         if animazione_in_esecuzione:
             # Evoluzione basata su parametro affine λ con fisica della torsione
             delta_lambda = 0.1  # Incremento parametro affine
             
-            # Wrapper per solve_ivp che include i parametri topologici
-            # IMPORTANTE: equazione_stato_einstein_cartan riceve:
-            #   - errore_chiusura: guida la forza di richiamo geometrico verso 4π
-            #   - contorsione_k: modifica la curvatura di Ricci tramite termine K²
-            def equazione_con_torsione(t, y):
-                return equazione_stato_einstein_cartan(
-                    t, y, 
-                    scatolamento=2.0,
-                    errore_chiusura=chiusura_spinore,    # Guida verso vincolo 4π
-                    contorsione_k=contorsione_k          # Contributo K² alla curvatura
+            if USA_24_CAMPI_LOCALI:
+                # ============================================================
+                # MODALITÀ 24 CAMPI LOCALI
+                # ============================================================
+                # Ogni segmento ha contorsione e chiusura locali
+                
+                # Aggiorna contorsione locale per ogni segmento (semplificato)
+                # In futuro, questo dovrebbe campionare K_tensor in 24 regioni angolari
+                # Per ora, uso un modello semplificato con variazione angolare
+                contorsione_locale[:] = contorsione_k  # Aggiorna valori (già allocato)
+                # Modulazione angolare basata su θ
+                angoli_segmenti = np.linspace(0, 4*np.pi, segmenti_frattali, endpoint=False)
+                modulazione_angolare = 1.0 + 0.2 * np.sin(3 * angoli_segmenti)
+                contorsione_locale *= modulazione_angolare
+                
+                # Aggiorna errore chiusura locale
+                # Anche questo è semplificato: distribuisco l'errore globale
+                errore_chiusura_locale[:] = chiusura_spinore  # Aggiorna valori
+                # Modulazione per creare anisotropia
+                errore_chiusura_locale *= (1.0 + 0.15 * np.cos(2 * angoli_segmenti))
+                
+                # Wrapper per solve_ivp con 24 campi
+                def equazione_con_torsione_24(t, y):
+                    return equazione_estado_einstein_cartan_24_campi(
+                        t, y,
+                        scatolamento=2.0,
+                        errore_chiusura_locale=errore_chiusura_locale,
+                        contorsione_locale=contorsione_locale
+                    )
+                
+                # Integrazione ODE per 48 variabili [χ₀,v₀,χ₁,v₁,...,χ₂₃,v₂₃]
+                sol = solve_ivp(
+                    equazione_con_torsione_24,
+                    [lambda_affine_corrente, lambda_affine_corrente + delta_lambda],
+                    stato_attuale,
+                    method='Radau',
+                    rtol=1e-4,
+                    atol=1e-6
                 )
+                
+                # Aggiornamento stato vettoriale
+                stato_attuale = sol.y[:, -1]
+                
+            else:
+                # ============================================================
+                # MODALITÀ CAMPO GLOBALE SCALARE (Compatibilità)
+                # ============================================================
+                
+                # Wrapper per solve_ivp che include i parametri topologici
+                # IMPORTANTE: equazione_stato_einstein_cartan riceve:
+                #   - errore_chiusura: guida la forza di richiamo geometrico verso 4π
+                #   - contorsione_k: modifica la curvatura di Ricci tramite termine K²
+                def equazione_con_torsione(t, y):
+                    return equazione_stato_einstein_cartan(
+                        t, y, 
+                        scatolamento=2.0,
+                        errore_chiusura=chiusura_spinore,    # Guida verso vincolo 4π
+                        contorsione_k=contorsione_k          # Contributo K² alla curvatura
+                    )
+                
+                # Integrazione ODE con metodo implicito Radau (stabile per sistemi stiff)
+                sol = solve_ivp(
+                    equazione_con_torsione, 
+                    [lambda_affine_corrente, lambda_affine_corrente + delta_lambda], 
+                    stato_attuale, 
+                    method='Radau', 
+                    rtol=1e-4, 
+                    atol=1e-6
+                )
+                
+                # Aggiornamento stato per il prossimo frame
+                stato_attuale = sol.y[:, -1]
+                chi = stato_attuale[0]
+                velocita_chi = stato_attuale[1]
             
-            # Integrazione ODE con metodo implicito Radau (stabile per sistemi stiff)
-            sol = solve_ivp(
-                equazione_con_torsione, 
-                [lambda_affine_corrente, lambda_affine_corrente + delta_lambda], 
-                stato_attuale, 
-                method='Radau', 
-                rtol=1e-4, 
-                atol=1e-6
-            )
-            
-            # Aggiornamento stato per il prossimo frame
-            stato_attuale = sol.y[:, -1]
             lambda_affine_corrente += delta_lambda
-            chi = stato_attuale[0]
-            velocita_chi = stato_attuale[1]
             
             # Aggiorna variabili globali per il prossimo ciclo
             errore_chiusura_precedente = chiusura_spinore
@@ -1803,6 +2346,9 @@ def update(frame, target_file_handle=None):
         # Non è il tempo esterno t, ma emerge dalla dinamica del manifold
         
         comp = np.sum(np.abs(np.diff(psx))) / (rm + 1e-9)
+        # Protezione anti-NaN
+        if not np.isfinite(comp): comp = complessita_precedente if complessita_precedente is not None else 0.0
+        
         if animazione_in_esecuzione:
             if complessita_precedente is not None:
                 # Incremento temporale emergente basato sulla geometria del manifold
@@ -1825,29 +2371,215 @@ def update(frame, target_file_handle=None):
         # che hanno guidato l'evoluzione verso questo frame
         
         if target_file_handle is not None:
-            append_stato_hdf5(
-                target_file_handle, frame, 
-                Xdx, Ydx, Zdx, Xsx, Ysx, Zsx, th, pdx, psx, rm, 
-                G_geometrica, Z_geometrica, esponente_visualizzato, 
-                tempo_assoluto_adimensionale, d_tau_dinamico, 
-                velocita_chi, chi, H_fisica, 
-                contorsione_k,      # Norma tensore K_λμν che ha guidato l'evoluzione
-                chiusura_spinore    # Errore da 4π che ha guidato l'evoluzione
-            )
+            if USA_24_CAMPI_LOCALI:
+                # Estrai array 24D da stato vettoriale
+                chi_vec_current = stato_attuale[::2]
+                vel_vec_current = stato_attuale[1::2]
+                
+                # Prepara array locali (semplificati - calcolati sopra se evolution attiva)
+                # Se animazione non attiva, usa valori globali replicati
+                if animazione_in_esecuzione:
+                    # Usa i valori calcolati durante l'evoluzione
+                    # (contorsione_locale e errore_chiusura_locale già definiti)
+                    pass
+                else:
+                    # Replica valori globali
+                    contorsione_locale = np.full(segmenti_frattali, contorsione_k)
+                    errore_chiusura_locale = np.full(segmenti_frattali, chiusura_spinore)
+                
+                append_stato_hdf5(
+                    target_file_handle, frame,
+                    Xdx, Ydx, Zdx, Xsx, Ysx, Zsx, th, pdx, psx, rm,
+                    G_geometrica, Z_geometrica, esponente_visualizzato,
+                    tempo_assoluto_adimensionale, d_tau_dinamico,
+                    velocita_chi, chi, H_fisica,
+                    contorsione_k, chiusura_spinore,
+                    chi_vettore=chi_vec_current,
+                    vel_vettore=vel_vec_current,
+                    contorsione_locale=contorsione_locale,
+                    chiusura_locale=errore_chiusura_locale
+                )
+            else:
+                # Modalità scalare: usa chiamata originale
+                append_stato_hdf5(
+                    target_file_handle, frame, 
+                    Xdx, Ydx, Zdx, Xsx, Ysx, Zsx, th, pdx, psx, rm, 
+                    G_geometrica, Z_geometrica, esponente_visualizzato, 
+                    tempo_assoluto_adimensionale, d_tau_dinamico, 
+                    velocita_chi, chi, H_fisica, 
+                    contorsione_k,      # Norma tensore K_λμν che ha guidato l'evoluzione
+                    chiusura_spinore    # Errore da 4π che ha guidato l'evoluzione
+                )
 
     # ========================================================================
-    # STEP 6: RENDERING VISUALE E AGGIORNAMENTO GRAFICI
+    # STEP 6: RENDERING VISUALE DINAMICO ADATTIVO CON NORMALIZZAZIONE PROIETTIVA
     # ========================================================================
-    # Aggiorniamo le visualizzazioni 3D e i grafici di telemetria
+    # Sistema multi-livello per gestire variazioni esponenziali di rm durante
+    # bounce quantistici, collassi, e transizioni di fase geometrica.
+    #
+    # ARCHITETTURA RENDERING (Senior Graphics Engineer approach):
+    # 1. RESET ASSI: ax.cla() per prevenire artefatti da sovrapposizioni
+    # 2. NORMALIZZAZIONE PROIETTIVA: Limiti calcolati da dati reali (ptp) + centroide
+    # 3. BOX ASPECT DINAMICO: Proporzioni adattive basate su geometria locale
+    # 4. DEBUG LOGGING: Diagnostica limiti e aspect per troubleshooting
     
-    # --- RENDERING COERENTE ---
-    scat_dx._offsets3d = (Xdx, Ydx, Zdx)
-    scat_sx._offsets3d = (Xsx, Ysx, Zsx)
-    lim = max(1e-25, rm * 1.8)  
-    lim_z = max(1e-25, rm * 0.5)  # Restringe l'inquadratura verticale per rivelare l'avvitamento
-    for ax in [ax_main, ax_mat, ax_spa]: 
-        ax.set_xlim(-lim, lim); ax.set_ylim(-lim, lim); ax.set_zlim(-lim_z, lim_z)
-        ax.set_box_aspect((1, 1, 0.6))  # Adatta le proporzioni del box per non appiattire la scena
+    # ==============================================================================
+    # FASE 0: RESET ASSI E RICOSTRUZIONE PLOT
+    # ==============================================================================
+    # Pulizia completa degli assi per evitare overlay di frame precedenti.
+    # Ricrea scatter plots e linee da zero ad ogni frame.
+    #
+    for ax in [ax_main, ax_mat, ax_spa]:
+        ax.cla()  # Clear completo - rimuove tutti gli artist precedenti
+        
+        # Ricrea scatter plots DX (espansione) e SX (materia)
+        if ax == ax_main:
+            # Plot principale: entrambi i lobi
+            scat_dx = ax.scatter(Xdx, Ydx, Zdx, c='#00d2ff', s=1.0, alpha=0.15, label='DX (Espansione)')
+            scat_sx = ax.scatter(Xsx, Ysx, Zsx, c='#ff007f', s=1.5, alpha=0.9, label='SX (Materia)')
+        elif ax == ax_mat:
+            # Vista materia: solo lobo SX + linea inviluppo
+            ax.scatter(Xsx, Ysx, Zsx, c='#ff007f', s=6, alpha=0.7)
+            linea_mat, = ax.plot([], [], [], color='#ff007f', lw=1.2, alpha=0.8)
+        elif ax == ax_spa:
+            # Vista spazio: solo lobo DX + linea inviluppo
+            ax.scatter(Xdx, Ydx, Zdx, c='#00d2ff', s=6, alpha=0.7)
+            linea_spa, = ax.plot([], [], [], color='#00d2ff', lw=1.2, alpha=0.8)
+        
+        # Rigenera labels e stile dopo clear
+        ax.set_xlabel('X (m)', fontsize=8)
+        ax.set_ylabel('Y (m)', fontsize=8)
+        ax.set_zlabel('Z (m)', fontsize=8)
+        ax.tick_params(labelsize=7)
+        ax.grid(True, alpha=0.3)
+    
+    # ==============================================================================
+    # FASE 1: NORMALIZZAZIONE PROIETTIVA - CALCOLO CENTROIDE E RANGE DATI REALI
+    # ==============================================================================
+    # Calcola limiti degli assi direttamente dai dati 3D effettivi (X, Y, Z)
+    # usando peak-to-peak (ptp) invece di basarsi su rm teorico.
+    # Centra il manifold tramite la media delle coordinate (centro di massa).
+    #
+    # Unisci tutti i punti del manifold (lobo DX + lobo SX)
+    all_X = np.concatenate([Xdx, Xsx])
+    all_Y = np.concatenate([Ydx, Ysx])
+    all_Z = np.concatenate([Zdx, Zsx])
+    
+    # Calcola centroide (centro di massa geometrico)
+    if len(all_X) > 0:
+        centroid_X = np.mean(all_X)
+        centroid_Y = np.mean(all_Y)
+        centroid_Z = np.mean(all_Z)
+    else:
+        centroid_X = centroid_Y = centroid_Z = 0.0
+    
+    # Calcola range effettivo (peak-to-peak) dei dati
+    if len(all_X) > 0:
+        range_X = np.ptp(all_X)  # max - min
+        range_Y = np.ptp(all_Y)
+        range_Z = np.ptp(all_Z)
+    else:
+        range_X = range_Y = range_Z = 1e-10  # Fallback per evitare divisione per zero
+    
+    # ==============================================================================
+    # FASE 2: MARGINE ADATTIVO PER EVITARE CLIPPING
+    # ==============================================================================
+    # Aggiungi margine 20% attorno ai dati per evitare che i punti tocchino i bordi.
+    # Durante bounce, aumenta margine per catturare dinamica veloce.
+    #
+    margin_factor = 1.2  # 20% margine standard
+    
+    # Tracking EMA per rilevare bounce (inversioni rapide)
+    limiti_plot_history.append(rm)
+    if len(limiti_plot_history) > 100:
+        limiti_plot_history.pop(0)
+    
+    if rm_ema is None:
+        rm_ema = rm
+    else:
+        rm_ema = ema_alpha * rm + (1 - ema_alpha) * rm_ema
+    
+    # Rilevamento bounce: derivata di rm cambia segno → aumenta margine temporaneamente
+    rm_derivative = rm_ema - last_rm_derivative
+    if abs(rm_derivative) > 1e-30 and abs(last_rm_derivative) > 1e-30:
+        if np.sign(rm_derivative) != np.sign(last_rm_derivative):
+            # BOUNCE! Aumenta margine per catturare inversione
+            bounce_zoom_factor = min(bounce_zoom_factor + 0.3, 1.8)  # Max 1.8× durante bounce
+    
+    # Decay esponenziale dopo bounce
+    bounce_zoom_factor = max(bounce_zoom_factor * 0.93, 1.0)
+    last_rm_derivative = rm_ema
+    
+    # Margine finale = base × bounce_factor
+    margin_factor *= bounce_zoom_factor
+    
+    # ==============================================================================
+    # FASE 3: CALCOLO LIMITI CENTRATI CON PROTEZIONE UNDERFLOW/OVERFLOW
+    # ==============================================================================
+    # Limiti centrati sul centroide del manifold.
+    # Protezione: limiti non scendono sotto scala di Planck (1e-35 m)
+    #
+    half_range_X = max(range_X * margin_factor * 0.5, 1e-35)
+    half_range_Y = max(range_Y * margin_factor * 0.5, 1e-35)
+    half_range_Z = max(range_Z * margin_factor * 0.5, 1e-35)
+    
+    # Limiti assoluti centrati
+    lim_X_min = centroid_X - half_range_X
+    lim_X_max = centroid_X + half_range_X
+    lim_Y_min = centroid_Y - half_range_Y
+    lim_Y_max = centroid_Y + half_range_Y
+    lim_Z_min = centroid_Z - half_range_Z
+    lim_Z_max = centroid_Z + half_range_Z
+    
+    # ==============================================================================
+    # FASE 4: BOX ASPECT DINAMICO BASATO SU GEOMETRIA LOCALE
+    # ==============================================================================
+    # Calcola aspect ratio dal rapporto effettivo dei range, non da valori teorici.
+    # Durante collasso: Z si comprime → aspect Z ridotto
+    # Durante espansione: Z si dilata → aspect Z aumenta
+    #
+    xy_range_max = max(range_X, range_Y)
+    
+    if xy_range_max > 1e-35:
+        # Aspect ratio Z rispetto a XY (clip tra 0.2 e 1.2)
+        z_aspect = np.clip(range_Z / xy_range_max, 0.2, 1.2)
+    else:
+        z_aspect = 0.6  # Default se dati troppo piccoli
+    
+    # ==============================================================================
+    # FASE 5: APPLICAZIONE LIMITI CENTRATI E ASPECT AI PLOT
+    # ==============================================================================
+    for ax in [ax_main, ax_mat, ax_spa]:
+        # Applica limiti centrati sul centroide
+        ax.set_xlim(lim_X_min, lim_X_max)
+        ax.set_ylim(lim_Y_min, lim_Y_max)
+        ax.set_zlim(lim_Z_min, lim_Z_max)
+        
+        # Box aspect dinamico (normalizzato con max XY = 1.0)
+        if xy_range_max > 1e-35:
+            aspect_X = range_X / xy_range_max
+            aspect_Y = range_Y / xy_range_max
+        else:
+            aspect_X = aspect_Y = 1.0
+        
+        ax.set_box_aspect((aspect_X, aspect_Y, z_aspect))
+    
+    # ==============================================================================
+    # FASE 6: DEBUG LOGGING PER DIAGNOSTICA RENDERING
+    # ==============================================================================
+    # Stampa diagnostica limiti e aspect ogni N frames per troubleshooting.
+    # Mostra: frame, limiti X/Y/Z, centroide, box aspect, margine attivo
+    #
+    if frame % 10 == 0 or bounce_zoom_factor > 1.1:  # Log ogni 10 frames O durante bounce
+        print(f"\n[RENDER DEBUG] Frame: {frame}")
+        print(f"  Centroide: ({centroid_X:.6e}, {centroid_Y:.6e}, {centroid_Z:.6e}) m")
+        print(f"  Range (ptp): X={range_X:.6e} Y={range_Y:.6e} Z={range_Z:.6e} m")
+        print(f"  Limiti X: [{lim_X_min:.6e}, {lim_X_max:.6e}]")
+        print(f"  Limiti Y: [{lim_Y_min:.6e}, {lim_Y_max:.6e}]")
+        print(f"  Limiti Z: [{lim_Z_min:.6e}, {lim_Z_max:.6e}]")
+        print(f"  Box Aspect: ({aspect_X:.3f}, {aspect_Y:.3f}, {z_aspect:.3f})")
+        print(f"  Margine attivo: {margin_factor:.2f}× (bounce_factor={bounce_zoom_factor:.2f})")
+        print(f"  rm_ema: {rm_ema:.6e} m | rm_derivative: {rm_derivative:.6e}")
     
     # Adattamento dello slicing per l'estrazione grafica del profilo dell'inviluppo sinusoidale
     th_plot = th[:risoluzione_base]
@@ -1863,8 +2595,12 @@ def update(frame, target_file_handle=None):
     linea_fft.set_data(xf[:120], np.abs(yf[:120]))
     ax_fft.set_xlim(0, 25); ax_fft.set_ylim(0, np.max(np.abs(yf[:120]))*1.1 if np.max(np.abs(yf[:120])) > 0 else 1.0)
     
-    punti_G.append(G_geometrica)
-    punti_Z.append(Z_geometrica)
+    # Protezione anti-NaN/Inf prima di aggiungere a plot
+    G_safe = G_geometrica if np.isfinite(G_geometrica) else (punti_G[-1] if punti_G else 0.0)
+    Z_safe = Z_geometrica if np.isfinite(Z_geometrica) else (punti_Z[-1] if punti_Z else 0.0)
+    
+    punti_G.append(G_safe)
+    punti_Z.append(Z_safe)
     if len(punti_G) > 100: punti_G.pop(0)
     if len(punti_Z) > 100: punti_Z.pop(0)
     
@@ -1874,6 +2610,12 @@ def update(frame, target_file_handle=None):
     
     g_min, g_max = min(punti_G), max(punti_G)
     z_min, z_max = min(punti_Z), max(punti_Z)
+    
+    # Protezione anti-NaN/Inf per overflow numerici
+    if not np.isfinite(z_min): z_min = 0.0
+    if not np.isfinite(z_max): z_max = 1.0
+    if not np.isfinite(g_min): g_min = 0.0
+    if not np.isfinite(g_max): g_max = 1.0
     
     if np.abs(z_max - z_min) < 1e-12: 
         ax_z_axis.set_ylim(z_min * 0.9, z_min * 1.1 if z_min > 0 else 1.0)
