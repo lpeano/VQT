@@ -9,3 +9,5 @@ __pycache__/
 # OS generated files
 .DS_Store
 Thumbs.db*.h5
+geometrodinamica_extended.h5
+geometrodinamica_matrix.h5
