@@ -3962,16 +3962,26 @@ if args.headless:
             active_h5_file['telemetria_scalare'][start_frame:chunk_end] = zeri_scalari
         # -------------------------------
         
-        for idx_frame in range(start_frame, NUM_TOTAL_FRAMES):
-            update(idx_frame, target_file_handle=active_h5_file)
-            
-            if (idx_frame + 1) % chunk_size == 0 or idx_frame == NUM_TOTAL_FRAMES - 1:
-                if idx_frame == NUM_TOTAL_FRAMES - 1:
-                    flush_chunk_buffer(active_h5_file)
-                active_h5_file.flush()
-                elapsed = time.time() - start_time
-                fps_calc = (idx_frame + 1 - start_frame) / max(elapsed, 0.001)
-                print(f"[HEADLESS] Frame {idx_frame+1}/{NUM_TOTAL_FRAMES} | {elapsed/60:.2f} min | {fps_calc:.1f} fps")
+        try:
+            for idx_frame in range(start_frame, NUM_TOTAL_FRAMES):
+                update(idx_frame, target_file_handle=active_h5_file)
+                
+                if (idx_frame + 1) % chunk_size == 0 or idx_frame == NUM_TOTAL_FRAMES - 1:
+                    if idx_frame == NUM_TOTAL_FRAMES - 1:
+                        flush_chunk_buffer(active_h5_file)
+                    active_h5_file.flush()
+                    elapsed = time.time() - start_time
+                    fps_calc = (idx_frame + 1 - start_frame) / max(elapsed, 0.001)
+                    print(f"[HEADLESS] Frame {idx_frame+1}/{NUM_TOTAL_FRAMES} | {elapsed/60:.2f} min | {fps_calc:.1f} fps")
+        
+        finally:
+            # FLUSH FORZATO IN CASO DI CRASH
+            # Se la simulazione termina prematuramente (crash, stiffness, Ctrl+C),
+            # salva comunque i dati parziali calcolati fino a quel momento.
+            print("\n[EMERGENCY FLUSH] Salvataggio dati parziali in corso...")
+            flush_chunk_buffer(active_h5_file)
+            active_h5_file.flush()
+            print("[EMERGENCY FLUSH] ✓ Dati salvati con successo.")
                 
     print("\n[HEADLESS] ✓ Calcolo cumulativo completato con successo.")
     
