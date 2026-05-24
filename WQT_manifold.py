@@ -1808,11 +1808,125 @@ def equazione_stato_einstein_cartan(lambda_affine, stato_metrico, scatolamento, 
 # ============================================================================
 # EQUAZIONE DI EINSTEIN-CARTAN PER 24 CAMPI LOCALI ACCOPPIATI
 # ============================================================================
+# OMEOSTASI TOPOLOGICA: REINIEZIONE DINAMICA
+# ============================================================================
+
+def calcola_reiniezione_dinamica(K_squared_local, delta_chi_vettore):
+    """
+    Calcola dinamicamente il fattore di reiniezione browniana PER OGNI SEGMENTO
+    per prevenire la sincronizzazione artificiale del reticolo (omeostasi topologica).
+    
+    FISICA:
+    -------
+    Il sistema può cadere in stati di "falsa stabilità" dove i 24 segmenti
+    oscillano in perfetta sincronia con somma netta zero, bloccando l'evoluzione.
+    Questo meccanismo rompe tale equilibrio aumentando il rumore quando:
+    
+    1. K²[i] (torsione locale) è molto alta → energia accumulata deve essere dissipata
+    2. Δχ[i] ≈ 0 (stasi locale) → segmento congelato, serve perturbazione per sblocco
+    
+    IMPLEMENTAZIONE VETTORIALE:
+    ---------------------------
+    - Calcolo INDIPENDENTE per ogni segmento i = 0..23
+    - Base minima: 1e-55 (rumore quantistico fondamentale)
+    - Amplificazione da torsione: log-scale per evitare overflow
+    - Amplificazione da stasi: risposta sigmoidale quando Δχ[i] → 0
+    - Saturazione: tanh per limitare valori massimi
+    
+    Parametri:
+    ----------
+    K_squared_local : ndarray, shape (24,)
+        Torsione quadrata locale per ogni segmento
+    delta_chi_vettore : ndarray, shape (24,)
+        Variazione assoluta di χ[i] rispetto al frame precedente per ogni segmento
+        
+    Restituisce:
+    -----------
+    fattore_vettore : ndarray, shape (24,)
+        Coefficiente di reiniezione browniana per ogni segmento (range: 1e-55 a ~1e-40)
+    """
+    # Base quantistica fondamentale (Planck-scale noise floor)
+    BASE_MINIMA = 1e-55
+    
+    # Numero di segmenti
+    N = len(K_squared_local)
+    
+    # ════════════════════════════════════════════════════════════════════════
+    # A. AMPLIFICAZIONE DA TORSIONE ECCESSIVA (VETTORIALE)
+    # ════════════════════════════════════════════════════════════════════════
+    # LEGGE: Fluttuazione ∝ Dissipazione (teorema Einstein)
+    # 
+    # Quando K²[i] >> soglia, il segmento i ha energia topologica in eccesso
+    # che DEVE essere dissipata tramite fluttuazioni browniane LOCALI.
+    # La crescita logaritmica riflette la saturazione delle fluttuazioni
+    # quantistiche (limite di Heisenberg per misure di geometria).
+    
+    SOGLIA_CRITICA_K2 = (4.0 * np.pi) ** 2  # (720°)² - Chiusura spinore
+    
+    # Rapporto di eccesso torsionale PER OGNI SEGMENTO (log-scale per stabilità)
+    # log(1 + x) previene overflow quando K²[i] → ∞
+    rapporto_torsione = np.log1p(K_squared_local / SOGLIA_CRITICA_K2)
+    
+    # Amplificazione logaritmica: σ²[i] ∝ log(1 + K²[i]/K²_crit)
+    # Fattore ~10× quando K²[i] = 10× soglia (saturazione morbida via tanh)
+    amplificazione_torsione = 1.0 + 9.0 * np.tanh(rapporto_torsione / 3.0)
+    
+    # ════════════════════════════════════════════════════════════════════════
+    # B. RILEVAMENTO STASI E AMPLIFICAZIONE (VETTORIALE)
+    # ════════════════════════════════════════════════════════════════════════
+    # LEGGE: Risposta di Kramers (1940) - Superamento barriere energetiche
+    # 
+    # Tempo di escape da minimo locale: τ ∝ exp(ΔE/kT_eff)
+    # Aumentando T_eff (temperatura effettiva) tramite rumore amplificato,
+    # il segmento i può superare la barriera topologica che lo tiene bloccato.
+    # 
+    # OMEOSTASI: Solo i segmenti bloccati (Δχ[i] → 0) ricevono amplificazione,
+    # quelli in movimento naturale non vengono perturbati (principio di minima azione).
+    
+    # Soglia di stasi: sotto questo valore consideriamo il segmento "congelato"
+    SOGLIA_STASI = 1e-6
+    
+    # Indicatore di blocco PER OGNI SEGMENTO: ~1 se bloccato, ~0 se attivo
+    # Funzione sigmoide inversa: I[i] = 1/(1 + (Δχ[i]/soglia)²)
+    abs_delta = np.abs(delta_chi_vettore)
+    indicatore_blocco = 1.0 / (1.0 + (abs_delta / SOGLIA_STASI) ** 2)
+    
+    # Amplificazione locale: kT_eff[i] ∝ (1 + 99·I[i])
+    # ×100 quando segmento i completamente bloccato (barriera da superare)
+    amplificazione_stasi = 1.0 + 99.0 * indicatore_blocco
+    
+    # ════════════════════════════════════════════════════════════════════════
+    # C. COMBINAZIONE E SATURAZIONE (VETTORIALE)
+    # ════════════════════════════════════════════════════════════════════════
+    # LEGGE: Conservazione energia-momento locale
+    # 
+    # Il rumore browniano è gaussiano (media = 0) per conservare il momento,
+    # ma la sua AMPIEZZA scala con l'energia dissipata localmente.
+    # Combinazione moltiplicativa: serve SIMULTANEAMENTE alta K²[i] E bassa Δχ[i]
+    # per trigger massimo (AND logico fuzzy tramite prodotto).
+    
+    # Combina entrambi gli effetti PER OGNI SEGMENTO (moltiplicativo)
+    fattore_combinato = amplificazione_torsione * amplificazione_stasi
+    
+    # Saturazione morbida: limita a ~10^10 per evitare instabilità numeriche
+    fattore_saturato = np.tanh(fattore_combinato / 1e10) * 1e10
+    
+    # Risultato finale: σ[i] = σ_base × amplif_torsione[i] × amplif_stasi[i]
+    fattore_vettore = BASE_MINIMA * fattore_saturato
+    
+    # Clipping di sicurezza: ogni segmento individualmente
+    # Limite superiore 1e-40 previene overflow in evoluzione BDF
+    fattore_vettore = np.clip(fattore_vettore, 1e-55, 1e-40)
+    
+    return fattore_vettore  # Shape: (24,) - UN VALORE PER OGNI SEGMENTO
+
+# ============================================================================
 
 # Variabili globali per logging flussi (aggiornate ogni step)
 flussi_netto_SX_globale = np.zeros(24)
 varianza_chi_globale = 0.0
 torsione_media_globale = 0.0
+chi_array_precedente = None  # Per tracciare variazioni temporali e prevenire sincronizzazione
 
 def equazione_estado_einstein_cartan_24_campi(lambda_affine, stato_vettoriale, scatolamento, 
                                                errore_chiusura_locale, contorsione_locale):
@@ -1873,8 +1987,9 @@ def equazione_estado_einstein_cartan_24_campi(lambda_affine, stato_vettoriale, s
     - flussi_netto_SX_globale[24]: Flusso di chiralità per segmento
     - varianza_chi_globale: Misura omogeneità sistema
     - torsione_media_globale: Torsione media sul reticolo
+    - chi_array_precedente: Stato precedente per calcolo variazioni
     """
-    global flussi_netto_SX_globale, varianza_chi_globale, torsione_media_globale
+    global flussi_netto_SX_globale, varianza_chi_globale, torsione_media_globale, chi_array_precedente
     N_segmenti = segmenti_frattali  # 24
     
     # ========================================================================
@@ -1980,13 +2095,48 @@ def equazione_estado_einstein_cartan_24_campi(lambda_affine, stato_vettoriale, s
     #   - Impedisce congelamento (Var(χ) non diverge né congela)
     #   - Oscillazioni sostenute (Big Bounce ciclico)
     #   - Strutture dinamiche anziché statiche
+    #
+    # OMEOSTASI TOPOLOGICA (2026-05-24):
+    #   Il fattore di reiniezione è ora DINAMICO anziché costante.
+    #   Aumenta automaticamente quando:
+    #     - K² molto alta → dissipazione energia topologica
+    #     - Δχ ≈ 0 → sistema bloccato in falsa stabilità
+    #   Questo previene la sincronizzazione artificiale dei 24 segmenti.
     # ========================================================================
     
     # Calcola energia eccedente quando K² > E_Planck
     energia_eccedente_locale = np.maximum(0, K_squared_local - E_PLANCK_THRESHOLD)
     
-    # Coefficiente per reiniezione (calibrato per stabilità numerica)
-    FATTORE_REINIEZIONE = 1e-55
+    # ════════════════════════════════════════════════════════════════════════
+    # OMEOSTASI TOPOLOGICA VETTORIALE - Reiniezione Dinamica
+    # ════════════════════════════════════════════════════════════════════════
+    # PRINCIPIO DI LOCALITÀ - Dinamica Stocastica Indipendente
+    # ════════════════════════════════════════════════════════════════════════
+    # LEGGE FISICA: In teoria dei campi, le fluttuazioni termiche sono LOCALI.
+    # Ogni punto dello spaziotempo ha la sua temperatura effettiva T_eff[x],
+    # determinata dalla dissipazione di energia in quel punto.
+    # 
+    # Nel reticolo di Leech (24 segmenti), ogni segmento i evolve secondo
+    # la SUA equazione di Langevin locale:
+    #   dχ[i]/dt = F[i] + η[i](t)
+    # dove η[i] è rumore bianco con varianza σ²[i] ∝ K²[i] (locale!).
+    
+    # Calcola variazione LOCALE per ogni segmento: Δχ[i] = |χ[i] - χ_prev[i]|
+    # Questo permette di identificare quali segmenti sono bloccati
+    # e quali sono in evoluzione naturale (rottura asimmetrica sincronizzazione)
+    if chi_array_precedente is not None:
+        delta_chi_vettore = np.abs(chi_array - chi_array_precedente)  # Array (24,)
+    else:
+        # Primo frame: assume variazione non nulla per evitare over-amplificazione
+        delta_chi_vettore = np.ones(segmenti_frattali)
+    
+    # Fattore di reiniezione VETTORIALE (24 valori indipendenti)
+    # Ogni segmento riceve rumore proporzionale alla SUA dissipazione locale:
+    # σ[i] = f(K²[i], Δχ[i]) -- NON media globale!
+    FATTORE_REINIEZIONE = calcola_reiniezione_dinamica(K_squared_local, delta_chi_vettore)
+    
+    # Aggiorna storico per prossimo frame (memoria temporale)
+    chi_array_precedente = chi_array.copy()
     
     for i in range(segmenti_frattali):
         if energia_eccedente_locale[i] > 1e-30:  # Solo se c'è eccesso significativo
@@ -1994,13 +2144,28 @@ def equazione_estado_einstein_cartan_24_campi(lambda_affine, stato_vettoriale, s
             # Trova vicini tramite matrice di adiacenza (pesi più alti = vicini)
             vicini_idx = np.argsort(MATRICE_ACCOPPIAMENTO_LEECH[i, :])[-3:]  # Top 3 vicini
             
-            # Perturbazione browniana proporzionale a √(energia_eccedente)
-            ampiezza_noise = np.sqrt(energia_eccedente_locale[i]) * FATTORE_REINIEZIONE
+            # ════════════════════════════════════════════════════════════════════════
+            # EQUAZIONE DI LANGEVIN LOCALE - Teorema Fluttuazione-Dissipazione
+            # ════════════════════════════════════════════════════════════════════════
+            # LEGGE: η[i](t) ~ N(0, σ[i]²), dove σ[i]² ∝ K²[i] × fattore_dissipazione[i]
+            # 
+            # L'energia topologica in eccesso nel segmento i viene convertita in
+            # fluttuazioni geometriche (rumore browniano sulla scala χ).
+            # Questo processo è LOCALE - solo i vicini topologici ricevono energia.
+            # 
+            # FATTORE_REINIEZIONE[i]: Amplificazione selettiva per segmenti bloccati
+            # - Se segmento i è bloccato (Δχ[i] → 0) → amplif ×100 (Kramers)
+            # - Se segmento i è attivo (Δχ[i] > soglia) → amplif ~1 (movimento naturale)
+            # → Rottura ASIMMETRICA della sincronizzazione artificiale
             
-            # Distribuisci energia ai vicini secondo topologia del Leech Lattice
+            # Ampiezza rumore locale: σ[i] = √(E_eccedente[i]) × FATTORE[i]
+            ampiezza_noise = np.sqrt(energia_eccedente_locale[i]) * FATTORE_REINIEZIONE[i]
+            
+            # Distribuisci ai vicini secondo topologia di Leech (conservazione locale)
             for j in vicini_idx:
                 if j != i:
                     peso_vicino = MATRICE_ACCOPPIAMENTO_LEECH[i, j]
+                    # Rumore gaussiano: <η> = 0 (conserva momento), <η²> = σ[i]²
                     chi_array[j] += np.random.normal(0, ampiezza_noise * peso_vicino)
     
     # ========================================================================
