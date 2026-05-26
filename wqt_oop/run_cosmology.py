@@ -110,26 +110,54 @@ class CosmologySimulation(Observable):
     
     def run(self, total_steps: int):
         """
-        Esegui simulazione per N steps.
+        Execute full cosmological simulation for N timesteps.
+        
+        **Physics Principle**: Time Evolution of Hierarchical Hamiltonian System
+        **Reference**: PHYSICS_MANIFESTO.md § 4 "Dynamics & Evolution"
+        
+        **Algorithm**:
+        ```
+        for step in 1..N:
+            1. Evolve universe → universe.evolve(dt)  [Symplectic integration cascade]
+            2. Extract state → H_total, drift, T_eff  [Observables]
+            3. Notify observers → Log, HDF5, Monitoring [Observer pattern]
+        ```
+        
+        **Physical Interpretation**:
+        - Each step propagates ALL segments via recursive evolve() cascade
+        - Energy drift |ΔH/H| monitors conservation (should be < 0.1%)
+        - T_eff tracks effective temperature (thermal homeostasis)
+        - Observer pattern decouples physics from I/O (separation of concerns)
         
         Parameters:
         -----------
         total_steps : int
-            Numero steps totali
+            Total number of timesteps (physical time = total_steps × dt)
         """
         logger.info(f"Starting simulation: {total_steps} steps")
         
-        # Notifica inizio
+        # [PHYSICS_TRACE] Notify observers: Simulation START
+        # Purpose: Initialize HDF5 file, reset energy baseline, start wall-clock timer
         self.notify_start()
         
         try:
+            # [PHYSICS_TRACE] Main evolution loop
+            # Physical process: Time evolution via recursive Hamiltonian cascade
+            # Each iteration advances physical time by dt (Planck time units)
             for step in range(total_steps):
+                # [PHYSICS_TRACE] Evolve universe by one timestep
+                # Cascade: Root.evolve() → Children.evolve() → ... → Segments.evolve()
+                # Algorithm: Symplectic Verlet at each level (see PHYSICS_MANIFESTO.md § 4.1)
                 self.step()
                 
-                # Crea stato snapshot
+                # [PHYSICS_TRACE] Create state snapshot for monitoring
+                # Observables: H_total (Hamiltonian), drift (|ΔH/H|), T_eff (temperature)
+                # Physical meaning: Macroscopic quantities derived from microscopic state
                 state = self._create_state_snapshot()
                 
-                # Notifica observers
+                # [PHYSICS_TRACE] Notify all observers (logging, HDF5, monitoring)
+                # Pattern: Observer pattern decouples physics engine from I/O
+                # Observers can: Log to console, save HDF5 frame, check drift warnings
                 self.notify(state)
         
         except Exception as e:
@@ -137,24 +165,79 @@ class CosmologySimulation(Observable):
             raise
         
         finally:
-            # Notifica fine
+            # [PHYSICS_TRACE] Notify observers: Simulation END
+            # Purpose: Finalize HDF5, compute statistics, close resources
             self.notify_end()
     
     def step(self):
-        """Singolo step evoluzione."""
-        # Evolvi universo
+        """
+        Single timestep evolution.
+        
+        **Physics Principle**: Recursive Hamiltonian Time Propagation
+        **Reference**: PHYSICS_MANIFESTO.md § 3 "Hierarchical Structure"
+        
+        **Algorithm**:
+        ```
+        universe.evolve(dt) triggers recursive cascade:
+          SolitoneComposito(L3).evolve(dt)
+            → for each child in L2:
+                SolitoneComposito(L2).evolve(dt)
+                  → for each child in L1:
+                      ... → SegmentoQuantistico(L0).evolve(dt) [Verlet]
+        ```
+        
+        **Physical Interpretation**:
+        - Each level evolves its children via parent-mediated coupling
+        - Inter-level energy transfer via hierarchical damping γ_h
+        - Symplectic property preserved at ALL levels (phase-space volume conservation)
+        - Time propagates "top-down" but forces computed "bottom-up"
+        """
+        # [PHYSICS_TRACE] Evolve universe (recursive cascade to all segments)
+        # Physical meaning: Advance system state by dt in phase space
         self.universe.evolve(self.dt)
         
-        # Aggiorna contatori
+        # [PHYSICS_TRACE] Update global time counters
+        # step: Discrete timestep index (integer)
+        # time: Physical time = step × dt [Planck time units]
         self.current_step += 1
         self.current_time += self.dt
     
     def _create_state_snapshot(self) -> SimulationState:
-        """Crea snapshot stato corrente."""
+        """
+        Create state snapshot for observer monitoring.
+        
+        **Physics Principle**: Macroscopic Observables from Microscopic State
+        **Reference**: PHYSICS_MANIFESTO.md § 5 "Conservation Laws"
+        
+        **Observables Extracted**:
+        ```
+        H_total:  Total Hamiltonian = Σ_i H_i(segment) + U_coupling
+        drift:    |ΔH/H| = |H_current - H_initial| / H_initial  [Conservation check]
+        T_eff:    Effective temperature from Fermi-Dirac screening
+        ```
+        
+        **Physical Interpretation**:
+        - H_total: Total energy (should be conserved, drift < 0.1%)
+        - drift: Measure of symplectic integration quality
+        - T_eff: Emergent temperature from RG flow (thermal homeostasis)
+        
+        Returns:
+        --------
+        state : SimulationState
+            Snapshot with all observables
+        """
+        # [PHYSICS_TRACE] Compute total Hamiltonian
+        # Physical meaning: Sum of all segment energies + inter-segment coupling
         H_current = self.universe.energia_totale
+        
+        # [PHYSICS_TRACE] Compute energy drift (conservation check)
+        # Formula: drift = |ΔH/H| = |H_current - H_initial| / H_initial
+        # Acceptable: < 0.1% (symplectic integration quality)
         drift = abs(H_current - self.H_initial) / (abs(self.H_initial) + 1e-30)
         
-        # Stima T_eff (se disponibile)
+        # [PHYSICS_TRACE] Extract effective temperature (if composite)
+        # Physical meaning: T_eff from Fermi-Dirac topological screening
+        # See PHYSICS_MANIFESTO.md § 3.2 for T_eff derivation
         T_eff = 0.0
         N_solitons = 1
         

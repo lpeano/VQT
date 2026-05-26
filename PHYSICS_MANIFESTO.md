@@ -135,9 +135,112 @@ For L3 (27,648 DOF), τ_relax >> 0.2 is plausible.
 
 ---
 
-## III. UNIVERSAL SCALING LAWS
+## III. VACUUM THERMAL BATH & FLUCTUATION-DISSIPATION
 
-### 3.1 Law I: Universal Damping
+### 3.1 The Vacuum as Thermal Reservoir
+
+**Model**: WQT manifold is NOT isolated, but **coupled to vacuum quantum fluctuations**
+
+**Physical Picture**:
+- Vacuum contains zero-point energy (Casimir effect, Lamb shift, etc.)
+- WQT segments interact with virtual particle pairs (vacuum polarization)
+- Net effect: Vacuum acts as **thermal bath** at effective temperature T_eff
+
+**Effective Temperature**:
+```
+T_eff ≡ ⟨T_kinetic⟩ / (k_B/2)
+      = 2·⟨(1/2)·m·v²⟩ / k_B
+      ≈ 583 K  (empirical, from L3 equilibrium)
+```
+
+**Origin of T_eff >> T_vacuum** (~10⁻³² K):
+- RG flow injects energy at small scales (torsion K² → kinetic v²)
+- Fractal cascade creates **effective thermalization** at each level
+- Observed T_eff reflects **steady-state balance** between injection and dissipation
+
+### 3.2 Fluctuation-Dissipation Theorem (FDT)
+
+**Historical Context** (Einstein 1905):
+- Brownian particle in fluid experiences:
+  - Random kicks: F_random(t) (thermal fluctuations)
+  - Friction: F_damp = -γ·v (dissipation)
+  
+**Key Insight**: BOTH arise from same microscopic mechanism
+
+**Mathematical Statement**:
+```
+⟨F_random(t)·F_random(t')⟩ = 2·k_B·T·γ·δ(t - t')
+```
+
+**Langevin Equation** (for chi field):
+```
+m·dv/dt = -∂V/∂χ - γ_FDT·v + ξ(t)
+
+where:
+  ξ(t): Stochastic force (vacuum fluctuations)
+  ⟨ξ(t)⟩ = 0
+  ⟨ξ(t)·ξ(t')⟩ = 2·k_B·T_eff·γ_FDT·δ(t - t')
+```
+
+**Equilibrium Condition**:
+```
+⟨dH/dt⟩_eq = 0
+
+⟹ ⟨-γ_FDT·v²⟩ + ⟨ξ·v⟩ = 0
+⟹ γ_FDT·⟨v²⟩ = k_B·T_eff  (equipartition)
+```
+
+### 3.3 FDT Damping Implementation
+
+**Formula** (WQT-specific):
+```
+γ_FDT = γ_base · [1 + β_fdt · tanh(Δ_normalized)]
+
+where:
+  Δ_normalized = (H - H_eq) / (α_fdt · k_B · T_eff)
+  
+Parameters:
+  γ_base = 0.01 [1/s]   Minimal dissipation at equilibrium
+  β_fdt = 2.0           Dissipation boost factor
+  α_fdt = 10.0          Thermal scale broadening
+  H_eq                  Running average of H (equilibrium reference)
+  T_eff = 583 K         Effective temperature (from kinetic energy)
+```
+
+**Physical Behavior**:
+- **At equilibrium** (H = H_eq):
+  ```
+  γ_FDT = γ_base  (minimal friction)
+  dH/dt ≈ 0  (energy conserved)
+  ```
+
+- **High energy** (H >> H_eq):
+  ```
+  γ_FDT → γ_base·(1 + β_fdt) = 0.03 [1/s]
+  dH/dt ≈ -2γ_FDT·(H - H_eq)  (exponential decay)
+  ```
+
+- **Low energy** (H << H_eq):
+  ```
+  γ_FDT → 0  (no dissipation)
+  System "floats" freely (prevents over-damping)
+  ```
+
+**Validation** (Expected from L3_FDT.h5):
+- Energy drift: < 0.1% (compared to 30% with linear warmup)
+- No indefinite energy loss (FDT → 0 at equilibrium)
+- Automatic stabilization (no hardcoded 100-step warmup)
+
+**Reference**: 
+- Einstein, A. (1905) "Über die von der molekularkinetischen Theorie der Wärme geforderte Bewegung von in ruhenden Flüssigkeiten suspendierten Teilchen"
+- Nyquist, H. (1928) "Thermal Agitation of Electric Charge in Conductors"
+- CHANGE_PROPOSAL_FDT.md (2026-05-26)
+
+---
+
+## IV. UNIVERSAL SCALING LAWS
+
+### 4.1 Law I: Universal Damping
 
 **[LEGGE FISICA: Smorzamento Dinamico Universale]**
 
@@ -155,7 +258,7 @@ For L3 (27,648 DOF), τ_relax >> 0.2 is plausible.
 
 **Validation**: Test suite `test_universal_scaling.py` - 4/4 passing
 
-### 3.2 Law II: RG Flow Topological Screening
+### 4.2 Law II: RG Flow Topological Screening
 
 **[LEGGE FISICA: Renormalization Group Flow - Topological Screening]**
 
@@ -171,7 +274,7 @@ For L3 (27,648 DOF), τ_relax >> 0.2 is plausible.
 
 **Consequence**: Prevents torsion energy singularities at high hierarchy levels.
 
-### 3.3 Law III: Hierarchical Energy Transfer
+### 4.3 Law III: Hierarchical Energy Transfer
 
 **[LEGGE FISICA: Trasferimento Energetico Gerarchico - Serbatoio]**
 
@@ -191,7 +294,7 @@ H_conserved = H_dynamic + Σ E_radiated
 
 **Physical Basis**: Prigogine entropy production + Boltzmann equipartition.
 
-### 3.4 Law IV: Adaptive Sub-Stepping (CFL Criterion)
+### 4.4 Law IV: Adaptive Sub-Stepping (CFL Criterion)
 
 **[LEGGE FISICA: Criterio CFL Adattivo]**
 

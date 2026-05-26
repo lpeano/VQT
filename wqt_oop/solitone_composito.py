@@ -324,7 +324,8 @@ class SolitoneComposito(AbstractSoliton):
         # Cross-phase (+-): tanh(χᵢ)·tanh(χⱼ) < 0 → V > 0 (repulsione)
         # NOTA: Scalato con alpha_K per competere con E_torsion
         # Usiamo tanh invece di sgn per avere derivate continue
-        chi_0 = 4.5  # Scala caratteristica del campo (valore vacuo)
+        # CRITICAL FIX (2026-05-26): Use chi_stable from PhysicsContext
+        chi_0 = self.physics.chi_stable  # Scala caratteristica del campo (valore vacuo)
         tanh_matrix = np.tanh(chi_values[:, None] / chi_0) * np.tanh(chi_values[None, :] / chi_0)
         E_exchange = -self.physics.lambda_exchange * self.physics.alpha_K * np.sum(self.coupling_matrix * tanh_matrix)
         
@@ -380,7 +381,8 @@ class SolitoneComposito(AbstractSoliton):
                 # Scambio topologico (con screening, smooth version)
                 # tanh(χᵢ/χ₀)·tanh(χⱼ/χ₀) = +1 same-phase, -1 cross-phase (smooth)
                 # Scalato con alpha_K per bilanciare E_torsion
-                chi_0 = 4.5
+                # CRITICAL FIX (2026-05-26): Use chi_stable from PhysicsContext
+                chi_0 = self.physics.chi_stable
                 tanh_product = np.tanh(chi_values[i] / chi_0) * np.tanh(chi_values[j] / chi_0)
                 E_exchange_screened += -w_eff * tanh_product  # Conta 2 volte (i,j) e (j,i)
         
@@ -549,6 +551,15 @@ class SolitoneComposito(AbstractSoliton):
         """
         Evolve tutti i figli con forze interne + esterne + dissipazione radiativa.
         
+        Parameters:
+        -----------
+        dt : float
+            Timestep globale [Planck time]
+        external_force : ndarray or float, optional
+            Forza esterna (scalare o array per ogni child)
+        
+        Process:
+        --------
         1. Calcola coefficiente smorzamento gamma(Var(tau))
         2. Aggiorna gamma_damping nei figli
         3. Calcola forze inter-child (accoppiamento)
@@ -671,7 +682,8 @@ class SolitoneComposito(AbstractSoliton):
         """
         chi_values = np.array([self._get_child_chi(child) for child in self.children])
         forces = np.zeros(self.N_children)
-        chi_0 = 4.5  # Scala caratteristica del campo
+        # CRITICAL FIX (2026-05-26): Use chi_stable from PhysicsContext
+        chi_0 = self.physics.chi_stable  # Scala caratteristica del campo
         
         if not self.screening_enabled:
             # Forze senza screening

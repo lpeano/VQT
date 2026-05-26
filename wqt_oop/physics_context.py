@@ -75,6 +75,7 @@ class PhysicsContext:
     # Costanti dinamiche
     alpha_K: float = 1.0  # Accoppiamento torsione
     beta_potential: float = 0.001  # Doppio pozzo
+    chi_stable: float = 50.0  # Vacuum expectation value (VEV) for chi field [CRITICAL: Must match initialization!]
     kappa_coupling: float = 0.25  # Accoppiamento inter-segmenti
     lambda_exchange: float = 0.05  # Interazione di scambio topologico (same-phase attraction)
     
@@ -89,6 +90,14 @@ class PhysicsContext:
     T_fermi: float = 5.0  # Temperatura efficace (larghezza transizione) [unità di χ o ρ]
     gamma_cooling: float = 0.01  # Tasso raffreddamento temperatura [1/s]
     fermi_epsilon: float = 1e-9  # Regolarizzazione anti-singolarità
+    
+    # === RELATIVISTIC TIMESTEP PARAMETERS (CP-2026-05-26-003) ===
+    # [PHYSICS_TRACE] Energy-dependent timestep scaling
+    # Reference: PHYSICS_MANIFESTO.md § 4.5 "Proper Time and Geodesics"
+    timestep_energy_ref: float = 1.0       # [J] Reference energy scale
+    timestep_power_alpha: float = 0.5      # Power-law exponent (0.5 = sqrt)
+    timestep_min: float = 0.0001           # [Planck time] Safety floor
+    timestep_max: float = 0.1              # [Planck time] Safety ceiling
     
     # Vincoli fusione
     E_fusion_threshold: float = 1e8  # [J] Soglia energia
