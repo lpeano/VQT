@@ -36,9 +36,14 @@ from .abstract_soliton import AbstractSoliton
 from .segmento_quantistico import SegmentoQuantistico
 from .solitone_composito import SolitoneComposito
 
+# Visualization (native module)
+from .visualizer import ManifoldVisualizer, VisualizationConfig
+
 __all__ = [
     "PhysicsContext",
     "AbstractSoliton",
     "SegmentoQuantistico",
     "SolitoneComposito",
+    "ManifoldVisualizer",
+    "VisualizationConfig",
 ]
