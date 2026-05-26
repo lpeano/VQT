@@ -13,11 +13,10 @@
 **WQT (Wheeler Quantum Topology)** è una simulazione numerica di un manifold frattale a torsione basato sulla teoria di Einstein-Cartan, che estende la Relatività Generale includendo lo spin intrinseco della materia.
 
 ### Caratteristiche Principali
-- ✅ **Conservazione carica spinoriale**: Σχ = -108.96 mantenuta con precisione numerica perfetta
-- ✅ **Bounce quantistico**: Previene singolarità gravitazionali tramite repulsione spin-spin (P_rep = β×ρ²)
-- ✅ **24 campi accoppiati**: Sistema Hamiltoniano con separazione fasi materia/spazio
-- ✅ **Geometria con torsione**: Einstein-Cartan completo (R_μν + K²_μν = 8πG T_μν)
-- ✅ **Validato long-term**: 240 frame (10s fisici) senza divergenza, sistema stabile
+- ✅ **Bounce quantistico**: Previene singolarità gravitazionali tramite repulsione spin-spin
+- ✅ **Geometria discreta**: Reticolo di nodi di Planck (24 segmenti frattali)
+- ✅ **Oscillazioni stabili**: Il manifold "respira" con inversioni di dinamica
+- ✅ **Validato**: 99% bounce attivo, 3 inversioni di velocità rilevate
 
 ---
 
@@ -41,26 +40,14 @@ VQT/
 
 ## 🚀 Quick Start
 
-### Eseguire una simulazione headless
+### Eseguire una simulazione
 ```bash
-# Simulazione 10 secondi @ 24fps con conservazione Σχ
-python WQT_manifold.py --headless --duration 10 --fps 24 --db cosmologia.h5
+python WQT_manifold.py --headless --fps 50 --duration 2 --db risultati.h5
 ```
 
-### Visualizzare risultati (playback 3D interattivo)
+### Analizzare i risultati
 ```bash
-python WQT_manifold.py --playback --db cosmologia.h5 --speed 2
-```
-
-### Analizzare telemetria
-```bash
-python read_telemetry.py cosmologia.h5
-python analisi_post_simulazione.py cosmologia.h5
-```
-
-### Dataset di Riferimento Validati
-- **cosmologia_conservata.h5**: 240 frame, Σχ conservata, sistema stabile ✅
-- **geometrodinamica_matrix.h5**: Dataset di test standard
+python visualizza_bounce.py
 ```
 
 ### Parametri principali
@@ -109,28 +96,20 @@ Il manifold deve soddisfare il vincolo spinoriale:
 
 ## 📊 Risultati Validazione
 
-### Simulazione di Riferimento (cosmologia_conservata.h5)
-- **Frames**: 240 (10 secondi fisici @ 24fps)
-- **Conservazione Σχ**: -108.96 ± 1×10⁻⁶ (gauge constraint perfetto)
-- **Stabilità**: rm_ema = 1.825116 m costante (0 divergenza)
-- **Energia accoppiamento**: E_coup = 4-6 (sistema hamiltoniano attivo)
-- **Separazione fasi**: Var(χ) controllata, nessun clustering estremo
-- **Durata**: 100% completamento (vs 25% prima del fix)
+### Simulazione di Riferimento
+- **Frames**: 100 (λ = 0 → 9.9)
+- **Bounce attivo**: 99% del tempo
+- **Oscillazioni**: 3 inversioni di velocità
+- **Rapporto max**: P_rep / |P_grav| = 466
+- **Densità**: Crescita 2532× controllata
 
-### Fix CTO-Level Implementati
-| Fix | Descrizione | Impatto |
-|-----|-------------|---------|
-| **Conservazione Σχ** | Re-normalizzazione post-ODE: Σχ → -108.96 | Elimina divergenza al 100% |
-| **Damping aumentato** | 0.6 → 0.85 (+42%) | Smorza clustering estremo |
-| **Gain Control** | K_i = tanh((K_raw-μ)/(2σ))×5 + μ | Preserva gradienti locali |
-
-### Confronto Prima/Dopo Fix
-| Metrica | Prima | Dopo | Miglioramento |
-|---------|-------|------|---------------|
-| Frame completati | 59/240 (25%) | 240/240 (100%) | +300% |
-| Var(χ) max | 3790 (esplosione) | <100 (stabile) | 97% riduzione |
-| Σχ finale | -28428 (violazione) | -108.96 (conservata) | Perfetto |
-| rm_ema | divergente | 1.825116 m | Stabile |
+### Criteri Soddisfatti
+| Criterio | Soglia | Risultato | Status |
+|----------|--------|-----------|--------|
+| Rapporto > 1 | >90% | 99% | ✅ |
+| Oscillazioni | ≥2 | 3 | ✅ |
+| Velocità | <1000 | 590 | ✅ |
+| Densità | Libera | 2532× | ✅ |
 
 ---
 

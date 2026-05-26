@@ -49,6 +49,13 @@ K2_REF_720 = 4.0 * np.pi  # K² di riferimento
 # Coefficiente trasporto (mobilità)
 MU_TRANSPORT = 0.25  # Velocità risposta al gradiente energetico
 
+# POROSITÀ TOPOLOGICA - ROTTURA DEL LOCK-IN RIGIDO
+# ============================================================================
+# Scala di disaccoppiamento: quando |Δχ| > SIGMA_DECOUPLING,
+# l'accoppiamento si indebolisce esponenzialmente.
+# FISICA: Permette formazione di domini isolati (bolle di Materia vs Spazio)
+SIGMA_DECOUPLING = 3.0  # Scala caratteristica per nucleazione di fasi
+
 # Diffusività intrinseca (smoothing locale)
 DIFFUSIVITA = 0.02  # Diffusione piccola per evitare omogeneizzazione
 
@@ -235,18 +242,30 @@ def calcola_energia_sistema(densita_sx, densita_dx, contorsione_locale, matrice_
     
     E_tot = E_coupling + E_torsion + E_cinetica
     
-    Questa funzione è utile per verificare che il sistema stia minimizzando
-    l'energia nel tempo (criterio di stabilità).
+    POROSITÀ DINAMICA (2026-05-25):
+    --------------------------------
+    L'accoppiamento ora include disaccoppiamento esponenziale:
+    
+        w_eff[i,j] = w_leech[i,j] × exp(-|K²_i - K²_j| / σ)
+    
+    Quando la differenza di torsione è grande, il legame si spezza.
+    Questo permette formazione di bolle isolate (fase Materia vs Spazio).
     """
     N = 24
     
-    # Energia di accoppiamento
+    # Energia di accoppiamento CON POROSITÀ TOPOLOGICA
     E_coupling = 0.0
     for i in range(N):
         for j in range(N):
             if i != j:
                 diff_K2 = contorsione_locale[i] - contorsione_locale[j]
-                E_coupling += 0.5 * ALPHA_COUPLING * matrice_accoppiamento[i, j] * diff_K2**2
+                
+                # DISACCOPPIAMENTO ESPONENZIALE
+                # Quando |diff_K2| >> SIGMA_DECOUPLING, exp → 0 e il legame si spezza
+                attenuation = np.exp(-np.abs(diff_K2) / SIGMA_DECOUPLING)
+                w_eff = matrice_accoppiamento[i, j] * attenuation
+                
+                E_coupling += 0.5 * ALPHA_COUPLING * w_eff * diff_K2**2
     
     # Energia di torsione (penalità per eccesso oltre 720°)
     E_torsion = np.sum((contorsione_locale - K2_REF_720)**2)
