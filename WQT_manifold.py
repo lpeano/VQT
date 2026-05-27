@@ -163,6 +163,7 @@ SCALARI_24_DTYPE = np.dtype([
     # Campi vettoriali (24 elementi)
     ('chi_vettore', 'f8', (24,)),
     ('vel_vettore', 'f8', (24,)),
+    ('tau_locale', 'f8', (24,)),        # NUOVO: Tempo proprio di ogni campo (aging)
     ('contorsione_locale', 'f8', (24,)),
     ('chiusura_locale', 'f8', (24,))
 ])
@@ -302,7 +303,7 @@ def flush_chunk_buffer(f_handle):
     for k in chunk_buffer:
         chunk_buffer[k].clear()
 
-def append_stato_hdf5(f_handle, frame, Xdx, Ydx, Zdx, Xsx, Ysx, Zsx, th, pdx, psx, rm, g_geo, z_geo, esp, t_assol, dtau, vchi, chi_lineare, h_fis, contorsione_k=0.0, chiusura_spinore=0.0, chi_vettore=None, vel_vettore=None, contorsione_locale=None, chiusura_locale=None):
+def append_stato_hdf5(f_handle, frame, Xdx, Ydx, Zdx, Xsx, Ysx, Zsx, th, pdx, psx, rm, g_geo, z_geo, esp, t_assol, dtau, vchi, chi_lineare, h_fis, contorsione_k=0.0, chiusura_spinore=0.0, chi_vettore=None, vel_vettore=None, tau_vettore=None, contorsione_locale=None, chiusura_locale=None):
     """Scrittura ottimizzata a blocchi in memoria per impedire la frammentazione SWMR."""
     global chunk_buffer
     
@@ -311,13 +312,14 @@ def append_stato_hdf5(f_handle, frame, Xdx, Ydx, Zdx, Xsx, Ysx, Zsx, th, pdx, ps
         # Prepara array vuoti se non forniti
         chi_vec = chi_vettore if chi_vettore is not None else np.zeros(24)
         vel_vec = vel_vettore if vel_vettore is not None else np.zeros(24)
+        tau_vec = tau_vettore if tau_vettore is not None else np.zeros(24)  # NUOVO
         cont_loc = contorsione_locale if contorsione_locale is not None else np.zeros(24)
         chiu_loc = chiusura_locale if chiusura_locale is not None else np.zeros(24)
         
         record_scalari = np.array(
             (frame, rm, g_geo, z_geo, esp, t_assol, dtau, vchi, chi_lineare, h_fis, 
              contorsione_k, chiusura_spinore,
-             chi_vec, vel_vec, cont_loc, chiu_loc),
+             chi_vec, vel_vec, tau_vec, cont_loc, chiu_loc),  # Aggiungo tau_vec
             dtype=SCALARI_24_DTYPE
         )
     else:
@@ -1801,7 +1803,7 @@ torsione_media_globale = 0.0
 chi_array_precedente = None  # Per tracciare variazioni temporali e prevenire sincronizzazione
 
 def equazione_estado_einstein_cartan_24_campi(lambda_affine, stato_vettoriale, scatolamento, 
-                                               errore_chiusura_locale, contorsione_locale):
+                                               errore_chiusura_locale, contorsione_locale, tau_locale):
     """
     Evoluzione geometrodinamica per 24 campi χᵢ accoppiati topologicamente.
     Sistema termodinamico APERTO con separazione fasi materia/spazio.
@@ -2069,7 +2071,8 @@ def equazione_estado_einstein_cartan_24_campi(lambda_affine, stato_vettoriale, s
     # ========================================================================
     # FISICA: Regioni ad alta torsione (buchi neri) hanno screening più forte
     # → facilita formazione di strutture gerarchiche auto-organizzate
-    SIGMA_BASE = 3.0
+    # LEVA 4: SIGMA ridotto 3.0 → 1.5 per nucleazione più rapida e fragile
+    SIGMA_BASE = 1.5  # Era 3.0 - ridotto per crescita più esplosiva
     K2_REF_720 = 4.0 * np.pi  # Chiusura spinoriale a 720°
     SIGMA_locale = SIGMA_BASE * (1.0 + 0.5 * np.abs(K_squared_local) / K2_REF_720)
     # SIGMA cresce fino a 2× in regioni di alta torsione
@@ -2084,21 +2087,93 @@ def equazione_estado_einstein_cartan_24_campi(lambda_affine, stato_vettoriale, s
     # Usa la media geometrica: σᵢⱼ = sqrt(σᵢ × σⱼ)
     SIGMA_matrix = np.sqrt(SIGMA_locale[:, None] * SIGMA_locale[None, :])
     
-    # POROSITÀ TOPOLOGICA: accoppiamento si indebolisce per grandi differenze
-    attenuation_matrix = np.exp(-np.abs(delta_chi_matrix) / SIGMA_matrix)
-    matrice_porosa = MATRICE_ACCOPPIAMENTO_LEECH * attenuation_matrix
+    # ========================================================================
+    # SCREENING MULTI-SCALA: Disaccoppiamento causale nello spazio delle fasi
+    # ========================================================================
+    # FISICA: Due campi si disaccoppiano se sono lontani in QUALSIASI dimensione
+    # dello spazio delle fasi completo: (χ, v, K², τ)
+    # 
+    # 1. SCREENING TOPOLOGICO (già implementato)
+    #    exp(-|Δχ|/σ_χ) → bolle con χ diverso si separano
+    # 
+    # 2. SCREENING CINEMATICO (NUOVO)
+    #    exp(-|Δv|/σ_v) → campi con velocità diverse divergono
+    #    FISICA: Effetto Doppler relativistico → "red-shift" tra domini
+    # 
+    # 3. SCREENING GEOMETRICO (NUOVO)  
+    #    exp(-|ΔK²|/σ_K) → regioni con curvatura diversa non comunicano
+    #    FISICA: Orizzonti geometrici (buchi neri vs spazio piatto)
+    # 
+    # 4. SCREENING TEMPORALE (NUOVO - AGING)
+    #    exp(-|Δτ|/σ_τ) → campi con età diversa su foliazioni temporali diverse
+    #    FISICA: Distanza nello spazio-tempo → orologi locali divergenti
+    # 
+    # COMBINAZIONE: screening_totale = s_χ × s_v × s_K × s_τ (AND logico)
+    # ========================================================================
+    
+    # 1. Screening topologico (distanza in campo χ)
+    attenuation_chi = np.exp(-np.abs(delta_chi_matrix) / SIGMA_matrix)
+    
+    # 2. Screening cinematico (distanza in velocità)
+    delta_vel_matrix = vel_array[None, :] - vel_array[:, None]  # Δv_ij
+    SIGMA_VEL = 2.0  # Scala di screening velocità
+    attenuation_vel = np.exp(-np.abs(delta_vel_matrix) / SIGMA_VEL)
+    
+    # 3. Screening geometrico (distanza in curvatura)
+    K2_array = K_squared_local  # Già calcolato prima
+    delta_K2_matrix = K2_array[None, :] - K2_array[:, None]  # ΔK²_ij
+    SIGMA_K2 = 2.0 * np.pi  # Scala di screening curvatura (~ π)
+    attenuation_K2 = np.exp(-np.abs(delta_K2_matrix) / SIGMA_K2)
+    
+    # 4. Screening temporale (distanza in tempo proprio - AGING)
+    delta_tau_matrix = tau_locale[None, :] - tau_locale[:, None]  # Δτ_ij
+    SIGMA_TAU = 5.0  # Scala di screening temporale (~ 5 step per divergenza)
+    attenuation_tau = np.exp(-np.abs(delta_tau_matrix) / SIGMA_TAU)
+    
+    # Screening totale (prodotto = AND logico)
+    # Se ANCHE UNA SOLA distanza è grande → screening forte
+    attenuation_total = attenuation_chi * attenuation_vel * attenuation_K2 * attenuation_tau
+    
+    # POROSITÀ TOPOLOGICA MULTI-SCALA
+    matrice_porosa = MATRICE_ACCOPPIAMENTO_LEECH * attenuation_total
+    
+    # ========================================================================
+    # DILATAZIONE TEMPORALE GRAVITAZIONALE (Einstein-Cartan)
+    # ========================================================================
+    # FISICA: Campi con tempo proprio τ elevato evolvono più lentamente
+    # → Effetto di "redshift gravitazionale" locale
+    # → Feedback positivo: τ↑ → forze↓ → evoluzione↓ → accumula K² → τ↑↑
+    # 
+    # IMPLEMENTAZIONE:
+    # weight_temporal[i] = 1 / (1 + α·τ_i)  con α = 0.01
+    # Campi giovani (τ~0): weight ≈ 1.0 (dinamica normale)
+    # Campi vecchi (τ~100): weight ≈ 0.5 (dinamica rallentata)
+    # ========================================================================
+    ALPHA_AGING = 0.01  # Intensità dilatazione temporale (0.01 = 1% per unità di τ)
+    weight_temporal = 1.0 / (1.0 + ALPHA_AGING * tau_locale)  # Shape: (24,)
     
     # Forza vettorizzata: Fᵢ = Σⱼ w_eff[i,j] × Δχᵢⱼ
     forza_coupling = np.sum(matrice_porosa * delta_chi_matrix, axis=1)
+    
+    # Applica dilatazione temporale locale alle forze di accoppiamento
+    forza_coupling *= weight_temporal  # Campi con τ alto sentono forze più deboli
     
     # Coefficiente che controlla la forza dell'accoppiamento
     forza_coupling *= KAPPA_COUPLING_24
     
     # ========================================================================
+    # LEVA 2: RUMORE STOCASTICO per rompere simmetria e accelerare nucleazione
+    # ========================================================================
+    # FISICA: Fluttuazioni quantistiche impediscono equilibrio perfetto
+    # → sistema cerca attivamente configurazioni di minima energia
+    rumore_quantistico = np.random.normal(0, 0.01 * np.std(forza_coupling), size=24)
+    forza_coupling = 0.99 * forza_coupling + 0.01 * rumore_quantistico
+    
+    # ========================================================================
     # OTTIMIZZAZIONE 3: DIAGNOSTICA CLUSTERING (per logging)
     # ========================================================================
     # Frazione di legami attivi (attenuation > 10%)
-    frazione_legami_attivi = np.mean(attenuation_matrix[MATRICE_ACCOPPIAMENTO_LEECH > 0] > 0.1)
+    frazione_legami_attivi = np.mean(attenuation_total[MATRICE_ACCOPPIAMENTO_LEECH > 0] > 0.1)
     
     # Numero di cluster (salti > 3σ nella distribuzione ordinata)
     chi_sorted = np.sort(chi_array)
@@ -2462,6 +2537,15 @@ if USA_24_CAMPI_LOCALI:
     stato_attuale = np.zeros(2 * segmenti_frattali)  # 48 elementi
     stato_attuale[::2] = chi_iniziale_24   # Indici pari: χᵢ
     stato_attuale[1::2] = vel_iniziale_24  # Indici dispari: vᵢ
+    
+    # ============================================================
+    # AGING LOCALE: Tempo proprio di ogni campo (screening temporale)
+    # ============================================================
+    # τ_locale[i] = tempo proprio del campo i nel suo frame di riferimento
+    # Cresce linearmente con ogni step: τ += dt
+    # FISICA: Campi con Δτ >> σ_τ si disaccoppiano causalmente
+    # → Formazione di "domini temporali" indipendenti
+    tau_locale = np.zeros(segmenti_frattali)  # 24 elementi, tutti iniziano a t=0
     
     # Conta segmenti per polarità (diagnostica)
     n_spazio = np.sum(chi_iniziale_24 < 0)  # Vicini a -4.5
@@ -2856,7 +2940,7 @@ evento_inversione_temporale_precedente = False
 
 # --- 6. LOOP DI COERENZA DINAMICA INTEGRALE ---
 def update(frame, target_file_handle=None):
-    global stato_attuale, lambda_affine_corrente, complessita_precedente, tempo_emergente_cumulativo
+    global stato_attuale, tau_locale, lambda_affine_corrente, complessita_precedente, tempo_emergente_cumulativo
     global curvatura_scalare_precedente, torsione_precedente
     global errore_chiusura_precedente, contorsione_k_precedente  # Variabili topologiche
     global punti_complessita, punti_G, punti_Z, animazione_in_esecuzione, velocita_precedente, suono_inversione_fatto
@@ -3295,7 +3379,7 @@ def update(frame, target_file_handle=None):
                     )
                     
                     # Forza totale Hamiltoniana
-                    return calcola_forza_totale_hamiltoniana(
+                    forza_base = calcola_forza_totale_hamiltoniana(
                         chi_vec,
                         AUTOVALORI_LEECH,
                         AUTOVETTORI_LEECH,
@@ -3306,6 +3390,23 @@ def update(frame, target_file_handle=None):
                         scatolamento=2.0,
                         alpha_decay=0.15
                     )
+                    
+                    # ========================================================
+                    # DILATAZIONE TEMPORALE GRAVITAZIONALE (Einstein-Cartan)
+                    # ========================================================
+                    # FISICA: Campi con tempo proprio τ elevato evolvono più lentamente
+                    # → Effetto di "redshift gravitazionale" locale
+                    # → Feedback positivo: τ↑ → forze↓ → evoluzione↓ → accumula K² → τ↑↑
+                    # 
+                    # weight_temporal[i] = 1 / (1 + α·τ_i)  con α = 0.01
+                    # Campi giovani (τ~0): weight ≈ 1.0 (dinamica normale)
+                    # Campi vecchi (τ~100): weight ≈ 0.5 (dinamica rallentata)
+                    # ========================================================
+                    ALPHA_AGING = 0.01  # Intensità dilatazione temporale
+                    weight_temporal = 1.0 / (1.0 + ALPHA_AGING * tau_locale)
+                    
+                    # Applica dilatazione temporale alle forze
+                    return forza_base * weight_temporal
                 
                 # Step Symplectic Verlet (conserva Hamiltoniano)
                 chi_new, vel_new = step_symplectic_verlet(
@@ -3316,9 +3417,52 @@ def update(frame, target_file_handle=None):
                     chi_totale_target
                 )
                 
+                # ============================================================
+                # LEVA 3: DISSIPAZIONE HUBBLE per stabilità cosmologica
+                # ============================================================
+                # FISICA: Espansione universo crea "attrito" su velocità peculiari
+                # → previene runaway esponenziale, simula radiazione gravitazionale
+                HUBBLE_DAMPING = 0.999  # 0.1% dissipazione per frame
+                vel_new *= HUBBLE_DAMPING
+                
+                # ============================================================
+                # PROTEZIONE: Limite velocità per evitare overflow
+                # ============================================================
+                # FISICA: Nessuna velocità può superare c (velocità luce locale)
+                # 
+                # TEST DIAGNOSTICO: MAX_VELOCITY aumentato per verificare se std(v)=0
+                # è un limite topologico del reticolo o solo saturazione numerica
+                # 
+                # PRIMA: MAX_VELOCITY = 1000 → saturazione frame 100 → std(v)=0 ARTIFICIALE
+                # ORA:   MAX_VELOCITY = 10000 → libera dinamica → test topologia reale
+                MAX_VELOCITY = 10000.0  # Limite diagnostico (10× precedente)
+                vel_new = np.clip(vel_new, -MAX_VELOCITY, MAX_VELOCITY)
+                
                 # Ricomponi stato vettoriale [χ₀,v₀,χ₁,v₁,...]
                 stato_attuale[::2] = chi_new
                 stato_attuale[1::2] = vel_new
+                
+                # ============================================================
+                # AGING LOCALE DIFFERENZIATO: Dilatazione Temporale Cinematica
+                # ============================================================
+                # τ[i] += dt / γ(v[i]) per ogni campo
+                # FISICA RELATIVITÀ SPECIALE: Campi con alta velocità invecchiano più lentamente
+                # → Effetto Doppler temporale → Divergenza orizzonti causali → Emergenza strutture
+                #
+                # IMPLEMENTAZIONE:
+                # - γ(v) = sqrt(1 + v²/V_REF²) → dilatazione temporale relativistica
+                # - v → 0: γ ≈ 1 (tempo normale)
+                # - v >> V_REF: γ >> 1 (tempo rallenta drasticamente)
+                # - Campi rapidi invecchiano MENO velocemente (effetto twin paradox locale)
+                #
+                # CALIBRAZIONE: V_REF aumentato da 10 → 100 per compatibilità con MAX_VELOCITY=10000
+                # Con v~1000: γ = sqrt(1+(1000/100)²) ≈ 10 → aging 10× più lento (ragionevole)
+                V_REF = 100.0  # Velocità di riferimento relativistica (c_locale quantistico)
+                for i in range(24):
+                    # Fattore di Lorentz locale (forma safe per v/c qualsiasi)
+                    gamma_inverse = np.sqrt(1.0 + (vel_new[i]**2) / (V_REF**2))
+                    # Dilatazione temporale: dt_proprio = dt_coordinato / γ
+                    tau_locale[i] += delta_lambda / gamma_inverse
                 
                 # ============================================================
                 # VINCOLO DI GAUGE: CONSERVAZIONE CARICA SPINORIALE Σχ
@@ -3561,6 +3705,7 @@ def update(frame, target_file_handle=None):
                     contorsione_k, chiusura_spinore,
                     chi_vettore=chi_vec_current,
                     vel_vettore=vel_vec_current,
+                    tau_vettore=tau_locale,  # NUOVO: Tempo proprio di ogni campo
                     contorsione_locale=contorsione_locale,
                     chiusura_locale=errore_chiusura_locale
                 )
@@ -4181,10 +4326,19 @@ if args.headless:
             if usa_24_file:
                 if 'chi_vettore' in meta.dtype.names:
                     stato_attuale = np.concatenate([meta['chi_vettore'], meta['vel_vettore']])  # 48 elementi
+                    # NUOVO: Ripristina tempo proprio di ogni campo
+                    if 'tau_locale' in meta.dtype.names:
+                        tau_locale = meta['tau_locale'].copy()
+                    else:
+                        # Fallback: inizializza a zero se non presente (compatibilità vecchi file)
+                        tau_locale = np.zeros(24)
+                        print("[RESUME] tau_locale non trovato nel DB, inizializzato a zero")
                 else:
                     stato_attuale = [meta['chi_medio'], meta['v_chi_medio']]
+                    tau_locale = np.zeros(24)
             else:
                 stato_attuale = [meta['chi_lineare'], meta['v_chi']]
+                tau_locale = np.zeros(24)  # Modalità scalare: no aging
             
             lambda_affine_corrente = ultimo_frame_salvato * 0.1  # Parametro affine accumulato
             tempo_emergente_cumulativo = meta['tempo_assol'] * (meta['g_geo'] + 1e-43)  # Ricostruzione tempo emergente
@@ -4274,18 +4428,36 @@ if args.headless:
 elif args.playback:
     print("\n[PLAYBACK HDF5] Analisi dell'albero binario in corso...")
     
+    # Inizializza file handle per playback
+    if f_playback_handle is None:
+        try:
+            f_playback_handle = h5py.File(file_data_path, 'r', libver='latest', swmr=True)
+            print(f"[PLAYBACK] File aperto in modalità SWMR: {file_data_path}")
+        except (OSError, PermissionError) as e:
+            # Fallback: prova senza SWMR
+            try:
+                f_playback_handle = h5py.File(file_data_path, 'r')
+                print(f"[PLAYBACK] File aperto in modalità standard: {file_data_path}")
+            except Exception as e2:
+                print(f"[ERRORE FATALE] Impossibile aprire {file_data_path}: {e2}")
+                raise
+        # Leggi flag formato dati
+        playback_usa_24_campi = f_playback_handle.attrs.get('usa_24_campi_locali', False)
+    
     # ============================================================================
     # CALCOLO LIMITI GLOBALI DENSITÀ PER SCALA COLORI FISSA
     # ============================================================================
     # Scansiona tutti i frame per trovare min/max densità → evoluzione visibile!
     print("[PLAYBACK] Calcolo limiti densità globali per scala colori fissa...")
     
-    def calcola_limiti_densita_globali_db(db_path, max_frames=500):
+    def calcola_limiti_densita_globali_db(db_path, max_frames=500, file_handle=None):
         """Scansiona database e calcola limiti densità per scala fissa"""
         dens_sx_all = []
         dens_dx_all = []
         
-        with h5py.File(db_path, 'r') as f:
+        # Se file_handle fornito, usalo; altrimenti apri il file
+        if file_handle is not None:
+            f = file_handle
             tel = f['telemetria_scalare'][:]
             valid_frames = tel[tel['rm'] > 0]
             
@@ -4308,6 +4480,31 @@ elif args.playback:
                     dens_dx, dens_sx = calcola_densita_da_chi_vettoriale(chi_vec, contorsione_loc)
                     dens_sx_all.extend(dens_sx)
                     dens_dx_all.extend(dens_dx)
+        else:
+            # Fallback: apri il file autonomamente
+            with h5py.File(db_path, 'r') as f:
+                tel = f['telemetria_scalare'][:]
+                valid_frames = tel[tel['rm'] > 0]
+                
+                # Campiona uniformemente (max 500 frame per velocità)
+                n_frames = len(valid_frames)
+                if n_frames > max_frames:
+                    indices = np.linspace(0, n_frames-1, max_frames, dtype=int)
+                    valid_frames = valid_frames[indices]
+                
+                for frame in valid_frames:
+                    if 'chi_vettore' in frame.dtype.names:
+                        chi_vec = frame['chi_vettore']
+                        # Controlla se contorsione_locale esiste nel dtype
+                        if 'contorsione_locale' in frame.dtype.names:
+                            contorsione_loc = frame['contorsione_locale']
+                        else:
+                            contorsione_loc = np.zeros(24)
+                        
+                        # Usa la funzione globale già definita nello script
+                        dens_dx, dens_sx = calcola_densita_da_chi_vettoriale(chi_vec, contorsione_loc)
+                        dens_sx_all.extend(dens_sx)
+                        dens_dx_all.extend(dens_dx)
         
         if len(dens_sx_all) == 0:
             return 0.0, 1.0, 0.0, 1.0  # Fallback
@@ -4316,7 +4513,7 @@ elif args.playback:
                 np.min(dens_dx_all), np.max(dens_dx_all))
     
     dens_sx_global_min, dens_sx_global_max, dens_dx_global_min, dens_dx_global_max = \
-        calcola_limiti_densita_globali_db(file_data_path)
+        calcola_limiti_densita_globali_db(file_data_path, file_handle=f_playback_handle)
     
     print(f"[PLAYBACK] Limiti densità SX: [{dens_sx_global_min:.3e}, {dens_sx_global_max:.3e}]")
     print(f"[PLAYBACK] Limiti densità DX: [{dens_dx_global_min:.3e}, {dens_dx_global_max:.3e}]")

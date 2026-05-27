@@ -1,0 +1,51 @@
+# ============================================================================
+# WQT_OOP - Requirements File
+# ============================================================================
+# Core dependencies for Weyl Quantum Topology simulation platform
+# 
+# Installation:
+#   pip install -r requirements.txt
+#
+# Author: WQT Physics Team
+# Date: 2026-05-26
+# Version: 2.0.0 (Field Geometry Rendering)
+# ============================================================================
+
+# Core numerical computing
+numpy>=1.20.0,<2.0.0
+scipy>=1.7.0              # REQUIRED for KDTree (field geometry rendering)
+
+# HDF5 I/O (SWMR support)
+h5py>=3.0.0
+
+# Visualization (native ManifoldVisualizer module)
+matplotlib>=3.5.0
+
+# Field Geometry Rendering (NEW in v2.0.0)
+# ----------------------------------------
+# Required for isosurface rendering (Marching Cubes algorithm)
+scikit-image>=0.18.0      # For skimage.measure.marching_cubes
+# Note: scipy>=1.7.0 already required above for KDTree
+
+# Animation Support (for ManifoldVisualizer.animate_manifold)
+# Requires ffmpeg binary installed separately:
+#   Windows: scoop install ffmpeg
+#   Linux:   apt install ffmpeg
+#   macOS:   brew install ffmpeg
+
+# Optional: Advanced 3D rendering (Mayavi)
+# Uncomment if needed for high-quality publications
+# mayavi>=4.7.0
+# vtk>=9.0.0
+
+# Development & Testing
+pytest>=7.0.0
+pytest-cov>=3.0.0
+
+# Code quality
+black>=22.0.0
+flake8>=4.0.0
+mypy>=0.950
+
+# Logging & Profiling
+tqdm>=4.60.0
