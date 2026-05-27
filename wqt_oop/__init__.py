@@ -28,22 +28,63 @@ DATE: 2024
 ================================================================================
 """
 
-__version__ = "1.0.0-alpha"
+__version__ = "1.2.0-variational"
 
-# Core classes
+# Core classes (legacy, invariati)
 from .physics_context import PhysicsContext
 from .abstract_soliton import AbstractSoliton
 from .segmento_quantistico import SegmentoQuantistico
 from .solitone_composito import SolitoneComposito
 
-# Visualization (native module)
+# Visualization (native module, legacy)
 from .visualizer import ManifoldVisualizer, VisualizationConfig
 
+# === TOPOLOGICAL VALIDATION LAYER (v1.1) ===
+# Passaggio da convergenza energetica a validazione geometrica.
+# Energia = proprietà emergente (catalogata, non vincolo).
+from .topological_constraint_validator import (
+    TopologicalState,
+    TopologicalConstraintValidator,
+    TopologicalConstraintObserver,
+)
+from .topological_integration import (
+    TopologicalEvolutionWrapper,
+    integrate_topological_validation_to_hdf5,
+)
+# Playback esteso (ConstraintDensityPlaybackEngine)
+from .hdf5_playback import (
+    ConstraintDensityPlaybackEngine,
+    load_topological_group,
+    convert_hdf5_frame_with_constraint_density,
+)
+
+# === VARIATIONAL TOPOLOGICAL FORCE LAYER (v1.2) ===
+# Forze dal gradiente del potenziale topologico S [Eq. S-1].
+# Strang Splitting: U_tot(dt) = T_{dt/2} o U_phys(dt) o T_{dt/2}  [Eq. INT-1]
+from .variational_topological_force import (
+    VariationalTopologicalForce,
+    TopologicalForceConfig,
+)
+
 __all__ = [
+    # Legacy core
     "PhysicsContext",
     "AbstractSoliton",
     "SegmentoQuantistico",
     "SolitoneComposito",
     "ManifoldVisualizer",
     "VisualizationConfig",
+    # Topological validation layer
+    "TopologicalState",
+    "TopologicalConstraintValidator",
+    "TopologicalConstraintObserver",
+    "TopologicalEvolutionWrapper",
+    "integrate_topological_validation_to_hdf5",
+    # Topological playback
+    "ConstraintDensityPlaybackEngine",
+    "load_topological_group",
+    "convert_hdf5_frame_with_constraint_density",
+    # Variational force layer
+    "VariationalTopologicalForce",
+    "TopologicalForceConfig",
 ]
