@@ -51,6 +51,7 @@ import h5py
 from wqt_oop.fractal_universe_factory import FractalUniverseFactory, UniverseConfig
 from wqt_oop.physics_context import PhysicsContext
 from wqt_oop.solitone_composito import SolitoneComposito
+from wqt_oop.segmento_quantistico import SegmentoQuantistico
 from wqt_oop.hdf5_logger import HDF5Logger, HDF5LoggerConfig
 from wqt_oop.energy_drift_observer import (
     Observable, StatisticsLogger, ProgressTracker, SimulationState
@@ -155,6 +156,12 @@ def parse_args():
     p.add_argument("--verbose", "-v", action="store_true",
                    help="Logging verbose (DEBUG)")
 
+    # Resume
+    p.add_argument("--resume-from", type=str, default=None,
+                   help="Riprendi da ultimo frame di un file HDF5 esistente. "
+                        "La struttura universo (livello, seed, parametri fisici) "
+                        "deve essere identica. --steps indica step AGGIUNTIVI.")
+
     # Watchdog — autotuning maturità spaziale
     p.add_argument("--watchdog", action="store_true",
                    help="Attiva MaturityWatchdog: auto-terminazione basata su σ(ρ) plateau. "
@@ -174,6 +181,57 @@ def parse_args():
                    help="W_auto = factor × T_dom / dt  (default 0.75 = 3/4 del periodo dominante)")
 
     return p.parse_args()
+
+
+# ============================================================================
+# RESUME HELPERS
+# ============================================================================
+
+def _collect_all_segments(soliton):
+    """Raccolta ricorsiva segmenti atomici (speculare a HDF5Logger._collect_all_segments)."""
+    if isinstance(soliton, SegmentoQuantistico):
+        return [soliton]
+    elif isinstance(soliton, SolitoneComposito):
+        segs = []
+        for child in soliton.children:
+            segs.extend(_collect_all_segments(child))
+        return segs
+    return []
+
+
+def load_resume_state(hdf5_path: Path) -> dict:
+    """Carica stato dell'ultimo frame da file HDF5 per il resume."""
+    with h5py.File(hdf5_path, 'r') as hf:
+        frame_names = sorted(hf['frames'].keys())
+        if not frame_names:
+            raise ValueError(f"Nessun frame trovato in {hdf5_path}")
+        last = hf['frames'][frame_names[-1]]
+        return {
+            'frame_name': frame_names[-1],
+            'step':       int(last.attrs['step']),
+            'time':       float(last.attrs['time']),
+            'chi_values': last['chi_values'][:],
+            'velocities': last['velocities'][:],
+            'tau_locale': last['tau_locale'][:],
+        }
+
+
+def inject_state_into_universe(universe, resume_state: dict) -> int:
+    """Inietta stato HDF5 nel grafo universo. Ritorna N_segments iniettati."""
+    segs = _collect_all_segments(universe)
+    chi = resume_state['chi_values']
+    vel = resume_state['velocities']
+    tau = resume_state['tau_locale']
+    if len(segs) != len(chi):
+        raise ValueError(
+            f"Mismatch struttura: {len(segs)} segmenti vs {len(chi)} valori stato. "
+            "Il file di resume deve usare la stessa configurazione universo (livello, seed, parametri)."
+        )
+    for i, seg in enumerate(segs):
+        seg.chi        = float(chi[i])
+        seg.vel        = float(vel[i])
+        seg.tau_locale = float(tau[i])
+    return len(segs)
 
 
 # ============================================================================
@@ -257,6 +315,43 @@ def run_simulation(args) -> int:
     root_physics = factory.get_physics_for_level(args.level)
 
     # ------------------------------------------------------------------
+    # FASE 1b: Resume da stato precedente (se --resume-from specificato)
+    # ------------------------------------------------------------------
+    step_offset = 0
+    time_offset = 0.0
+
+    if args.resume_from is not None:
+        resume_path = Path(args.resume_from)
+        if not resume_path.exists():
+            logger.error(f"File resume non trovato: {resume_path}")
+            return 1
+
+        logger.info(f"\nResume da: {resume_path}")
+        try:
+            resume_state = load_resume_state(resume_path)
+        except Exception as exc:
+            logger.error(f"Impossibile caricare stato resume: {exc}")
+            return 1
+
+        try:
+            n_injected = inject_state_into_universe(universe, resume_state)
+        except ValueError as exc:
+            logger.error(str(exc))
+            return 1
+
+        step_offset = resume_state['step']
+        time_offset = resume_state['time']
+        logger.info(
+            f"  Stato iniettato: {n_injected} segmenti  "
+            f"(ultimo frame: {resume_state['frame_name']}  "
+            f"step={step_offset}  t={time_offset:.4f} Planck)"
+        )
+        logger.info(
+            f"  Continua per {args.steps} step aggiuntivi  "
+            f"(step {step_offset + 1} -> {step_offset + args.steps})"
+        )
+
+    # ------------------------------------------------------------------
     # FASE 2: Setup observer legacy (HDF5Logger, StatisticsLogger)
     # ------------------------------------------------------------------
     logger.info("\nSetup observer...")
@@ -283,6 +378,9 @@ def run_simulation(args) -> int:
         "spatial_extent": args.spatial_extent,
         "seed":           args.seed,
         "paradigm":       "topological_v1",
+        "step_offset":    step_offset,
+        "time_offset":    time_offset,
+        "resumed_from":   str(args.resume_from) if args.resume_from else "",
     }
     hdf5_logger = HDF5Logger(
         config=hdf5_config,
@@ -381,8 +479,8 @@ def run_simulation(args) -> int:
                 T_eff = universe.fermi_screener.T_eff
 
             sim_state = SimulationState(
-                step=step_idx + 1,
-                time=(step_idx + 1) * args.dt,
+                step=step_offset + step_idx + 1,
+                time=time_offset + (step_idx + 1) * args.dt,
                 H_total=H_now,
                 drift=drift,      # Segnalato agli observer legacy (non più vincolo)
                 N_solitons=N_solitons,
