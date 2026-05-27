@@ -42,6 +42,7 @@ import logging
 import time
 import warnings
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import h5py
@@ -59,6 +60,7 @@ from wqt_oop.topological_integration import (
     integrate_topological_validation_to_hdf5,
 )
 from wqt_oop.variational_topological_force import TopologicalForceConfig
+from wqt_oop.maturity_watchdog import MaturityWatchdog
 
 
 # ============================================================================
@@ -152,6 +154,25 @@ def parse_args():
 
     p.add_argument("--verbose", "-v", action="store_true",
                    help="Logging verbose (DEBUG)")
+
+    # Watchdog — autotuning maturità spaziale
+    p.add_argument("--watchdog", action="store_true",
+                   help="Attiva MaturityWatchdog: auto-terminazione basata su σ(ρ) plateau. "
+                        "In questo modo --steps diventa un limite di sicurezza (max_steps).")
+    p.add_argument("--watchdog-window", type=int, default=50,
+                   help="W — step consecutivi sotto soglia per dichiarare maturità [Eq. WD-1]")
+    p.add_argument("--watchdog-epsilon", type=float, default=1e-4,
+                   help="ε — soglia su |d/dt σ(ρ)| [Planck⁻¹]. "
+                        "Normalizzata internamente per invarianza di scala: ε_norm = ε/√N_dof")
+    p.add_argument("--watchdog-H-rel-tol", type=float, default=0.10,
+                   help="Tolleranza relativa per stazionarietà H_emergent: std(H)/|mean(H)| < tol")
+    p.add_argument("--watchdog-no-autotune", action="store_true",
+                   help="Disabilita auto-tune di W dalla spettroscopia (usa --watchdog-window fisso)")
+    p.add_argument("--watchdog-spectral-steps", type=int, default=200,
+                   help="Step minimi di accumulo prima della FFT spettrale")
+    p.add_argument("--watchdog-tune-factor", type=float, default=0.75,
+                   help="W_auto = factor × T_dom / dt  (default 0.75 = 3/4 del periodo dominante)")
+
     return p.parse_args()
 
 
@@ -182,8 +203,20 @@ def run_simulation(args) -> int:
     logger.info(f"\nParametri:")
     logger.info(f"  Livello:       L{args.level}  "
                 f"(DOF = 2×24^{args.level} = {2 * 24**args.level})")
-    logger.info(f"  Steps:         {args.steps}  (dt={args.dt})")
+    logger.info(f"  Steps:         {args.steps}  (dt={args.dt})"
+                + ("  [MAX — watchdog attivo]" if args.watchdog else ""))
     logger.info(f"  Early stop:    {'dopo ' + str(args.max_transitions) + ' transizioni' if args.max_transitions else 'disabilitato'}")
+    if args.watchdog:
+        n_dof_preview = 2 * (24 ** args.level)
+        eps_norm_preview = args.watchdog_epsilon / (n_dof_preview ** 0.5)
+        autotune_str = (f"auto-tune ON (spectral_steps={args.watchdog_spectral_steps} "
+                        f"factor={args.watchdog_tune_factor})"
+                        if not args.watchdog_no_autotune else "auto-tune OFF")
+        logger.info(
+            f"  Watchdog:      ON  W_init={args.watchdog_window}  "
+            f"ε={args.watchdog_epsilon:.2e}  ε_norm={eps_norm_preview:.2e}  "
+            f"H_rel_tol={args.watchdog_H_rel_tol:.2f}  {autotune_str}"
+        )
     logger.info(f"  Output:        {output_path}")
     logger.info(f"  Seed:          {args.seed}")
 
@@ -298,6 +331,20 @@ def run_simulation(args) -> int:
         force_config=force_cfg,
     )
 
+    # Watchdog maturità spaziale (opt-in)
+    watchdog: Optional[MaturityWatchdog] = None
+    if args.watchdog:
+        watchdog = MaturityWatchdog(
+            window_size=args.watchdog_window,
+            convergence_threshold=args.watchdog_epsilon,
+            n_dof=2 * N_segments,
+            dt=args.dt,
+            H_rel_tol=args.watchdog_H_rel_tol,
+            auto_tune_window=not args.watchdog_no_autotune,
+            spectral_min_steps=args.watchdog_spectral_steps,
+            spectral_tune_factor=args.watchdog_tune_factor,
+        )
+
     # ------------------------------------------------------------------
     # FASE 4: Loop simulazione
     # ------------------------------------------------------------------
@@ -316,11 +363,13 @@ def run_simulation(args) -> int:
     transitions_count = 0
     phase_log = []         # Traccia evoluzione fasi per analisi finale
     rho_history = []       # Traccia ρ_mean per ogni step topologico
+    stop_reason = "max_steps"
 
     t_sim_start = time.time()
 
+    step_idx = 0
     try:
-        for step_idx in range(args.steps):
+        while step_idx < args.steps:
 
             # --- 1. Evoluzione + validazione topologica ---
             topo_state = wrapper.evolve_step(args.dt)
@@ -363,10 +412,37 @@ def run_simulation(args) -> int:
                         f"Early stop: {transitions_count} transizioni rilevate "
                         f"(target={args.max_transitions})."
                     )
+                    stop_reason = "max_transitions"
+                    step_idx += 1
                     break
+
+            # --- 5. Watchdog maturità spaziale [Eq. WD-1] ---
+            if watchdog is not None and topo_state is not None:
+                mature = watchdog.update(topo_state, step_idx)
+
+                # Log maturity status ogni log_interval step
+                if (step_idx + 1) % args.log_interval == 0:
+                    logger.info(f"  {watchdog.get_status_line()}")
+
+                if mature:
+                    logger.info(
+                        f"\n{'=' * 60}\n"
+                        f"  [WATCHDOG] MATURITÀ SPAZIALE RAGGIUNTA\n"
+                        f"  Step: {step_idx + 1}  |  "
+                        f"Costo maturità: {watchdog.get_maturity_cost()} iterazioni\n"
+                        f"  ε_norm={watchdog.epsilon_norm:.3e}  "
+                        f"W={watchdog.W}  N_dof={watchdog.n_dof}\n"
+                        f"{'=' * 60}"
+                    )
+                    stop_reason = "watchdog_maturity"
+                    step_idx += 1
+                    break
+
+            step_idx += 1
 
     except KeyboardInterrupt:
         logger.warning("Simulazione interrotta dall'utente (Ctrl+C).")
+        stop_reason = "keyboard_interrupt"
 
     except Exception as exc:
         logger.error(f"Errore al step {step_idx+1}: {exc}")
@@ -393,6 +469,7 @@ def run_simulation(args) -> int:
         try:
             with h5py.File(output_path, "a") as hf:
                 integrate_topological_validation_to_hdf5(hf, topo_data)
+
                 # Aggiungi storia forza variazionale se attiva
                 force_hist = wrapper.export_variational_force_history()
                 if force_hist:
@@ -410,6 +487,30 @@ def run_simulation(args) -> int:
                         f"  Gruppo /variational_force aggiunto "
                         f"({len(force_hist['force_rms'])} kick)"
                     )
+
+                # Aggiungi metadati watchdog e costo di maturità
+                if watchdog is not None:
+                    if "maturity" in hf:
+                        del hf["maturity"]
+                    mg = hf.create_group("maturity")
+                    meta_wd = watchdog.get_metadata_dict()
+                    for k, v in meta_wd.items():
+                        mg.attrs[k] = v
+                    mg.attrs["stop_reason"] = stop_reason
+                    # Costo maturità anche negli attrs radice per accesso rapido
+                    hf.attrs["maturity_cost_steps"] = watchdog.get_maturity_cost()
+                    hf.attrs["maturity_declared"] = int(watchdog.is_mature())
+                    hf.attrs["stop_reason"] = stop_reason
+                    logger.info(
+                        f"  Gruppo /maturity aggiunto  "
+                        f"(costo={watchdog.get_maturity_cost()} step  "
+                        f"maturity={'OK' if watchdog.is_mature() else 'NON raggiunta'})"
+                    )
+                else:
+                    # Nessun watchdog: registra comunque stop_reason
+                    hf.attrs["stop_reason"] = stop_reason
+                    hf.attrs["maturity_cost_steps"] = step_idx
+
             logger.info(
                 f"  Gruppo /topological_validation aggiunto "
                 f"({len(topo_data['step'])} entry)"
@@ -435,10 +536,21 @@ def run_simulation(args) -> int:
     actual_steps = wrapper.current_step
     logger.info(f"\nStatistiche simulazione:")
     logger.info(f"  Step eseguiti:       {actual_steps} / {args.steps}")
+    logger.info(f"  Motivo stop:         {stop_reason}")
     logger.info(f"  Tempo totale:        {t_sim:.2f}s")
     logger.info(f"  Throughput:          {actual_steps/t_sim:.1f} step/s")
     logger.info(f"  Tempo fisico:        {actual_steps * args.dt:.3f} [Planck]")
     logger.info(f"  Transizioni rilevate: {transitions_count}")
+
+    if watchdog is not None:
+        logger.info(f"\nMaturity Watchdog:")
+        logger.info(f"  Maturità dichiarata: {'SI' if watchdog.is_mature() else 'NO (max_steps raggiunto)'}")
+        logger.info(f"  Costo maturità:      {watchdog.get_maturity_cost()} step")
+        logger.info(f"  ε_norm:              {watchdog.epsilon_norm:.3e}")
+        logger.info(f"  |dσ/dt| finale:      {watchdog.get_sigma_derivative():.3e}")
+        logger.info(f"  Risparmio:           {args.steps - watchdog.get_maturity_cost()} step evitati "
+                    f"({100*(args.steps - watchdog.get_maturity_cost())/args.steps:.1f}%)"
+                    if watchdog.is_mature() else "  Risparmio:           nessuno (max_steps esaurito)")
 
     # Distribuzione fasi
     if phase_log:

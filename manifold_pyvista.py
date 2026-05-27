@@ -391,9 +391,19 @@ def animate_gif(frames_list, frame_idxs, topo, S, sv, output: str,
                                topo_info=info, iso_vals=iso_vals)
         images.append(img)
 
-    dur = int(1000 / fps)
-    imageio.mimsave(output, images, duration=dur, loop=0)
-    print(f"\nGIF animato salvato: {Path(output).resolve()}")
+    ext = Path(output).suffix.lower()
+    if ext in ('.mp4', '.avi', '.mov'):
+        writer = imageio.get_writer(output, fps=fps, quality=8,
+                                    macro_block_size=None,
+                                    ffmpeg_params=['-pix_fmt', 'yuv420p'])
+        for img in images:
+            writer.append_data(img)
+        writer.close()
+        print(f"\nVideo MP4 salvato: {Path(output).resolve()}")
+    else:
+        dur = int(1000 / fps)
+        imageio.mimsave(output, images, duration=dur, loop=0)
+        print(f"\nGIF animato salvato: {Path(output).resolve()}")
 
     # Pulizia PNG temporanei
     for ani_idx in range(len(frame_idxs)):
@@ -410,7 +420,7 @@ def parse_args():
     )
     p.add_argument('hdf5', help='File HDF5 VQT')
     p.add_argument('--output', '-o',  default=None,
-                   help='File output (.png statico o .gif animato)')
+                   help='File output (.png statico, .gif o .mp4 animato)')
     p.add_argument('--frame',         type=int,   default=None,
                    help='Indice frame (default: ultimo disponibile)')
     p.add_argument('--grid',          type=int,   default=80,
@@ -449,7 +459,7 @@ def main():
     print(f"  {len(frames)} frame HDF5, N={frames[0]['pos'].shape[0]} segmenti")
 
     if args.animate:
-        output = args.output or f'{stem}_pyvista.gif'
+        output = args.output or f'{stem}_pyvista.mp4'
         idxs   = list(range(0, len(frames), max(1, args.step)))
         print(f"Animazione: {len(idxs)} frame → {output}  (fps={args.fps})")
         animate_gif(frames, idxs, topo, S, sv, output,
