@@ -73,6 +73,8 @@ def sigma_vm(vel, K, rho):
 
 
 def torsion_vectors(pos, K):
+    if len(pos) == 1:
+        return np.zeros((1, 3))     # L0: N=1, nessun vettore tangente definito
     t = np.empty_like(pos)
     t[1:-1] = pos[2:]  - pos[:-2]
     t[0]    = pos[1]   - pos[0]
@@ -172,6 +174,7 @@ def draw_manifold(ax, fr: dict, alpha: float,
     """
     Disegna scatter ρ + quiver torsione su assi 3D matplotlib.
     alpha controlla la trasparenza globale (usato per cross-fade).
+    Gestione speciale per N=1 (L0: singolo solitone-seme).
     """
     pos   = fr['pos_n']
     rho   = fr['rho']
@@ -179,6 +182,19 @@ def draw_manifold(ax, fr: dict, alpha: float,
     hot   = fr['hot']
     K_abs = fr['K_abs']
     N     = len(pos)
+    lv    = fr['level']
+
+    if N == 1:
+        # L0: singolo solitone — sfera grande luminosa + alone
+        ax.scatter(pos[0, 0], pos[0, 1], pos[0, 2],
+                   c=[rho[0]], cmap=CMAP_RHO, vmin=vmin_r, vmax=vmax_r,
+                   s=600, alpha=alpha * 0.95, linewidths=2,
+                   edgecolors=LEVEL_COLORS[lv], zorder=5)
+        # Alone (alone glow)
+        ax.scatter(pos[0, 0], pos[0, 1], pos[0, 2],
+                   c=LEVEL_COLORS[lv], s=1800,
+                   alpha=alpha * 0.15, linewidths=0, zorder=4)
+        return
 
     # Scatter principale colorato per ρ
     sz = 6 + rho * 18
@@ -187,16 +203,18 @@ def draw_manifold(ax, fr: dict, alpha: float,
                s=sz, alpha=alpha * 0.75, linewidths=0, zorder=2)
 
     # Quiver torsione: campionamento proporzionale a |K|
-    K_prob = K_abs / (K_abs.sum() + 1e-10)
-    n_q    = min(quiver_n, N)
-    idx_q  = np.random.choice(N, n_q, replace=False, p=K_prob)
-    K_p99  = float(np.percentile(K_abs, 99)) + 1e-10
-    uvw    = tor[idx_q]
-    sc     = scale_q / (K_p99 + 1e-10)
-    ax.quiver(pos[idx_q, 0], pos[idx_q, 1], pos[idx_q, 2],
-              uvw[:, 0]*sc, uvw[:, 1]*sc, uvw[:, 2]*sc,
-              color=COLOR_TORS, linewidth=0.9, arrow_length_ratio=0.30,
-              alpha=alpha * 0.85, zorder=3)
+    K_sum = K_abs.sum()
+    if K_sum > 1e-12 and N > 1:
+        K_prob = K_abs / K_sum
+        n_q    = min(quiver_n, N)
+        idx_q  = np.random.choice(N, n_q, replace=False, p=K_prob)
+        K_p99  = float(np.percentile(K_abs, 99)) + 1e-10
+        uvw    = tor[idx_q]
+        sc     = scale_q / (K_p99 + 1e-10)
+        ax.quiver(pos[idx_q, 0], pos[idx_q, 1], pos[idx_q, 2],
+                  uvw[:, 0]*sc, uvw[:, 1]*sc, uvw[:, 2]*sc,
+                  color=COLOR_TORS, linewidth=0.9, arrow_length_ratio=0.30,
+                  alpha=alpha * 0.85, zorder=3)
 
     # Punti ad alta torsione in rosso
     if hot.any():
@@ -254,7 +272,7 @@ def build_sequence(data_l1, data_l2, data_l3,
     azim_base = 30.0
     azim_step = 2.5
 
-    # Distanza camera per livello (L1: vicino, L3: lontano)
+    # Distanza camera per livello (L1: vicino → L3: ampio)
     dist_l  = {1: 7.0, 2: 9.5, 3: 13.0}
     frame_l = {1: pick_frames(data_l1, seg_frames),
                2: pick_frames(data_l2, seg_frames),
@@ -263,8 +281,8 @@ def build_sequence(data_l1, data_l2, data_l3,
     total_anim_idx = [0]
 
     def add_segment(level, frames_list):
-        d    = dist_l[level]
-        for i, fr in enumerate(frames_list):
+        d = dist_l[level]
+        for fr in frames_list:
             azim = azim_base + total_anim_idx[0] * azim_step
             seq.append({'type': 'level',
                         'fr_a': fr, 'fr_b': None,
@@ -276,12 +294,11 @@ def build_sequence(data_l1, data_l2, data_l3,
     def add_transition(level_from, level_to, frames_a, frames_b):
         d_start = dist_l[level_from]
         d_end   = dist_l[level_to]
-        fr_a    = frames_a[-1]     # ultimo frame del livello uscente
-        fr_b    = frames_b[0]      # primo frame del livello entrante
+        fr_a    = frames_a[-1]
+        fr_b    = frames_b[0]
         for i in range(trans_frames):
-            t = i / (trans_frames - 1)
-            alpha_a = 1.0 - t                    # ease-in
-            alpha_a = alpha_a ** 1.5             # curva non lineare (ease-in)
+            t       = i / max(trans_frames - 1, 1)
+            alpha_a = (1.0 - t) ** 1.5
             alpha_b = t ** 1.5
             dist_i  = d_start + (d_end - d_start) * t
             azim    = azim_base + total_anim_idx[0] * azim_step
@@ -292,15 +309,11 @@ def build_sequence(data_l1, data_l2, data_l3,
                         'level_a': level_from, 'level_b': level_to})
             total_anim_idx[0] += 1
 
-    # Segmento L1
+    # Sequenza L1 → L2 → L3
     add_segment(1, frame_l[1])
-    # Transizione L1→L2
     add_transition(1, 2, frame_l[1], frame_l[2])
-    # Segmento L2
     add_segment(2, frame_l[2])
-    # Transizione L2→L3
     add_transition(2, 3, frame_l[2], frame_l[3])
-    # Segmento L3
     add_segment(3, frame_l[3])
 
     return seq
@@ -356,12 +369,11 @@ def make_master_video(l1_path, l2_path, l3_path,
     # Costruisce timeline globale (normalizzata su t_Planck)
     t_l1 = series_l1['t'];    rho_l1 = series_l1['rho']
     t_l2 = series_l2['t'];    rho_l2 = series_l2['rho']
-    t_l3_arr = series_l3['t'] if len(series_l3['t']) > 1 else np.array([0.0, 0.06])
-    rho_l3_arr= series_l3['rho'] if len(series_l3['rho']) > 1 else np.array([data_l3[0]['rho_mean']]*2)
+    t_l3 = series_l3['t'];    rho_l3 = series_l3['rho']
 
     ax_r.plot(t_l1, rho_l1, color=LEVEL_COLORS[1], lw=1.3, label='L1')
     ax_r.plot(t_l2, rho_l2, color=LEVEL_COLORS[2], lw=1.3, label='L2')
-    ax_r.plot(t_l3_arr, rho_l3_arr, color=LEVEL_COLORS[3], lw=1.3, label='L3')
+    ax_r.plot(t_l3, rho_l3, color=LEVEL_COLORS[3], lw=1.3, label='L3')
     ax_r.set_ylabel('ρ̄', fontsize=7)
     ax_r.set_xlabel('t [Planck]', fontsize=7)
     ax_r.tick_params(labelsize=6)
