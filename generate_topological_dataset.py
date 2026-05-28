@@ -235,6 +235,73 @@ def inject_state_into_universe(universe, resume_state: dict) -> int:
 
 
 # ============================================================================
+# INCREMENTAL TOPOLOGICAL HDF5 WRITER
+# Scrive topological_validation per step nell'HDF5 aperto da HDF5Logger.
+# Robusto a kill SIGTERM: i dati sono su disco dopo ogni flush.
+# ============================================================================
+
+_TOPO_SCHEMA = {
+    'step':                    np.int64,
+    'time':                    np.float64,
+    'mean_constraint_density': np.float64,
+    'constraint_density_std':  np.float64,
+    'closure_error_deg':       np.float64,
+    'closure_satisfied':       np.bool_,
+    'detorsion_quality':       np.float64,
+    'detorsion_satisfied':     np.bool_,
+    'H_total_emergent':        np.float64,
+    'H_torsion_emergent':      np.float64,
+    'topology_charge':         np.float64,
+    'N_segments':              np.int64,
+    'N_dof':                   np.int64,
+    'transition_detected':     np.bool_,
+}
+_CHUNK = 64
+
+
+def _init_topo_group(h5file: h5py.File) -> "h5py.Group":
+    """Crea il gruppo topological_validation con dataset estendibili."""
+    if 'topological_validation' in h5file:
+        del h5file['topological_validation']
+    grp = h5file.create_group('topological_validation')
+    for name, dtype in _TOPO_SCHEMA.items():
+        grp.create_dataset(name, shape=(0,), maxshape=(None,),
+                           dtype=dtype, chunks=(_CHUNK,), compression='gzip')
+    grp.create_dataset('phase_label', shape=(0,), maxshape=(None,),
+                       dtype='S16', chunks=(_CHUNK,), compression='gzip')
+    grp.attrs['incremental'] = True
+    return grp
+
+
+def _append_topo_entry(grp: "h5py.Group", topo_state) -> None:
+    """Aggiunge un TopologicalState ai dataset estendibili."""
+    N = grp['step'].shape[0]
+    values = {
+        'step':                    topo_state.step,
+        'time':                    topo_state.time,
+        'mean_constraint_density': topo_state.mean_constraint_density,
+        'constraint_density_std':  topo_state.constraint_density_std,
+        'closure_error_deg':       topo_state.closure_error_deg,
+        'closure_satisfied':       topo_state.closure_satisfied,
+        'detorsion_quality':       topo_state.detorsion_pattern_quality,
+        'detorsion_satisfied':     topo_state.detorsion_satisfied,
+        'H_total_emergent':        topo_state.H_total_emergent,
+        'H_torsion_emergent':      topo_state.H_torsion_emergent,
+        'topology_charge':         topo_state.topology_charge,
+        'N_segments':              topo_state.N_segments,
+        'N_dof':                   topo_state.N_dof,
+        'transition_detected':     topo_state.transition_detected,
+    }
+    for name, val in values.items():
+        ds = grp[name]
+        ds.resize(N + 1, axis=0)
+        ds[N] = val
+    pl = grp['phase_label']
+    pl.resize(N + 1, axis=0)
+    pl[N] = topo_state.phase_label.encode('ascii')[:16]
+
+
+# ============================================================================
 # SIMULATION LOOP
 # ============================================================================
 
@@ -452,6 +519,11 @@ def run_simulation(args) -> int:
 
     observable.notify_start()
 
+    # Crea il gruppo topological_validation con dataset estendibili nel file HDF5.
+    # I dati vengono scritti per ogni step → robusto a kill SIGTERM.
+    topo_grp = _init_topo_group(hdf5_logger.h5file)
+    _topo_flush_counter = 0
+
     H_initial = float(universe.energia_totale)
     T_eff     = (universe.fermi_screener.T_eff
                  if isinstance(universe, SolitoneComposito) else 0.0)
@@ -489,10 +561,14 @@ def run_simulation(args) -> int:
             )
             observable.notify(sim_state)
 
-            # --- 3. Traccia fase topologica ---
+            # --- 3. Traccia fase topologica + scrittura incrementale HDF5 ---
             if topo_state is not None and step_idx % args.topo_log_interval == 0:
                 phase_log.append(topo_state.phase_label)
                 rho_history.append(topo_state.mean_constraint_density)
+                _append_topo_entry(topo_grp, topo_state)
+                _topo_flush_counter += 1
+                if _topo_flush_counter % 10 == 0:
+                    hdf5_logger.h5file.flush()
 
             # --- 4. Early stopping su transizioni di fase ---
             if (args.max_transitions > 0
@@ -557,66 +633,72 @@ def run_simulation(args) -> int:
     wrapper.finalize()
 
     # ------------------------------------------------------------------
-    # FASE 5: Aggiunta gruppo topologico al file HDF5
+    # FASE 5: Finalizzazione HDF5 — variational_force, watchdog, topo fallback
+    # topological_validation è già scritto incrementalmente nel loop.
+    # Qui scriviamo i gruppi secondari (non inclusi nella scrittura incrementale).
     # ------------------------------------------------------------------
-    logger.info("\nAggiunta dati topologici al file HDF5...")
+    logger.info("\nFinalizzazione HDF5...")
 
     topo_data = wrapper.export_topological_history()
 
-    if topo_data:
-        try:
-            with h5py.File(output_path, "a") as hf:
-                integrate_topological_validation_to_hdf5(hf, topo_data)
+    try:
+        with h5py.File(output_path, "a") as hf:
 
-                # Aggiungi storia forza variazionale se attiva
-                force_hist = wrapper.export_variational_force_history()
-                if force_hist:
-                    if "variational_force" in hf:
-                        del hf["variational_force"]
-                    vgrp = hf.create_group("variational_force")
-                    for k, v in force_hist.items():
-                        vgrp.create_dataset(k, data=v, compression="gzip")
-                    vgrp.attrs["description"] = (
-                        "Variational topological force history [Eq. S-1, INT-1]. "
-                        "force_rms: |F_top|_RMS per kick. "
-                        "potential_S: S[chi,tau] = lambda*sum(rho-rho0)^2 + gamma*sum(Omega)."
-                    )
+            # topological_validation: scrivi solo se la scrittura incrementale
+            # non è avvenuta (fallback per compatibilità con vecchie esecuzioni)
+            if _topo_flush_counter == 0:
+                if topo_data:
+                    integrate_topological_validation_to_hdf5(hf, topo_data)
                     logger.info(
-                        f"  Gruppo /variational_force aggiunto "
-                        f"({len(force_hist['force_rms'])} kick)"
-                    )
-
-                # Aggiungi metadati watchdog e costo di maturità
-                if watchdog is not None:
-                    if "maturity" in hf:
-                        del hf["maturity"]
-                    mg = hf.create_group("maturity")
-                    meta_wd = watchdog.get_metadata_dict()
-                    for k, v in meta_wd.items():
-                        mg.attrs[k] = v
-                    mg.attrs["stop_reason"] = stop_reason
-                    # Costo maturità anche negli attrs radice per accesso rapido
-                    hf.attrs["maturity_cost_steps"] = watchdog.get_maturity_cost()
-                    hf.attrs["maturity_declared"] = int(watchdog.is_mature())
-                    hf.attrs["stop_reason"] = stop_reason
-                    logger.info(
-                        f"  Gruppo /maturity aggiunto  "
-                        f"(costo={watchdog.get_maturity_cost()} step  "
-                        f"maturity={'OK' if watchdog.is_mature() else 'NON raggiunta'})"
+                        f"  /topological_validation scritto in bulk "
+                        f"({len(topo_data['step'])} entry) [fallback]"
                     )
                 else:
-                    # Nessun watchdog: registra comunque stop_reason
-                    hf.attrs["stop_reason"] = stop_reason
-                    hf.attrs["maturity_cost_steps"] = step_idx
+                    logger.warning("Nessun dato topologico da esportare.")
+            else:
+                # Flush finale del gruppo già aperto e chiuso con hdf5_logger
+                logger.info(
+                    f"  /topological_validation già scritto incrementalmente "
+                    f"({_topo_flush_counter} entry)"
+                )
 
-            logger.info(
-                f"  Gruppo /topological_validation aggiunto "
-                f"({len(topo_data['step'])} entry)"
-            )
-        except Exception as exc:
-            logger.error(f"Impossibile aggiungere dati topologici: {exc}")
-    else:
-        logger.warning("Nessun dato topologico da esportare.")
+            # Aggiungi storia forza variazionale se attiva
+            force_hist = wrapper.export_variational_force_history()
+            if force_hist:
+                if "variational_force" in hf:
+                    del hf["variational_force"]
+                vgrp = hf.create_group("variational_force")
+                for k, v in force_hist.items():
+                    vgrp.create_dataset(k, data=v, compression="gzip")
+                vgrp.attrs["description"] = (
+                    "Variational topological force history [Eq. S-1, INT-1]. "
+                    "force_rms: |F_top|_RMS per kick. "
+                    "potential_S: S[chi,tau] = lambda*sum(rho-rho0)^2 + gamma*sum(Omega)."
+                )
+                logger.info(f"  /variational_force aggiunto ({len(force_hist['force_rms'])} kick)")
+
+            # Aggiungi metadati watchdog
+            if watchdog is not None:
+                if "maturity" in hf:
+                    del hf["maturity"]
+                mg = hf.create_group("maturity")
+                for k, v in watchdog.get_metadata_dict().items():
+                    mg.attrs[k] = v
+                mg.attrs["stop_reason"] = stop_reason
+                hf.attrs["maturity_cost_steps"] = watchdog.get_maturity_cost()
+                hf.attrs["maturity_declared"] = int(watchdog.is_mature())
+                hf.attrs["stop_reason"] = stop_reason
+                logger.info(
+                    f"  /maturity aggiunto  "
+                    f"(costo={watchdog.get_maturity_cost()} step  "
+                    f"maturity={'OK' if watchdog.is_mature() else 'NON raggiunta'})"
+                )
+            else:
+                hf.attrs["stop_reason"] = stop_reason
+                hf.attrs["maturity_cost_steps"] = step_idx
+
+    except Exception as exc:
+        logger.error(f"Errore finalizzazione HDF5: {exc}")
 
     # ------------------------------------------------------------------
     # FASE 6: Summary finale
