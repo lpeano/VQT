@@ -20,11 +20,19 @@ FISICA:
 
 import numpy as np
 from typing import List, Dict, Optional, Tuple
+from scipy.sparse import issparse
 from .abstract_soliton import AbstractSoliton
 from .segmento_quantistico import SegmentoQuantistico
 from .physics_context import PhysicsContext
 from .fermi_dirac_screening import FermiDiracScreening, screening_density_based
 from .spatial_cache import SpatialCache
+from .sparse_coupling import (
+    build_sparse_decay_coupling,
+    build_dense_decay_coupling,
+    weighted_sum_sq,
+    weighted_outer_sum,
+    matvec,
+)
 
 
 class SolitoneComposito(AbstractSoliton):
@@ -109,8 +117,16 @@ class SolitoneComposito(AbstractSoliton):
         self.hierarchical_heat_fraction: float = 0.9  # Frazione energia dissipata → riscaldamento figli (AUMENTATA per L3)
         
         # Matrice accoppiamento CON DECADIMENTO SPAZIALE
+        # Usa CSR sparse per N > 48; densa per N <= 48 (overhead sparse > beneficio)
         if coupling_matrix is None:
-            self.coupling_matrix = self._build_spatial_decay_coupling(self.N_children, self.L_eff)
+            if self.N_children > 48:
+                self.coupling_matrix = build_sparse_decay_coupling(
+                    self.N_children, self.L_eff
+                )
+            else:
+                self.coupling_matrix = build_dense_decay_coupling(
+                    self.N_children, self.L_eff
+                )
         else:
             assert coupling_matrix.shape == (self.N_children, self.N_children)
             self.coupling_matrix = coupling_matrix
@@ -283,7 +299,64 @@ class SolitoneComposito(AbstractSoliton):
             'contorsione': np.concatenate(K_list),
             'chiusura_spinore': np.concatenate(closure_list)
         }
-    
+
+    def get_child_aggregates(self) -> Dict[str, np.ndarray]:
+        """
+        Ritorna un valore SCALARE per FIGLIO diretto (non per foglia).
+
+        A differenza di get_auxiliary_state() — che attraversa tutti i
+        segmenti foglia e alloca array O(N_foglie) — questo metodo
+        interroga solo i self.N_children figli diretti, restituendo
+        array di lunghezza N_children in O(N_children).
+
+        Usato da compute_hamiltonian_coupling() al posto di
+        get_auxiliary_state() per evitare:
+        - Allocazione esplosiva a L4 (331 776 foglie per traversal)
+        - Bug latente: l'indice [i] accedeva la foglia i, non il figlio i
+
+        Returns
+        -------
+        dict con chiavi 'chi', 'vel', 'k2_mean', 'tau_mean' —
+        arrays di shape (N_children,)
+        """
+        chi_arr  = np.empty(self.N_children)
+        vel_arr  = np.empty(self.N_children)
+        k2_arr   = np.empty(self.N_children)
+        tau_arr  = np.empty(self.N_children)
+
+        for i, child in enumerate(self.children):
+            chi_arr[i] = self._get_child_chi(child)
+            vel_arr[i] = self._get_child_velocity(child)
+            # k2_mean: per SegmentoQuantistico usa contorsione diretta;
+            #          per SolitoneComposito usa la media dei figli cacheata
+            if isinstance(child, SegmentoQuantistico):
+                aux = child.get_auxiliary_state()
+                k2_arr[i]  = float(aux['contorsione'])
+                tau_arr[i] = float(aux['tau_locale'])
+            else:
+                # Usa cached mean-field se disponibile
+                cached = child.get_cached_mean_state()
+                if cached is not None:
+                    k2_arr[i]  = cached.get('k2_mean', 0.0)
+                    tau_arr[i] = cached.get('tau_mean', child.physics.level * 0.05)
+                else:
+                    # Fallback: media sui figli diretti del composito (1 livello)
+                    sub_k2  = []
+                    sub_tau = []
+                    for sub in child.children:
+                        a = sub.get_auxiliary_state()
+                        sub_k2.append(float(a['contorsione'])
+                                      if np.isscalar(a['contorsione'])
+                                      else float(np.mean(a['contorsione'])))
+                        sub_tau.append(float(a['tau_locale'])
+                                       if np.isscalar(a['tau_locale'])
+                                       else float(np.mean(a['tau_locale'])))
+                    k2_arr[i]  = float(np.mean(sub_k2))
+                    tau_arr[i] = float(np.mean(sub_tau))
+
+        return {'chi': chi_arr, 'vel': vel_arr,
+                'k2_mean': k2_arr, 'tau_mean': tau_arr}
+
     def compute_hamiltonian_internal(self) -> float:
         """
         Somma energie interne dei figli.
@@ -330,63 +403,66 @@ class SolitoneComposito(AbstractSoliton):
         E_exchange = -self.physics.lambda_exchange * self.physics.alpha_K * np.sum(self.coupling_matrix * tanh_matrix)
         
         if not self.screening_enabled:
-            # Accoppiamento semplice (matrice Leech fissa)
-            E_coupling = 0.5 * np.sum(self.coupling_matrix * chi_diff**2)
+            # Accoppiamento semplice (matrice Leech fissa) — già vettorizzato
+            E_coupling = 0.5 * weighted_sum_sq(self.coupling_matrix, chi_diff)
             return self.physics.kappa_coupling * E_coupling + E_torsion + E_exchange
-        
-        # --- SCREENING ADATTIVO LOCALE ---
-        # Densità locale: ρᵢ = Σⱼ W_ij·|χⱼ| (somma pesata dei vicini)
-        rho_local = np.abs(self.coupling_matrix) @ np.abs(chi_values)
-        
-        aux = self.get_auxiliary_state()
-        velocities = np.array([self._get_child_velocity(child) for child in self.children])
-        K_squared = aux['contorsione']
-        tau_locale = aux['tau_locale']
-        
-        E_coupling = 0.0
-        E_exchange_screened = 0.0  # Scambio topologico con screening
-        
-        for i in range(self.N_children):
-            for j in range(i + 1, self.N_children):
-                # Differenze
-                delta_chi = abs(chi_values[i] - chi_values[j])
-                delta_v = abs(velocities[i] - velocities[j])
-                delta_K2 = abs(K_squared[i] - K_squared[j])
-                delta_tau = abs(tau_locale[i] - tau_locale[j])
-                
-                # Attenuazione esponenziale multi-scala
-                A_chi = np.exp(-delta_chi / self.physics.sigma_chi)
-                A_v = np.exp(-delta_v / self.physics.sigma_velocity)
-                A_K = np.exp(-delta_K2 / self.physics.sigma_torsion)
-                A_tau = np.exp(-delta_tau / self.physics.sigma_tau)
-                
-                attenuation = A_chi * A_v * A_K * A_tau
-                
-                # SCREENING ADATTIVO FERMI-DIRAC: nei cluster (alta densità) screening è debole
-                # A_density = 1 - f(ρ): ρ alta → f→0 → A→1 (NO screening, accoppiamento pieno)
-                #                       ρ bassa → f→1 → A→0 (screening massimo)
-                # Usa distribuzione continua invece di exp(-ρ/threshold)
-                A_density_i = self.fermi_screener.screening_factor(np.array([rho_local[i]]))[0]
-                A_density_j = self.fermi_screener.screening_factor(np.array([rho_local[j]]))[0]
-                A_density = (A_density_i + A_density_j) / 2.0  # Media simmetrica
-                
-                # Attenuazione totale (fisica + densità)
-                attenuation_total = attenuation * A_density
-                
-                # Accoppiamento effettivo
-                w_eff = self.coupling_matrix[i, j] * attenuation_total
-                
-                E_coupling += w_eff * (chi_values[i] - chi_values[j])**2
-                
-                # Scambio topologico (con screening, smooth version)
-                # tanh(χᵢ/χ₀)·tanh(χⱼ/χ₀) = +1 same-phase, -1 cross-phase (smooth)
-                # Scalato con alpha_K per bilanciare E_torsion
-                # CRITICAL FIX (2026-05-26): Use chi_stable from PhysicsContext
-                chi_0 = self.physics.chi_stable
-                tanh_product = np.tanh(chi_values[i] / chi_0) * np.tanh(chi_values[j] / chi_0)
-                E_exchange_screened += -w_eff * tanh_product  # Conta 2 volte (i,j) e (j,i)
-        
-        return self.physics.kappa_coupling * E_coupling + E_torsion + self.physics.lambda_exchange * self.physics.alpha_K * E_exchange_screened
+
+        # --- SCREENING ADATTIVO LOCALE (vettorizzato) ---
+        # Usa get_child_aggregates() invece di get_auxiliary_state():
+        # - evita traversal ricorsivo O(N_foglie) usato solo per N_children indici
+        # - corregge bug latente: i vecchi K_squared[i] erano valori foglia, non figlio
+        agg = self.get_child_aggregates()
+        chi_values_v = agg['chi']        # shape (N_children,)
+        velocities   = agg['vel']        # shape (N_children,)
+        K_squared    = agg['k2_mean']    # shape (N_children,)
+        tau_locale   = agg['tau_mean']   # shape (N_children,)
+
+        # Densità locale: ρᵢ = Σⱼ |W_ij| · |χⱼ|
+        rho_local = matvec(np.abs(self.coupling_matrix)
+                           if not issparse(self.coupling_matrix)
+                           else self.coupling_matrix.copy(),
+                           np.abs(chi_values_v))
+
+        # Fattori Fermi-Dirac (vettorizzato, un solo call)
+        A_density = self.fermi_screener.screening_factor(rho_local)  # (N,)
+
+        # Matrici di attenuazione multi-scala (broadcasting N×N)
+        dchi = chi_values_v[:, None] - chi_values_v[None, :]
+        dvel = velocities[:, None]   - velocities[None, :]
+        dk2  = K_squared[:, None]    - K_squared[None, :]
+        dtau = tau_locale[:, None]   - tau_locale[None, :]
+
+        A_chi  = np.exp(-np.abs(dchi) / self.physics.sigma_chi)
+        A_vel  = np.exp(-np.abs(dvel) / self.physics.sigma_velocity)
+        A_K    = np.exp(-np.abs(dk2)  / self.physics.sigma_torsion)
+        A_tau  = np.exp(-np.abs(dtau) / self.physics.sigma_tau)
+
+        # A_density simmetrica: (A_i + A_j) / 2
+        A_dens_mat = (A_density[:, None] + A_density[None, :]) / 2.0
+
+        attenuation = A_chi * A_vel * A_K * A_tau * A_dens_mat  # (N, N)
+
+        # Matrice W densa (per operazioni element-wise; N=24 → trascurabile)
+        W_dense = (self.coupling_matrix.toarray()
+                   if issparse(self.coupling_matrix)
+                   else self.coupling_matrix)
+
+        W_eff = W_dense * attenuation
+
+        E_coupling = 0.5 * float(np.sum(W_eff * dchi ** 2))
+
+        chi_0 = self.physics.chi_stable
+        tanh_v = np.tanh(chi_values_v / chi_0)
+        tanh_mat = tanh_v[:, None] * tanh_v[None, :]
+        E_exchange_screened = -float(np.sum(W_eff * tanh_mat))
+
+        # Libera temporanei esplicitamente (benefico a L4 con >14k chiamate/step)
+        del dchi, dvel, dk2, dtau, A_chi, A_vel, A_K, A_tau, A_dens_mat
+        del attenuation, W_eff, tanh_mat
+
+        return (self.physics.kappa_coupling * E_coupling
+                + E_torsion
+                + self.physics.lambda_exchange * self.physics.alpha_K * E_exchange_screened)
     
     @staticmethod
     def _get_child_chi(child: AbstractSoliton) -> float:
