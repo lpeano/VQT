@@ -272,6 +272,15 @@ class HDF5Logger(Observer):
             polarizzazione = stats['polarizzazione']
             T_eff = stats['T_eff']
         
+        # Peano-VQT energy triad (scalari, se disponibile)
+        E_chi, E_RX, E_Psi = 0.0, 0.0, 0.0
+        if isinstance(self.universe, SolitoneComposito):
+            triad = self.universe.get_energy_triad()
+            if triad is not None:
+                E_chi = triad.E_chi
+                E_RX  = triad.E_RX
+                E_Psi = triad.E_Psi
+
         return {
             'step': state.step,
             'time': state.time,
@@ -284,7 +293,10 @@ class HDF5Logger(Observer):
             'polarizzazione': polarizzazione,
             'H_total': state.H_total,
             'T_eff': T_eff,
-            'drift': state.drift
+            'drift': state.drift,
+            'E_chi': E_chi,
+            'E_RX': E_RX,
+            'E_Psi': E_Psi,
         }
     
     def _collect_all_segments(self, soliton: AbstractSoliton) -> List[SegmentoQuantistico]:
@@ -434,7 +446,7 @@ def load_from_hdf5(filepath: Path, frame_idx: int = 0) -> Dict:
         
         frame = f['frames'][frame_name]
         
-        # Carica dati
+        # Carica dati (E_chi/E_RX/E_Psi con default 0 per backward-compat)
         data = {
             'step': frame.attrs['step'],
             'time': frame.attrs['time'],
@@ -447,7 +459,10 @@ def load_from_hdf5(filepath: Path, frame_idx: int = 0) -> Dict:
             'polarizzazione': frame.attrs['polarizzazione'],
             'H_total': frame.attrs['H_total'],
             'T_eff': frame.attrs['T_eff'],
-            'drift': frame.attrs['drift']
+            'drift': frame.attrs['drift'],
+            'E_chi': frame.attrs.get('E_chi', 0.0),
+            'E_RX':  frame.attrs.get('E_RX',  0.0),
+            'E_Psi': frame.attrs.get('E_Psi', 0.0),
         }
         
         return data

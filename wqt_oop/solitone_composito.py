@@ -33,6 +33,7 @@ from .sparse_coupling import (
     weighted_outer_sum,
     matvec,
 )
+from .energy_metrics import PeanoVQTAnalyzer, EnergyTriad
 
 
 class SolitoneComposito(AbstractSoliton):
@@ -116,6 +117,14 @@ class SolitoneComposito(AbstractSoliton):
         self.E_transferred_to_children: float = 0.0  # Energia trasferita ai figli (heat sink)
         self.hierarchical_heat_fraction: float = 0.9  # Frazione energia dissipata → riscaldamento figli (AUMENTATA per L3)
         
+        # PEANO-VQT ENERGY TRIAD
+        self._peano_analyzer = PeanoVQTAnalyzer(
+            chi_saturation_threshold=0.8,
+            drain_rate=0.1,
+        )
+        self._last_triad: Optional[EnergyTriad] = None
+        self._triad_step: int = -1  # guard: drain applicato solo una volta per step
+
         # Matrice accoppiamento CON DECADIMENTO SPAZIALE
         # Usa CSR sparse per N > 48; densa per N <= 48 (overhead sparse > beneficio)
         if coupling_matrix is None:
@@ -368,101 +377,113 @@ class SolitoneComposito(AbstractSoliton):
     def compute_hamiltonian_coupling(self) -> float:
         """
         Energia accoppiamento tra figli + torsione geometrica.
-        
+
         H_coupling = (1/2) Σᵢⱼ W_ij · A(Δχ,Δv,ΔK²,Δτ) · (χᵢ-χⱼ)²
-        H_torsion = (1/2) α_K Σᵢⱼ W_ij · (χᵢ-χⱼ)²  (K² geometrica)
-        
-        Nota: K² è ora una proprietà della CONNESSIONE (gradiente spaziale),
-        non del nodo singolo. Emerge solo quando ci sono almeno 2 segmenti.
-        
-        Dove A() è l'attenuazione multi-scala (se screening_enabled).
+                   + E_torsion + E_exchange
+
+        Come effetto collaterale aggiorna self._last_triad (EnergyTriad Peano-VQT)
+        con il drain χ→Ψ applicato al massimo una volta per step di simulazione
+        (guard self._triad_step vs self._current_simulation_step).
+
+        Il valore restituito è il float invariato dell'Hamiltoniana classica;
+        la triade è accessibile tramite get_energy_triad() o get_energy_budget().
         """
         if self.N_children == 1:
             return 0.0  # Singolo figlio: no coupling, no torsion
-        
+
         # Estrai campi χ dai figli (media se compositi)
         chi_values = np.array([self._get_child_chi(child) for child in self.children])
-        
+
         # Matrice differenze
         chi_diff = chi_values[:, None] - chi_values[None, :]
-        
+
         # --- TERMINE DI TORSIONE GEOMETRICA ---
-        # K²_ij = (∇χ)² ≈ (χᵢ - χⱼ)² (differenze finite)
-        # E_torsion = (1/2) α_K Σᵢⱼ W_ij · K²_ij
         E_torsion = 0.5 * self.physics.alpha_K * np.sum(self.coupling_matrix * chi_diff**2)
-        
-        # --- INTERAZIONE DI SCAMBIO TOPOLOGICO (SMOOTH VERSION) ---
-        # V_exchange = -λ·α_K Σᵢⱼ W_ij · tanh(χᵢ/χ₀) · tanh(χⱼ/χ₀)
-        # Same-phase (++ o --): tanh(χᵢ)·tanh(χⱼ) > 0 → V < 0 (attrazione)
-        # Cross-phase (+-): tanh(χᵢ)·tanh(χⱼ) < 0 → V > 0 (repulsione)
-        # NOTA: Scalato con alpha_K per competere con E_torsion
-        # Usiamo tanh invece di sgn per avere derivate continue
+
+        # --- INTERAZIONE DI SCAMBIO TOPOLOGICO (SMOOTH) ---
         # CRITICAL FIX (2026-05-26): Use chi_stable from PhysicsContext
-        chi_0 = self.physics.chi_stable  # Scala caratteristica del campo (valore vacuo)
-        tanh_matrix = np.tanh(chi_values[:, None] / chi_0) * np.tanh(chi_values[None, :] / chi_0)
-        E_exchange = -self.physics.lambda_exchange * self.physics.alpha_K * np.sum(self.coupling_matrix * tanh_matrix)
-        
-        if not self.screening_enabled:
-            # Accoppiamento semplice (matrice Leech fissa) — già vettorizzato
-            E_coupling = 0.5 * weighted_sum_sq(self.coupling_matrix, chi_diff)
-            return self.physics.kappa_coupling * E_coupling + E_torsion + E_exchange
-
-        # --- SCREENING ADATTIVO LOCALE (vettorizzato) ---
-        # Usa get_child_aggregates() invece di get_auxiliary_state():
-        # - evita traversal ricorsivo O(N_foglie) usato solo per N_children indici
-        # - corregge bug latente: i vecchi K_squared[i] erano valori foglia, non figlio
-        agg = self.get_child_aggregates()
-        chi_values_v = agg['chi']        # shape (N_children,)
-        velocities   = agg['vel']        # shape (N_children,)
-        K_squared    = agg['k2_mean']    # shape (N_children,)
-        tau_locale   = agg['tau_mean']   # shape (N_children,)
-
-        # Densità locale: ρᵢ = Σⱼ |W_ij| · |χⱼ|
-        rho_local = matvec(np.abs(self.coupling_matrix)
-                           if not issparse(self.coupling_matrix)
-                           else self.coupling_matrix.copy(),
-                           np.abs(chi_values_v))
-
-        # Fattori Fermi-Dirac (vettorizzato, un solo call)
-        A_density = self.fermi_screener.screening_factor(rho_local)  # (N,)
-
-        # Matrici di attenuazione multi-scala (broadcasting N×N)
-        dchi = chi_values_v[:, None] - chi_values_v[None, :]
-        dvel = velocities[:, None]   - velocities[None, :]
-        dk2  = K_squared[:, None]    - K_squared[None, :]
-        dtau = tau_locale[:, None]   - tau_locale[None, :]
-
-        A_chi  = np.exp(-np.abs(dchi) / self.physics.sigma_chi)
-        A_vel  = np.exp(-np.abs(dvel) / self.physics.sigma_velocity)
-        A_K    = np.exp(-np.abs(dk2)  / self.physics.sigma_torsion)
-        A_tau  = np.exp(-np.abs(dtau) / self.physics.sigma_tau)
-
-        # A_density simmetrica: (A_i + A_j) / 2
-        A_dens_mat = (A_density[:, None] + A_density[None, :]) / 2.0
-
-        attenuation = A_chi * A_vel * A_K * A_tau * A_dens_mat  # (N, N)
-
-        # Matrice W densa (per operazioni element-wise; N=24 → trascurabile)
-        W_dense = (self.coupling_matrix.toarray()
-                   if issparse(self.coupling_matrix)
-                   else self.coupling_matrix)
-
-        W_eff = W_dense * attenuation
-
-        E_coupling = 0.5 * float(np.sum(W_eff * dchi ** 2))
-
         chi_0 = self.physics.chi_stable
-        tanh_v = np.tanh(chi_values_v / chi_0)
-        tanh_mat = tanh_v[:, None] * tanh_v[None, :]
-        E_exchange_screened = -float(np.sum(W_eff * tanh_mat))
+        tanh_matrix = np.tanh(chi_values[:, None] / chi_0) * np.tanh(chi_values[None, :] / chi_0)
+        E_exchange_unscreened = -self.physics.lambda_exchange * self.physics.alpha_K * np.sum(
+            self.coupling_matrix * tanh_matrix
+        )
 
-        # Libera temporanei esplicitamente (benefico a L4 con >14k chiamate/step)
-        del dchi, dvel, dk2, dtau, A_chi, A_vel, A_K, A_tau, A_dens_mat
-        del attenuation, W_eff, tanh_mat
+        if not self.screening_enabled:
+            E_coupling = 0.5 * weighted_sum_sq(self.coupling_matrix, chi_diff)
+            E_chi_raw = self.physics.kappa_coupling * E_coupling
+            E_exchange_val = E_exchange_unscreened
+        else:
+            # --- SCREENING ADATTIVO LOCALE (vettorizzato) ---
+            agg = self.get_child_aggregates()
+            chi_values_v = agg['chi']
+            velocities   = agg['vel']
+            K_squared    = agg['k2_mean']
+            tau_locale   = agg['tau_mean']
 
-        return (self.physics.kappa_coupling * E_coupling
-                + E_torsion
-                + self.physics.lambda_exchange * self.physics.alpha_K * E_exchange_screened)
+            rho_local = matvec(
+                np.abs(self.coupling_matrix)
+                if not issparse(self.coupling_matrix)
+                else self.coupling_matrix.copy(),
+                np.abs(chi_values_v),
+            )
+            A_density = self.fermi_screener.screening_factor(rho_local)
+
+            dchi = chi_values_v[:, None] - chi_values_v[None, :]
+            dvel = velocities[:, None]   - velocities[None, :]
+            dk2  = K_squared[:, None]    - K_squared[None, :]
+            dtau = tau_locale[:, None]   - tau_locale[None, :]
+
+            A_chi  = np.exp(-np.abs(dchi) / self.physics.sigma_chi)
+            A_vel  = np.exp(-np.abs(dvel) / self.physics.sigma_velocity)
+            A_K    = np.exp(-np.abs(dk2)  / self.physics.sigma_torsion)
+            A_tau  = np.exp(-np.abs(dtau) / self.physics.sigma_tau)
+            A_dens_mat = (A_density[:, None] + A_density[None, :]) / 2.0
+            attenuation = A_chi * A_vel * A_K * A_tau * A_dens_mat
+
+            W_dense = (self.coupling_matrix.toarray()
+                       if issparse(self.coupling_matrix)
+                       else self.coupling_matrix)
+            W_eff = W_dense * attenuation
+
+            E_coupling = 0.5 * float(np.sum(W_eff * dchi ** 2))
+            E_chi_raw = self.physics.kappa_coupling * E_coupling
+
+            tanh_v = np.tanh(chi_values_v / chi_0)
+            tanh_mat = tanh_v[:, None] * tanh_v[None, :]
+            E_exchange_screened = -float(np.sum(W_eff * tanh_mat))
+            E_exchange_val = self.physics.lambda_exchange * self.physics.alpha_K * E_exchange_screened
+
+            # Libera temporanei (benefico a L4 con >14k chiamate/step)
+            del dchi, dvel, dk2, dtau, A_chi, A_vel, A_K, A_tau, A_dens_mat
+            del attenuation, W_eff, tanh_mat
+
+        # --- PEANO-VQT TRIAD (side-effect, guard per-step) ---
+        # Saturazione χ: mean(|χ|)/χ_stable ∈ [0,1]
+        chi_saturation = float(min(np.mean(np.abs(chi_values)) / max(chi_0, 1e-30), 1.0))
+
+        if self._triad_step != self._current_simulation_step:
+            # Prima chiamata di questo step: applica drain
+            triad = self._peano_analyzer.compute_triad(E_chi_raw, E_torsion, E_exchange_val)
+            self._last_triad = self._peano_analyzer.apply_drain(triad, chi_saturation)
+            self._triad_step = self._current_simulation_step
+        else:
+            # Chiamata successiva nello stesso step (es. H_after in evolve):
+            # aggiorna i componenti fisici senza applicare ulteriore drain
+            self._last_triad = EnergyTriad(
+                E_chi=E_chi_raw,
+                E_RX=E_torsion + E_exchange_val,
+                E_Psi=self._peano_analyzer.E_psi_total,
+            )
+
+        return E_chi_raw + E_torsion + E_exchange_val
+
+    def get_energy_triad(self) -> Optional[EnergyTriad]:
+        """
+        Restituisce l'ultima triade Peano-VQT calcolata.
+
+        Returns None se compute_hamiltonian_coupling() non è ancora stato chiamato.
+        """
+        return self._last_triad
     
     @staticmethod
     def _get_child_chi(child: AbstractSoliton) -> float:
@@ -989,15 +1010,23 @@ class SolitoneComposito(AbstractSoliton):
         # Energia netta dissipata = radiata - trasferita ai figli
         E_net_dissipated = self.E_radiated_total - self.E_transferred_to_children
         
-        return {
+        budget = {
             'H_internal': H_int,
             'H_coupling': H_coup,
             'H_total': H_tot,
             'E_radiated': self.E_radiated_total,
             'E_transferred': self.E_transferred_to_children,
             'E_net_dissipated': E_net_dissipated,
-            'H_conserved': H_tot + E_net_dissipated  # Solo la vera perdita conta
+            'H_conserved': H_tot + E_net_dissipated,
         }
+
+        # Peano-VQT triad (disponibile dopo la prima chiamata a compute_hamiltonian_coupling)
+        if self._last_triad is not None:
+            budget['E_chi'] = self._last_triad.E_chi
+            budget['E_RX']  = self._last_triad.E_RX
+            budget['E_Psi'] = self._last_triad.E_Psi
+
+        return budget
     
     def __repr__(self) -> str:
         return (
