@@ -49,13 +49,34 @@ def load_topo(hdf5_path: Path) -> dict:
 def merge_and_write(sources: list, output_path: Path):
     """Concatena le serie temporali (ordinate per step) e scrive un nuovo HDF5."""
     all_data = []
+    last_abs_step = 0
+    last_abs_time = 0.0
+
     for src in sources:
         d = load_topo(src)
+
+        # Auto-offset: se i passi del file iniziano prima dell'ultimo passo assoluto,
+        # significa che il run usa numerazione relativa (reset a 1 al resume).
+        step_offset = 0
+        time_offset = 0.0
+        if int(d['step'][0]) <= last_abs_step:
+            step_offset = last_abs_step
+            time_offset = last_abs_time
+
+        if step_offset:
+            d = dict(d)
+            d['step'] = d['step'] + step_offset
+            d['time'] = d['time'] + time_offset
+
+        last_abs_step = int(d['step'][-1])
+        last_abs_time = float(d['time'][-1])
+
+        offset_str = f"  [+step {step_offset}, +t {time_offset:.3f}]" if step_offset else ""
         print(f"  {src.name}: {d['_n']} entry  step=[{d['step'][0]}..{d['step'][-1]}]  "
-              f"t=[{d['time'][0]:.3f}..{d['time'][-1]:.3f}]")
+              f"t=[{d['time'][0]:.3f}..{d['time'][-1]:.3f}]{offset_str}")
         all_data.append(d)
 
-    # Ordina per step (evita duplicati)
+    # Deduplicazione per step assoluto e ordinamento
     combined = {}
     seen_steps = set()
     for d in all_data:

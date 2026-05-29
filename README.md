@@ -1,9 +1,9 @@
-# VQT — Voxel Quantum Gravity
+# VQT — Voxel/Variational Quantum Topology
 
 ## Simulazione di Gravità Quantistica su Manifold Frattale Topologico
 
 ![Status](https://img.shields.io/badge/status-attivo-success)
-![Level](https://img.shields.io/badge/simulazioni-L1%20L2%20L3-blue)
+![Level](https://img.shields.io/badge/simulazioni-L1%20L2%20L3%20L4-blue)
 ![Physics](https://img.shields.io/badge/fisica-topologica%20variazionale-purple)
 ![Python](https://img.shields.io/badge/python-3.10%2B-yellow)
 
@@ -11,19 +11,48 @@
 
 ## Panoramica
 
-**VQT (Voxel Quantum Gravity)** è un framework di simulazione numerica per lo studio della gravità quantistica emergente da un manifold frattale topologico. L'unità fondamentale è un **segmento di lunghezza di Planck** ($\ell_P$) con tre gradi di libertà interni $(\chi_i, v_i, \tau_i)$. La geometria spaziale, il tempo e la materia emergono dall'interazione collettiva di $N = 24^L$ segmenti organizzati in una gerarchia frattale di livello $L$.
+**VQT** è un framework di simulazione numerica per lo studio della gravità
+quantistica emergente da un manifold frattale topologico. L'unità fondamentale è
+un **segmento di lunghezza di Planck** ($\ell_P$) con tre gradi di libertà interni
+$(\chi_i, v_i, \tau_i)$. La geometria spaziale, il tempo e la materia emergono
+dall'interazione collettiva di $N = 24^L$ segmenti organizzati in una gerarchia
+frattale di livello $L$.
 
-Il sistema non impone equazioni esterne: evolve secondo un **Hamiltoniano emergente** perturbato da una **forza variazionale topologica** $F_{\text{top}} = -\nabla S$, dove il potenziale $S[\chi, \tau]$ codifica la coerenza geometrica locale (omeostasi topologica + alternanza chirale). Le quattro dimensioni macroscopiche emergono dall'avvolgimento frattale della struttura 2D di base su se stessa.
+La ricerca si sviluppa su una **doppia elica** di due rami che condividono lo
+stesso motore (`wqt_oop/`):
 
-### Risultati Principali
+- 🌌 **Ramo A — Cosmology / RG-flow**: il manifold come sistema variazionale
+  autonomo. Analisi spettrale, invarianza di scala della frequenza, mappatura
+  Einstein-Cartan discreta. È l'**impalcatura scientifica**.
+- 🧬 **Ramo B — Peano-VQT**: auto-organizzazione della materia, triade energetica
+  $(E_\chi, E_{RX}, E_\Psi)$, leggi di aggregazione. È il **cuore attuale**, emerso
+  dal Ramo A.
 
-| Livello | DOF    | f_dom [1/P]          | sigma plateau | Entropia spettrale |
-| ------- | ------ | -------------------- | ------------- | ------------------ |
-| L1      | 48     | **0.667**            | 0.086         | 2.539              |
-| L2      | 1152   | **0.600**            | 0.050         | 1.986              |
-| L3      | 27648  | **~0.500** (in corso)| 0.037         | 1.237              |
+> Come il Ramo A ha generato il Ramo B è spiegato in
+> [docs/cosmology/EVOLUZIONE_TEORICA.md](docs/cosmology/EVOLUZIONE_TEORICA.md).
 
-La frequenza dominante $f_{\text{dom}} \approx 0.76 \cdot N_{\text{dof}}^{-0.033}$ è **invariante di scala**: il manifold oscilla alla stessa frequenza fondamentale indipendentemente dalla risoluzione spaziale. L'entropia spettrale decresce con il livello — il sistema diventa più ordinato all'aumentare della scala.
+### Risultati principali
+
+**Ramo A — spettroscopia del vuoto topologico**
+
+| Livello | DOF    | f_dom [1/P]           | σ plateau | Entropia spettrale |
+| ------- | ------ | --------------------- | --------- | ------------------ |
+| L1      | 48     | **0.667**             | 0.086     | 2.539              |
+| L2      | 1152   | **0.600**             | 0.050     | 1.986              |
+| L3      | 27648  | **~0.500** (in corso) | 0.037     | 1.237              |
+
+La frequenza dominante $f_{\text{dom}} \approx 0.76 \cdot N_{\text{dof}}^{-0.033}$ è
+**invariante di scala**: il manifold oscilla alla stessa frequenza fondamentale
+indipendentemente dalla risoluzione.
+
+**Ramo B — auto-organizzazione (Peano-VQT)**
+
+- **Cristallizzazione spontanea a numero di Leech**: 48 solitoni L1 distribuiti a
+  caso si aggregano in un cluster stabile di **24** (step 600), senza vincoli
+  geometrici imposti.
+- **3 leggi misurate**: Aggregazione ferromagnetica, Repulsione topologica
+  (frustrazione), Conservazione della triade $dE_\chi + dE_{RX} + dE_\Psi = 0$.
+- Dettagli in [docs/peano/VQT_MANIFESTO_TEORICO.md](docs/peano/VQT_MANIFESTO_TEORICO.md).
 
 ---
 
@@ -31,36 +60,50 @@ La frequenza dominante $f_{\text{dom}} \approx 0.76 \cdot N_{\text{dof}}^{-0.033
 
 ```
 VQT_repo/
-├── generate_topological_dataset.py   # Script principale simulazione
-├── WQT_manifold.py                   # Simulatore legacy (riferimento storico)
+├── README.md  ·  requirements.txt  ·  .gitignore
 │
-├── wqt_oop/                          # Framework OOP produzione
-│   ├── fractal_universe_factory.py   # Costruzione gerarchia frattale L1→LN
-│   ├── segmento_quantistico.py       # Unità fondamentale (χ, v, τ)
-│   ├── solitone_composito.py         # Nodo frattale composito
-│   ├── physics_context.py            # Parametri fisici per livello
-│   ├── topological_integration.py    # Wrapper evolutivo + validazione
-│   ├── topological_constraint_validator.py  # Vincoli chiusura 720° / detorsione
-│   ├── variational_topological_force.py     # F_top = -∇S [Eq. S-1]
-│   ├── maturity_watchdog.py          # Auto-stop su plateau σ(ρ) [Eq. WD-1]
-│   ├── hdf5_logger.py                # Logging persistente HDF5
-│   ├── energy_drift_observer.py      # Observer pattern simulazione
-│   ├── fermi_dirac_screening.py      # Screening Fermi-Dirac
-│   └── spatial_hash_grid.py          # Cache spaziale O(1) per L3+
+├── wqt_oop/                  # 🔧 MOTORE (core di produzione, condiviso dai due rami)
+│   ├── segmento_quantistico.py        # Unità fondamentale (χ, v, τ)
+│   ├── solitone_composito.py          # Nodo frattale composito (24 figli/livello)
+│   ├── physics_context.py             # Parametri scale-dependent, RG-flow
+│   ├── energy_metrics.py              # Triade Peano-VQT (PeanoVQTAnalyzer)
+│   ├── fractal_universe_factory.py    # Costruzione gerarchia L1→LN
+│   ├── topological_constraint_validator.py  # Vincoli 720° / detorsione
+│   ├── variational_topological_force.py     # F_top = -∇S
+│   ├── fermi_dirac_screening.py · spatial_cache.py · hdf5_logger.py · ...
 │
-├── experiments/
-│   ├── compare_fdom_scaling.py       # Analisi spettrale FFT + STFT multi-scala
-│   └── exp1/                         # Dataset simulazioni (*.h5 esclusi da git)
-│       ├── fdom_results.json         # Risultati spettrali L1/L2/L3
-│       ├── fdom_scaling.png          # Legge di scala f_dom vs N_dof
-│       └── fdom_scaling_stft.png     # Spettrogramma STFT cascata energetica
+├── core/                     # API pulita (re-export da wqt_oop)
 │
-└── docs/
-    ├── TOPOLOGICAL_DYNAMICS.md       # Documento teorico principale (v2.1)
-    ├── figures/                      # Figure geometria fondamentale §0
-    ├── obsoletes/                    # Documenti storici superati
-    └── ...                           # Documentazione architetturale
+├── experiments/              # 🧬 Esperimenti Peano-VQT (Ramo B)
+│   ├── genesis_run.py                 # Transizione vuoto→materia
+│   ├── l2_aggregation_run.py          # Legame vs frustrazione topologica
+│   ├── l4_self_assembly_run.py        # Auto-assembly 48 solitoni → cluster 24
+│   ├── test_peano_integration.py      # Unit test della triade
+│   ├── compare_fdom_scaling.py        # Analisi spettrale (Ramo A)
+│   └── exp1/                          # Dataset run cosmologiche L1–L3 (*.h5)
+│
+├── tools/                    # Script standalone (auto-shim verso repo root)
+│   ├── tests/        (5)     #   test motore (verlet, convergenza, timestep)
+│   ├── validation/   (8)     #   audit/check/inspect/validate/verify run L3
+│   ├── rendering/    (12)    #   generate_*, master_*video, manifold_*, torsion
+│   └── analysis/     (3)     #   analyze_topo, compare_l2/scales
+│
+├── docs/                     # 📚 Documentazione (vedi docs/README.md)
+│   ├── peano/                #   Ramo B: MANIFESTO, CHECKPOINT, INDEX (hub)
+│   ├── cosmology/            #   Ramo A: TOPOLOGICAL_DYNAMICS, SCALING, RENDERING, EVOLUZIONE
+│   ├── reference/            #   Spec valide: PHYSICS_MANIFESTO, PHYSICS_LOG, RG_FLOW
+│   ├── reports/              #   Artefatti di processo (proposte, fix, audit)
+│   ├── history/              #   Modelli pre-OOP superati
+│   ├── obsoletes/            #   Patch archiviate
+│   └── figures/              #   Figure §0
+│
+├── data/                     # Dataset HDF5 (cosmo_*.h5, peano_data.zip)
+├── assets/  └─ media/        # Animazioni (.mp4 / .gif) + plot_genesi.png
+├── logs/                     # Log di produzione delle run
+└── legacy/                   # WQT_manifold.py (monolite pre-OOP, riferimento storico)
 ```
+
+👉 Punto d'ingresso documentazione: **[docs/peano/INDEX.md](docs/peano/INDEX.md)**
 
 ---
 
@@ -69,84 +112,73 @@ VQT_repo/
 ### Prerequisiti
 
 ```bash
-pip install numpy scipy h5py matplotlib
+pip install -r requirements.txt   # numpy, scipy, h5py, matplotlib
 ```
 
-### Simulazione L1 (48 DOF, ~30s)
+### Ramo B — Esperimenti Peano-VQT
 
 ```bash
-python generate_topological_dataset.py --level 1 --steps 600 --output cosmo_L1.h5
+# Genesi: transizione vuoto → materia (fase Ottaedrica → Icosaedrica)
+python experiments/genesis_run.py
+
+# Auto-assembly: 48 solitoni → cristallizzazione a cluster 24
+python experiments/l4_self_assembly_run.py
+
+# Unit test della triade energetica (dE_χ + dE_RX + dE_Ψ = 0)
+python experiments/test_peano_integration.py
 ```
 
-### Simulazione L2 (1152 DOF, ~5min)
+### Ramo A — Simulazioni cosmologiche (RG-flow / spettroscopia)
 
 ```bash
-python generate_topological_dataset.py --level 2 --steps 500 --output cosmo_L2.h5
-```
+# L1 (48 DOF, ~30s)
+python tools/rendering/generate_topological_dataset.py --level 1 --steps 600 --output cosmo_L1.h5
 
-### Simulazione L3 con MaturityWatchdog (27648 DOF)
+# L3 con MaturityWatchdog (27648 DOF)
+python tools/rendering/generate_topological_dataset.py \
+  --level 3 --steps 800 --watchdog --watchdog-epsilon 1e-4 --output cosmo_L3.h5
 
-```bash
-python generate_topological_dataset.py \
-  --level 3 --steps 800 \
-  --watchdog --watchdog-epsilon 1e-4 \
-  --output cosmo_L3.h5
-```
+# Ripresa da run precedente
+python tools/rendering/generate_topological_dataset.py \
+  --level 3 --steps 400 --resume-from cosmo_L3.h5 --output cosmo_L3_ext.h5
 
-Il watchdog dichiara maturità automaticamente quando $|\dot{\sigma}(\rho)| < \varepsilon/\sqrt{N_{\text{dof}}}$ per $W$ passi consecutivi (finestra auto-sintonizzata sulla frequenza dominante).
-
-### Ripresa da simulazione precedente (--resume-from)
-
-```bash
-python generate_topological_dataset.py \
-  --level 3 --steps 400 \
-  --resume-from cosmo_L3.h5 \
-  --output cosmo_L3_ext.h5
-```
-
-Carica l'ultimo frame HDF5, inietta lo stato $(\chi_i, v_i, \tau_i)$ nel manifold e continua con i passi aggiuntivi — step e tempo fisico sono aggiornati in continuità.
-
-### Analisi spettrale multi-scala
-
-```bash
+# Analisi spettrale multi-scala
 python experiments/compare_fdom_scaling.py \
-  experiments/exp1/cosmo_L1.h5 \
-  experiments/exp1/cosmo_L2.h5 \
-  experiments/exp1/cosmo_L3.h5 \
+  experiments/exp1/cosmo_L1.h5 experiments/exp1/cosmo_L2.h5 experiments/exp1/cosmo_L3.h5 \
   --stft --output experiments/exp1/fdom_results.json
 ```
+
+> Il watchdog dichiara maturità quando $|\dot{\sigma}(\rho)| < \varepsilon/\sqrt{N_{\text{dof}}}$
+> per $W$ passi consecutivi (finestra auto-sintonizzata su $f_{\text{dom}}$).
 
 ---
 
 ## Fisica del Modello
 
-Il modello è formalizzato in dettaglio in **[docs/TOPOLOGICAL_DYNAMICS.md](docs/TOPOLOGICAL_DYNAMICS.md)** (v2.1). Qui una sintesi dei concetti chiave.
+Formalizzazione completa in **[docs/cosmology/TOPOLOGICAL_DYNAMICS.md](docs/cosmology/TOPOLOGICAL_DYNAMICS.md)**.
+Le leggi di auto-organizzazione in **[docs/peano/VQT_MANIFESTO_TEORICO.md](docs/peano/VQT_MANIFESTO_TEORICO.md)**.
 
-### Il Potenziale Topologico
+### Il Potenziale Topologico (Ramo A)
 
 $$S[\chi, \tau] = \lambda \sum_{i=1}^N (\rho_i - \rho_0)^2 + \gamma \sum_{i=1}^N \Omega_i$$
 
-- **Primo termine** — omeostasi topologica: penalizza ogni voxel che si discosta dalla densità di vincolo target $\rho_0$.
-- **Secondo termine** — frustrazione chirale: promuove l'alternanza $\pm 180^\circ$ di torsione tra voxel adiacenti (configurazione spinoriale di ground state).
+- **Omeostasi topologica** — penalizza la deviazione dalla densità di vincolo $\rho_0$.
+- **Frustrazione chirale** — promuove l'alternanza $\pm 180^\circ$ (ground state spinoriale).
 
-### La Densità di Vincolo
+### La Triade Energetica (Ramo B)
 
-$$\rho_i = \tfrac{1}{2} f_{\text{closure},i}[\tau] + \tfrac{1}{2} f_{\text{detorsion},i}[\chi]$$
+$$H_{\text{coupling}} = E_\chi + E_{RX}, \qquad \text{drain: } E_\chi \to E_\Psi$$
 
-- $f_{\text{closure}}$: misura l'uniformità dei tempi propri $\tau_i$ (chiusura spinoriale $4\pi$).
-- $f_{\text{detorsion}}$: misura l'alternanza chirale locale.
-
-La densità di vincolo è un **loop di retroazione geometrica**: il manifold si auto-misura e si auto-corregge senza osservatori esterni.
+con invariante esatto $dE_\chi + dE_{RX} + dE_\Psi = 0$. $E_\Psi$ (sink radiativo)
+cresce monotonicamente ed è l'indicatore di condensazione/frustrazione.
 
 ### Integrazione Simplettica
 
 $$\mathcal{U}_{\text{tot}}(dt) = \mathcal{T}_{dt/2} \circ \mathcal{U}_{\text{phys}}(dt) \circ \mathcal{T}_{dt/2}$$
 
-Strang Splitting garantisce la conservazione del volume nello spazio delle fasi a $O(dt^2)$.
+Strang Splitting conserva il volume nello spazio delle fasi a $O(dt^2)$.
 
 ### Genesi delle 4 Dimensioni
-
-Il manifold è intrinsecamente un oggetto 2D (superficie di torsione) che genera le 4 dimensioni macroscopiche per avvolgimento frattale ricorsivo:
 
 | Livello | N       | Struttura          | Dimensione emergente |
 | ------- | ------- | ------------------ | -------------------- |
@@ -155,57 +187,43 @@ Il manifold è intrinsecamente un oggetto 2D (superficie di torsione) che genera
 | L3      | 13824   | Volume di fogli    | 3D spazio            |
 | L→∞     | ∞       | Continuo           | R³ + τ               |
 
-Il tempo macroscopico $t = \sum_i \tau_i / N$ è la quarta dimensione — non è imposto, emerge dall'evoluzione del manifold.
-
----
-
-## Parametri Chiave
-
-| Parametro                    | Default | Significato                                        |
-| ---------------------------- | ------- | -------------------------------------------------- |
-| `--level`                    | 2       | Livello frattale (N = 24^L segmenti)               |
-| `--steps`                    | 500     | Passi massimi (con watchdog = limite di sicurezza) |
-| `--dt`                       | 0.01    | Passo temporale [unità Planck]                     |
-| `--lambda-homeo`             | 0.1     | Intensità omeostasi topologica λ                   |
-| `--gamma-chiral`             | 0.01    | Tensione chirale γ                                 |
-| `--watchdog`                 | off     | Abilita auto-stop su maturità spaziale             |
-| `--watchdog-epsilon`         | 1e-4    | Soglia ε (normalizzata per sqrt(N_dof))            |
-| `--resume-from`              | —       | Path HDF5 da cui riprendere                        |
-| `--enable-variational-force` | off     | Attiva F_top = -∇S                                 |
+Il tempo macroscopico $t = \sum_i \tau_i / N$ è la quarta dimensione — emergente, non imposta.
 
 ---
 
 ## Leggi Fenomenologiche Misurate
 
-### Invarianza di Scala della Frequenza [Eq. FSCALE-1]
+### Ramo A — Invarianza di Scala della Frequenza [Eq. FSCALE-1]
 
-$$f_{\text{dom}} \approx 0.76 \cdot N_{\text{dof}}^{-0.033}$$
+$$f_{\text{dom}} \approx 0.76 \cdot N_{\text{dof}}^{-0.033} \qquad (\alpha \approx 0)$$
 
-$\alpha \approx -0.033 \approx 0$: la frequenza fondamentale è invariante rispetto al numero di gradi di libertà. Il manifold a L1 e a L6 oscillano alla stessa frequenza.
+La frequenza fondamentale è invariante rispetto al numero di gradi di libertà.
 
-### Legge di Adattamento Frattale [Eq. FA-1]
+### Ramo B — Le 3 Leggi Peano-VQT
 
-$$\rho^*(L) = \rho^*_\infty + \frac{\Delta\rho}{24^{L/2}}$$
+1. **Aggregazione ferromagnetica**: solitoni iso-fase cristallizzano in cluster di 24.
+2. **Repulsione topologica**: solitoni cross-fase si frustrano; $E_\Psi$ ~2.9× più alto.
+3. **Conservazione della triade**: $dE_\chi + dE_{RX} + dE_\Psi = 0$, verificato (0 violazioni).
 
-La densità di equilibrio omeostatica cresce con il livello frattale, convergendo a $\rho^*_\infty$ — il sistema è intrinsecamente espansivo.
+### Predizioni Falsificabili (Ramo A)
 
-### Predizioni Falsificabili
-
-- **[P-1]** Con $\lambda$ doppio: $f_{\text{dom}} \to f_{\text{dom}} \times \sqrt{2} \approx 0.85$ [1/P]
-- **[P-2]** L3 esteso a 600 step: $f_{\text{dom}}(L3) \in [0.55, 0.63]$ [1/P] con FFT affidabile
-- **[P-3]** L4: entropia spettrale $\mathcal{H}_s < 1.0$ (quasi-oscillatore monocromatico)
+- **[P-1]** $\lambda$ doppio → $f_{\text{dom}} \times \sqrt{2} \approx 0.85$ [1/P]
+- **[P-2]** L3 esteso a 600 step → $f_{\text{dom}}(L3) \in [0.55, 0.63]$ [1/P]
+- **[P-3]** L4 → entropia spettrale $\mathcal{H}_s < 1.0$ (quasi-monocromatico)
 
 ---
 
 ## Documentazione
 
-| Documento | Contenuto |
-|-----------|-----------|
-| [docs/TOPOLOGICAL_DYNAMICS.md](docs/TOPOLOGICAL_DYNAMICS.md) | **Riferimento principale** — formalizzazione variazionale v2.1 |
-| [PHYSICS_MANIFESTO.md](PHYSICS_MANIFESTO.md) | Manifesto fisico VQT |
-| [PHYSICS_LOG.md](PHYSICS_LOG.md) | Mappatura vincoli software ↔ leggi fisiche |
-| [docs/TEORIA_FISICA_COMPLETA.md](docs/TEORIA_FISICA_COMPLETA.md) | Fondamenti Einstein-Cartan (contesto storico) |
-| [docs/INDEX.md](docs/INDEX.md) | Indice completo documentazione |
+| Documento | Ramo | Contenuto |
+|-----------|------|-----------|
+| [docs/peano/INDEX.md](docs/peano/INDEX.md) | — | **Hub centrale** di navigazione |
+| [docs/peano/VQT_MANIFESTO_TEORICO.md](docs/peano/VQT_MANIFESTO_TEORICO.md) | B | Le 3 leggi Peano-VQT |
+| [docs/cosmology/TOPOLOGICAL_DYNAMICS.md](docs/cosmology/TOPOLOGICAL_DYNAMICS.md) | A | Formalizzazione variazionale (riferimento principale) |
+| [docs/cosmology/EVOLUZIONE_TEORICA.md](docs/cosmology/EVOLUZIONE_TEORICA.md) | A→B | Come il Ramo A ha generato il Ramo B |
+| [docs/reference/PHYSICS_MANIFESTO.md](docs/reference/PHYSICS_MANIFESTO.md) | — | Manifesto fisico VQT |
+| [docs/reference/PHYSICS_LOG.md](docs/reference/PHYSICS_LOG.md) | — | Mappatura vincoli software ↔ leggi fisiche |
+| [docs/history/TEORIA_FISICA_COMPLETA.md](docs/history/TEORIA_FISICA_COMPLETA.md) | — | Fondamenti Einstein-Cartan (contesto storico) |
 
 ---
 
@@ -214,18 +232,20 @@ La densità di equilibrio omeostatica cresce con il livello frattale, convergend
 > *"La materia non esiste nello spazio-tempo; la materia È spazio-tempo con topologia non triviale."*
 > — John Archibald Wheeler
 
-> *"Il manifold è auto-referenziale: ogni voxel codifica nel proprio stato il giudizio sulla propria coerenza geometrica. Questa auto-referenzialità è il confine tra una simulazione e un motore fisico."*
-> — TOPOLOGICAL_DYNAMICS.md v2.1
+> *"Il manifold è auto-referenziale: ogni voxel codifica nel proprio stato il giudizio
+> sulla propria coerenza geometrica. Questa auto-referenzialità è il confine tra una
+> simulazione e un motore fisico."*
+> — TOPOLOGICAL_DYNAMICS.md
 
 ---
 
 ## Autori
 
-- **Leonardo Peano** — ricerca, fisica, architettura
-- **Claude Sonnet 4.6** (Anthropic) — implementazione, analisi, documentazione
+- **Luca Peano** — ricerca, fisica, architettura
+- **Claude** (Anthropic) — implementazione, analisi, documentazione
 
 ---
 
-**Branch attivo**: `feature/physics-laws-formalization`
-**Ultima modifica**: Maggio 2026
-**Versione**: 2.1 — VQT Topological Dynamics
+**Branch attivo**: `research-backup`
+**Ultima modifica**: 2026-05-29
+**Versione**: 3.0 — Doppia Elica (Cosmology A + Peano-VQT B)

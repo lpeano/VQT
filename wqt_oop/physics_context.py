@@ -90,6 +90,12 @@ class PhysicsContext:
     T_fermi: float = 5.0  # Temperatura efficace (larghezza transizione) [unità di χ o ρ]
     gamma_cooling: float = 0.01  # Tasso raffreddamento temperatura [1/s]
     fermi_epsilon: float = 1e-9  # Regolarizzazione anti-singolarità
+
+    # ZERO-POINT MOTOR (modo di Nyquist lambda=2 l_P, anti-congelamento intrinseco)
+    # Ampiezza di velocita' staggered per-segmento del punto-zero geometrico.
+    # 0.0 = disattivato (default, backward-compatible). >0 = il modo (-1)^i non
+    # puo' mai congelarsi -> "vuoto vivo" come fatto STRUTTURALE (non termico).
+    zero_point_amplitude: float = 0.0
     
     # === RELATIVISTIC TIMESTEP PARAMETERS (CP-2026-05-26-003) ===
     # [PHYSICS_TRACE] Energy-dependent timestep scaling
@@ -209,6 +215,7 @@ class PhysicsContext:
             T_fermi=base_context.T_fermi * scale_factor,  # Scala come sigma_chi
             gamma_cooling=base_context.gamma_cooling,  # Invariante (tasso temporale)
             fermi_epsilon=base_context.fermi_epsilon,  # Invariante (numerica)
+            zero_point_amplitude=base_context.zero_point_amplitude,  # Invariante (zero-point intrinseco)
             # SCALING GAMMA DAMPING FRATTALE: γ_n = γ_0 · (24^n)^k
             gamma_damping_base=base_context.gamma_damping_base * (24 ** level) ** base_context.damping_scaling_exponent,
             damping_scaling_exponent=base_context.damping_scaling_exponent,  # Invariante

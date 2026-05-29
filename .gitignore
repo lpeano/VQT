@@ -64,3 +64,4 @@ demo_*.h5
 # *.png
 # *.jpg
 # *.jpeg
+experiments/notify_completion.py
