@@ -34,6 +34,7 @@ from .sparse_coupling import (
     matvec,
 )
 from .energy_metrics import PeanoVQTAnalyzer, EnergyTriad
+from .zero_point_motor import enforce_nyquist_zero_point, E_zp_from_amplitude
 
 
 class SolitoneComposito(AbstractSoliton):

@@ -48,7 +48,7 @@ $$\theta_{\text{tors}}^{(i)} = (-1)^i \cdot \pi \qquad \text{[Eq. G0-2]}$$
 
 Questa alternanza è il **minimo di frustrazione chirale** del potenziale: quando i gradienti del campo in voxel adiacenti hanno segni opposti, $\Omega_i = K_i^2 \cdot K_{i+1}^2$ è piccolo e la geometria è "rilassata". Imporre la stessa chiralità in due flessi adiacenti costerebbe energia topologica — esattamente come allineare due spin antiferromagnetici parallelamente costa energia di scambio. L'antiferromagnetismo chirale è la configurazione di ground state del manifold.
 
-![Chiralità Alternata ai Punti di Flesso](figures/fig0_chirality.png)
+![Chiralità Alternata ai Punti di Flesso](../figures/fig0_chirality.png)
 
 *Figura 0.3 — La curva sinusoidale del manifold in 3D. I segmenti rossi hanno chiralità $+180^\circ$, i blu $-180^\circ$. I pallini bianchi marcano i punti di flesso. La torsione fuori dal piano evidenzia l'alternanza geometrica: il manifold non è mai piatto ai punti di flesso — si torce, e si torce in modo alternato.*
 
@@ -62,7 +62,7 @@ Questa condizione NON è $2\pi$ (chiusura ordinaria di un loop) ma $4\pi$ — il
 
 Il vincolo di chiusura $f_{\text{closure}}$ dell'[Eq. FC-1] misura, in ogni voxel, quanto il manifold soddisfa questa condizione *localmente*: un manifold con $f_{\text{closure}} = 1$ ovunque è geometricamente isotropo, nel senso che tutti i segmenti "invecchiano" alla stessa velocità ($\tau_i$ uniformi). Deviazioni dall'uniformità di $\tau_i$ segnalano curvatura locale — concentrazioni di torsione che corrispondono, nel linguaggio fisico, a masse gravitazionali.
 
-![Chiusura Spinoriale 720°](figures/fig0_closure_720.png)
+![Chiusura Spinoriale 720°](../figures/fig0_closure_720.png)
 
 *Figura 0.4 — A sinistra: confronto tra chiusura ordinaria $2\pi$ (bosone, cerchio blu) e chiusura spinoriale $4\pi$ (spinore: primo giro rosso tratteggiato, secondo giro giallo). Lo spinore non si chiude dopo un giro — deve completarne due. A destra: la torsione cumulata $\oint d\theta$ del manifold VQT cresce linearmente da 0 a $4\pi$ percorrendo l'intero manifold — la chiusura avviene esattamente a $4\pi$.*
 
@@ -84,7 +84,7 @@ Le **tre coordinate spaziali** $(x, y, z)$ sono le tre direzioni di avvolgimento
 
 Il **tempo** $t_{\text{macro}} = \sum_i \tau_i / N$ è la quarta dimensione: non è esterno al sistema, ma è il tempo accumulato dal manifold durante la propria evoluzione. Un universo "vecchio" ha $\tau_i$ uniformemente grandi e quasi costanti; un universo "giovane" ha $\tau_i$ piccoli e irregolari (alta frustrazione, alta curvatura). La freccia del tempo è la direzione in cui $\tau_i$ cresce — e cresce sempre, perché $\dot{\tau}_i \geq 0$ per costruzione.
 
-![Genesi delle 4 Dimensioni per Avvolgimento Frattale](figures/fig0_dim_genesis.png)
+![Genesi delle 4 Dimensioni per Avvolgimento Frattale](../figures/fig0_dim_genesis.png)
 
 *Figura 0.5 — L0 (singolo segmento) → L1 (anello spinoriale con alternanza chirale rosso/blu) → L2 (foglio di anelli interconnessi) → L3 (volume con asse $\tau$ emergente, in verde). La freccia verde verticale nel pannello L3 non è una dimensione aggiunta: è il tempo accumulato dai segmenti, la quarta dimensione che si legge nella storia evolutiva del manifold.*
 
@@ -164,13 +164,21 @@ Questa auto-referenzialità ha una conseguenza fisica diretta: ciò che chiamiam
 $$f_{\text{closure},i}[\tau] = 1 - \frac{|\tau_i - \bar{\tau}|}{\tau_{\text{range}}}$$
 *[Eq. FC-1]*
 
-**Il vincolo di detorsione ±180°** misura quanto la struttura locale è priva di frustrazione chirale. Un campo di torsione con alternanza perfetta tra voxel adiacenti ha $f_{\text{detorsion}} = 1$:
+**Il vincolo di detorsione ±180°** misura quanto la struttura locale è priva di frustrazione chirale. Un campo di torsione con alternanza perfetta tra voxel adiacenti ha $f_{\text{detorsion}} = 1$. La formula implementata nel codice (`topological_constraint_validator.py:_compute_local_detorsion`) è:
 
-$$f_{\text{detorsion},i}[\chi] = \frac{1}{1 + \Omega_i / \bar{K}^2}$$
+$$f_{\text{detorsion},i} = \frac{1}{1 + \mathrm{CV}_{\text{locale},i}}, \qquad \mathrm{CV}_{\text{locale},i} = \frac{\sigma(K^2_{\text{vicinato}(i)})}{\mu(K^2_{\text{vicinato}(i)})}$$
 *[Eq. FD-1]*
 
-dove la torsione locale e la frustrazione chirale sono definite come:
-$$K_i = \frac{\chi_{i+1} - \chi_{i-1}}{2} \quad \text{[Eq. T-1]}, \qquad \Omega_i = K_i^2 \cdot K_{i+1}^2 \quad \text{[Eq. OM-1]}$$
+dove CV è il coefficiente di variazione di $K^2$ nel vicinato spaziale del voxel $i$.
+
+> **Nota**: la motivazione teorica originale usava la frustrazione chirale diretta
+> $\Omega_i = K_i^2 \cdot K_{i+1}^2$ nella forma $f_{\text{detorsion}} = 1/(1+\Omega_i/\bar{K}^2)$.
+> L'implementazione finale usa invece CV$_\text{locale}$, che misura la smoothness
+> di $K^2$ in un vicinato spaziale (più robusta numericamente a densità variabile).
+> Le due formule convergono quando il pattern di alternanza $K^2$ è regolare.
+
+La torsione locale è definita come:
+$$K_i = \frac{\chi_{i+1} - \chi_{i-1}}{2} \quad \text{[Eq. T-1]}, \qquad K_i^2 = \left(\frac{\chi_{i+1} - \chi_{i-1}}{2}\right)^2 \quad \text{[Eq. OM-1]}$$
 
 **L'osservabile di sistema più rilevante** non è $\rho_i$ locale ma la sua deviazione standard globale:
 
@@ -580,7 +588,11 @@ Ad essa si associa il **tensore di contorsione** $K_{\mu\nu\rho} = \frac{1}{2}(T
 
 Nel codice VQT, la contorsione locale è calcolata in `hdf5_logger.py:_compute_torsion_field()` come:
 
-$$\boxed{K_i = \left|\frac{\chi_{i+1} - \chi_{i-1}}{2}\right|, \qquad K_i^2 \approx |\nabla_s \chi|^2\big|_i} \qquad \text{[Eq. EC-2]}$$
+$$\boxed{K_i = \frac{\chi_{i+1} - \chi_{i-1}}{2}, \qquad K_i^2 = \left(\frac{\chi_{i+1} - \chi_{i-1}}{2}\right)^2 \approx |\nabla_s \chi|^2\big|_i} \qquad \text{[Eq. EC-2]}$$
+
+> **Nota**: $K_i$ può essere positivo o negativo (come in [Eq. T-1]); è $K_i^2$ la
+> quantità sempre non-negativa usata nei calcoli di torsione e frustrazione.
+> La notazione $\|\nabla_s\chi\|_i$ nella tabella seguente intende $\sqrt{K_i^2}$.
 
 dove $s$ è la coordinata di arco discreta (indice del voxel) e la derivata è calcolata con differenze finite circolari. Questa **non è una variabile aggiunta**: è la definizione naturale del gradiente di connessione su un manifold discreto unidimensionale. Ogni voxel porta con sé il grado di curvatura locale del campo $\chi$ — esattamente come la contorsione di Cartan porta il grado di curvatura della connessione in ogni punto del manifold continuo.
 
@@ -632,6 +644,13 @@ La corrispondenza globale VQT ↔ Einstein-Cartan è sintetizzata nella tavola s
 L'azione completa del manifold VQT [Eq. EC-10 del codice base]:
 
 $$\boxed{S_{VQT} = \underbrace{\frac{1}{2}\sum_i m\dot{\chi}_i^2}_{\text{cinetica geodesica}} + \underbrace{\sum_i \beta(\chi_i^2 - \chi_0^2)^2}_{R \text{ discreta}} + \underbrace{\frac{\alpha_K}{2}\sum_{i,j} W_{ij}(\chi_i - \chi_j)^2}_{T^2 \text{ discreta}}} \qquad \text{[Eq. EC-8]}$$
+
+> **Nota**: [Eq. EC-8] mostra i termini strutturalmente fondamentali dell'azione VQT.
+> Il codice in `solitone_composito.py` implementa due termini aggiuntivi non mostrati
+> per brevità: (a) un termine di coupling separato $\kappa \cdot \tfrac{1}{2}\sum_{ij} W_{ij}(\chi_i-\chi_j)^2$
+> (scalato da `kappa_coupling`, distinto da $\alpha_K$) e (b) un termine di scambio
+> topologico $-\lambda_{\text{exchange}} \cdot \alpha_K \cdot \sum_{ij} W_{ij}\tanh(\chi_i/\chi_0)\tanh(\chi_j/\chi_0)$.
+> L'azione completa è $S_{VQT} + S_{\kappa} + S_{\text{exchange}}$.
 
 è la realizzazione discreta dell'azione di Einstein-Cartan-Kibble-Sciama su reticolo di Leech. Il potenziale bistabile gioca il ruolo dello scalare di curvatura $R$: quando $\chi = \pm\chi_0$ (nei pozzi di potenziale), $V = 0$ — il manifold è localmente "piatto". Quando $\chi \neq \pm\chi_0$, $V > 0$ — curvatura locale non nulla. Il termine di accoppiamento $\alpha_K W_{ij}(\chi_i - \chi_j)^2$ è la Lagrangiana quadratica in torsione che nella teoria ECKS genera il termine di contorsione nell'equazione del campo gravitazionale.
 

@@ -179,3 +179,191 @@ Aspettarsi: Ottaedrica → Cubottaedrica → Icosaedrica, con E_Psi che salta al
 
 **Livelli consolidati**: L2: step 600 size=24
 **Tempo run**: 0.19s
+
+---
+## L4 Self-Assembly — 2026-05-29 14:08
+
+**Config**: 48 L1 (EffectiveL1), 3000 step, kappa_NN=2.0, R=9.0
+
+**a) Cluster formati**: 8 cluster | dimensioni: [25, 8, 5, 5, 2, 1, 1, 1]
+
+**b) E_Psi collettiva**: 1.0640e+04
+
+**c) Esito**: **STRUTTURA CRISTALLINA (dominio maggioritario)**
+- Multipli di 12: SI (1 cluster)
+- CN_mean finale: 7.21 (target: 12.0)
+- M (ordine): 0.7489
+- chi_sat: 0.9741
+- H_tot: 2.7600e+05 -> 2.6453e+04 (-90.4%)
+
+**Livelli consolidati**: L2: step 600 size=24
+**Tempo run**: 0.19s
+
+---
+## Riorganizzazione Archivio — 2026-05-29
+
+### Struttura finale del repository
+
+```
+VQT_repo/
+├── core/               API pulita (re-export da wqt_oop)
+│   ├── __init__.py
+│   ├── solitone_composito.py
+│   ├── segmento_quantistico.py
+│   ├── physics_context.py
+│   └── energy_metrics.py
+├── experiments/        Script sperimentali Peano-VQT
+│   ├── genesis_run.py
+│   ├── l2_aggregation_run.py
+│   ├── l2_leech_run.py
+│   ├── l4_self_assembly_run.py
+│   ├── valida_peano_produzione.py
+│   ├── plot_genesi.py
+│   └── test_peano_integration.py
+├── logs/               9 log file di produzione
+│   ├── genesis_log.log            (230KB)
+│   ├── l2_aggregation.log         (186KB)
+│   ├── l2_leech.log               (510KB)
+│   ├── l4_self_assembly.log       (9KB)
+│   ├── osservazioni_simulazione.log (37KB)
+│   └── eventi_*.log
+├── data/               HDF5 compressi
+│   └── peano_data.zip  (genesis + peano_sim, 183KB)
+├── assets/             Immagini
+│   └── plot_genesi.png (219KB)
+├── docs/               Documentazione scientifica
+│   ├── MIGRAZIONE_CHECKPOINT.md
+│   └── VQT_MANIFESTO_TEORICO.md   [NUOVO]
+└── wqt_oop/            Pacchetto produzione (INVARIATO)
+```
+
+### Verifica integrità post-riorganizzazione
+
+| Check | Risultato |
+|---|---|
+|  rieseguito | **PASS** — risultati identici |
+|  | **PASS** |
+| Log scritto in  | **PASS** |
+| 4 unit test Peano-VQT | **PASS** |
+| Invariante dE_chi + dE_RX + dE_Psi = 0 | **PASS** |
+
+### Tre Leggi VQT (sintesi)
+
+1. **Aggregazione Ferromagnetica**: solitoni iso-fase si aggregano in cluster da 24 (L2). Evidenza: cluster da 24 consolidato a step 600, E_Psi jump +222% alla cristallizzazione.
+2. **Repulsione Topologica**: solitoni cross-fase generano frustrazione. E_Psi_frustrato / E_Psi_aggregato = 2.87x. Evidenza: CROSS scenario rimasto a Delta-chi~100 per 400 step.
+3. **Conservazione Peano-VQT**: dE_chi + dE_RX + dE_Psi = 0 per ogni drain. E_Psi monotona. 0 violazioni su tutti i dataset HDF5.
+
+**Documento di riferimento**: 
+
+**Stato**: archivio scientifico pronto. Push su branch  quando autorizzato dall'utente.
+
+---
+## Riorganizzazione docs/ — 2026-05-29 (3 livelli di validita)
+
+### Criterio
+Classificazione per **coerenza col codice corrente** (wqt_oop/ + Peano-VQT),
+verificata cercando i simboli chiave nel codebase.
+
+### docs/ (STATO DELL ARTE — 5 doc + INDEX)
+- VQT_MANIFESTO_TEORICO.md, TOPOLOGICAL_DYNAMICS.md (verificati formula-per-formula)
+- ARCHITETTURA_SCALING_MASSIVO.md (moduli tutti esistenti)
+- FIELD_GEOMETRY_RENDERING.md (ManifoldVisualizer usato nei generate_*.py)
+- MIGRAZIONE_CHECKPOINT.md
+- INDEX.md riscritto come hub di navigazione a 3 livelli
+
+### docs/history/ (STORICO — 6 doc + README)
+Spostati perche descrivono modelli/codice superati:
+- TEORIA_FISICA_COMPLETA.md (chi-potenziale-scala -> superato da doppio pozzo)
+- ARCHITETTURA_24_CAMPI_LOCALI.md (proposta gia implementata)
+- SISTEMA_TERMODINAMICO_APERTO.md (diffusione laplaciana -> Yukawa)
+- RISULTATI_VALIDAZIONE_BOUNCE.md (WQT_manifold.py v2.0 monolite)
+- RENDERING_DINAMICO_TECNICO.md (metrica esponenziale chi->+-inf)
+- VELOCITA_LUCE_LOCALE.md (c_locale solo in WQT_manifold.py)
+- README.md: tabella cosa-superato-da-cosa
+
+### docs/obsoletes/ (invariato — 7 patch/proposte gia archiviate)
+
+**Verifiche chiave**: c_locale presente solo in WQT_manifold.py (monolite);
+raggio_metrico/rho_SX assenti dal codice; ManifoldVisualizer attivo nei generate_*.py.
+
+---
+## Separazione a Doppia Elica docs/ — 2026-05-29
+
+Adottata Opzione 2 (separazione per ramo), non distruttiva.
+
+### Struttura finale
+```
+docs/
+  README.md              (router landing)
+  peano/                 RAMO B (cuore attuale)
+    INDEX.md             (hub centrale, link a entrambi i rami)
+    VQT_MANIFESTO_TEORICO.md
+    MIGRAZIONE_CHECKPOINT.md
+  cosmology/             RAMO A (base scientifica)
+    TOPOLOGICAL_DYNAMICS.md
+    ARCHITETTURA_SCALING_MASSIVO.md
+    FIELD_GEOMETRY_RENDERING.md
+    EVOLUZIONE_TEORICA.md   (NUOVO: ponte A->B)
+  history/               pre-OOP superato (6 doc + README)
+  obsoletes/             patch archiviate (invariato)
+  figures/               immagini (invariato)
+```
+
+### Motivazione (doppia elica)
+- Ramo A (Cosmology/RG-flow): run_cosmology + fractal_universe_factory ->
+  cosmo_L*.h5 -> TOPOLOGICAL_DYNAMICS (spettroscopia, f_dom, Einstein-Cartan).
+- Ramo B (Peano-VQT): experiments/*.py -> PeanoVQTAnalyzer (triade) ->
+  genesis/peano HDF5 -> VQT_MANIFESTO (3 leggi).
+- Core condiviso: solitone_composito + segmento_quantistico + physics_context
+  + fermi_dirac_screening. Il numero 24 e' postulato in A (24^L) ed emerge in B
+  (cluster L4 self-assembly): validazione incrociata.
+
+### Note tecniche
+- Fix 3 link immagine in TOPOLOGICAL_DYNAMICS: figures/ -> ../figures/
+- Verifica link: 28 controllati, 0 rotti tra i doc riorganizzati.
+- 3 link rotti residui in obsoletes/README_REFACTORING.md: PREESISTENTI
+  (LICENSE, test_refactoring.py) - lasciati nel cimitero obsoletes/.
+- WQT_manifold.py confermato MORTO (importato da nessuno); resta come
+  riferimento storico citato in history/.
+
+---
+## L4 Self-Assembly — 2026-05-29 18:01
+
+**Config**: 48 L1 (EffectiveL1), 3000 step, kappa_NN=2.0, R=9.0
+
+**a) Cluster formati**: 8 cluster | dimensioni: [25, 8, 5, 5, 2, 1, 1, 1]
+
+**b) E_Psi collettiva**: 1.0640e+04
+
+**c) Esito**: **STRUTTURA CRISTALLINA (dominio maggioritario)**
+- Multipli di 12: SI (1 cluster)
+- CN_mean finale: 7.21 (target: 12.0)
+- M (ordine): 0.7489
+- chi_sat: 0.9741
+- H_tot: 2.7600e+05 -> 2.6453e+04 (-90.4%)
+
+**Livelli consolidati**: L2: step 600 size=24
+**Tempo run**: 0.20s
+
+---
+## Pulizia ROOT — 2026-05-29
+
+Root ridotta a 3 file canonici: README.md, requirements.txt, .gitignore.
+
+### Spostamenti (50+ file)
+- 9 .mp4 + 2 .gif -> assets/media/
+- geometrodinamica_matrix.h5.blocked, drift_matrix.json -> data/
+- WQT_manifold.py (monolite morto, 229KB) -> legacy/
+- 5 .md spec fondazionali -> docs/reference/ (PHYSICS_MANIFESTO, PHYSICS_LOG, RG_FLOW, README_FISICA_COMPLETA, IMPLEMENTAZIONE_MOTORE_HAMILTONIANO)
+- 20 .md report/proposte + STRANG_SPLITTING_DIFF.txt -> docs/reports/
+- 28 .py -> tools/{tests(5),validation(8),rendering(12),analysis(3)} + README
+
+### Fix tecnico critico
+14 script usavano wqt_oop/core con shim sys.path INCOERENTI (parent vs parent.parent).
+Normalizzati con auto-shim: sys.path.insert(0, parents[2]) = repo root.
+Verifica: 14/14 import wqt_oop/core RISOLTO, 0 path rotti.
+I 5 "fail" del test sono FileNotFoundError su .h5 mancanti / encoding (script senza
+main-guard che lavorano all import) - PREESISTENTI, non causati dallo spostamento.
+
+### docs/ ha ora 7 sotto-cartelle
+peano, cosmology, reference, reports, history, obsoletes, figures

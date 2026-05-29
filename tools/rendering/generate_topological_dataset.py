@@ -49,6 +49,10 @@ import numpy as np
 import h5py
 
 # Framework VQT
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))  # repo root (auto-shim)
+
 from wqt_oop.fractal_universe_factory import FractalUniverseFactory, UniverseConfig
 from wqt_oop.physics_context import PhysicsContext
 from wqt_oop.solitone_composito import SolitoneComposito

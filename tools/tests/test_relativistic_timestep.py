@@ -14,7 +14,10 @@ import sys
 from pathlib import Path
 
 # Add project root to path
-sys.path.insert(0, str(Path(__file__).parent))
+
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))  # repo root (auto-shim)
 
 from wqt_oop.segmento_quantistico import SegmentoQuantistico
 from wqt_oop.solitone_composito import SolitoneComposito

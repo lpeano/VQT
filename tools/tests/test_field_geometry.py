@@ -13,7 +13,10 @@ import sys
 from pathlib import Path
 
 # Setup path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))  # repo root (auto-shim)
 
 from wqt_oop.visualizer import ManifoldVisualizer, VisualizationConfig
 import logging

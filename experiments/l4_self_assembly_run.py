@@ -40,7 +40,7 @@ warnings.filterwarnings("ignore")
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from scipy.spatial import KDTree
-from wqt_oop.energy_metrics import (
+from core.energy_metrics import (
     PeanoVQTAnalyzer,
     classify_geometric_phase,
     EnergyTriad,
@@ -81,8 +81,9 @@ CHI_ICO = 0.55 * CHI_0  # Soglia icosaedrica per cluster (|chi| > 27.5)
 DRAIN_THRESHOLD = 0.8
 DRAIN_RATE = 0.05
 
-SELF_LOG = Path("l4_self_assembly.log")
-CLUSTER_LOG = Path("cluster_analysis.log")
+_REPO_ROOT = Path(__file__).parent.parent
+SELF_LOG    = _REPO_ROOT / "logs" / "l4_self_assembly.log"
+CLUSTER_LOG = _REPO_ROOT / "logs" / "cluster_analysis.log"
 
 
 # ============================================================================
@@ -587,7 +588,7 @@ def run_self_assembly() -> dict:
 # ============================================================================
 
 def _update_checkpoint(r: dict) -> None:
-    ck = Path(__file__).parent.parent / "docs" / "MIGRAZIONE_CHECKPOINT.md"
+    ck = Path(__file__).parent.parent / "docs" / "peano" / "MIGRAZIONE_CHECKPOINT.md"
     if not ck.exists():
         return
 

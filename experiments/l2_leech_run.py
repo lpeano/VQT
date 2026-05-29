@@ -512,7 +512,7 @@ def run_leech() -> list:
 # ============================================================================
 
 def _update_checkpoint(results: list) -> None:
-    ck = Path(__file__).parent.parent / "docs" / "MIGRAZIONE_CHECKPOINT.md"
+    ck = Path(__file__).parent.parent / "docs" / "peano" / "MIGRAZIONE_CHECKPOINT.md"
     if not ck.exists():
         return
 

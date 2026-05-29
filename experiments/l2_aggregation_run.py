@@ -575,7 +575,7 @@ def run_l2_aggregation() -> list[dict]:
 # ============================================================================
 
 def _update_checkpoint(results: list[dict]) -> None:
-    ck = Path(__file__).parent.parent / "docs" / "MIGRAZIONE_CHECKPOINT.md"
+    ck = Path(__file__).parent.parent / "docs" / "peano" / "MIGRAZIONE_CHECKPOINT.md"
     if not ck.exists():
         return
 

@@ -377,7 +377,7 @@ def run_genesis() -> dict:
 
     # --- Aggiorna checkpoint ---
     _update_checkpoint(report, phase_log, h5_path, elapsed)
-    log.info("Checkpoint aggiornato: docs/MIGRAZIONE_CHECKPOINT.md")
+    log.info("Checkpoint aggiornato: docs/peano/MIGRAZIONE_CHECKPOINT.md")
 
     return {
         "report": report,
@@ -396,7 +396,7 @@ def run_genesis() -> dict:
 def _update_checkpoint(
     report: dict, phase_log: PhaseEventLogger, h5_path: Path, elapsed: float
 ) -> None:
-    ck_path = Path(__file__).parent.parent / "docs" / "MIGRAZIONE_CHECKPOINT.md"
+    ck_path = Path(__file__).parent.parent / "docs" / "peano" / "MIGRAZIONE_CHECKPOINT.md"
     if not ck_path.exists():
         return
 

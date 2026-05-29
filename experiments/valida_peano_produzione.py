@@ -288,7 +288,7 @@ def run_validation() -> dict:
 
 def _update_checkpoint(report: dict, h5_path: Path, elapsed: float) -> None:
     """Aggiorna docs/MIGRAZIONE_CHECKPOINT.md con i risultati della run."""
-    ck_path = Path(__file__).parent.parent / "docs" / "MIGRAZIONE_CHECKPOINT.md"
+    ck_path = Path(__file__).parent.parent / "docs" / "peano" / "MIGRAZIONE_CHECKPOINT.md"
     if not ck_path.exists():
         return
 

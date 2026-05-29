@@ -1,6 +1,10 @@
 """
 Genera video volumetrico da cosmology_L3_NEW.h5
 """
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))  # repo root (auto-shim)
+
 from wqt_oop.visualizer import ManifoldVisualizer, VisualizationConfig
 from pathlib import Path
 import logging
