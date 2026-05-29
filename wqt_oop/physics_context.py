@@ -93,9 +93,12 @@ class PhysicsContext:
 
     # ZERO-POINT MOTOR (modo di Nyquist lambda=2 l_P, anti-congelamento intrinseco)
     # Ampiezza di velocita' staggered per-segmento del punto-zero geometrico.
-    # 0.0 = disattivato (default, backward-compatible). >0 = il modo (-1)^i non
-    # puo' mai congelarsi -> "vuoto vivo" come fatto STRUTTURALE (non termico).
-    zero_point_amplitude: float = 0.0
+    # DEFAULT-ON a 0.05: il modo (-1)^i non puo' mai congelarsi -> "vuoto vivo"
+    # come fatto STRUTTURALE (non termico). Soglia validata: minima per stato VIVO
+    # robusto con perturbazione del vuoto trascurabile (chi_sat +0.001).
+    # RIPRODUCIBILITA': per replicare i dati storici Ramo A (run pre-2026-05-29)
+    # impostare esplicitamente zero_point_amplitude=0.0.
+    zero_point_amplitude: float = 0.05
     
     # === RELATIVISTIC TIMESTEP PARAMETERS (CP-2026-05-26-003) ===
     # [PHYSICS_TRACE] Energy-dependent timestep scaling

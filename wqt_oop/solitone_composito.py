@@ -117,7 +117,8 @@ class SolitoneComposito(AbstractSoliton):
         self.E_radiated_total: float = 0.0  # Energia radiata cumulativa
         self.E_transferred_to_children: float = 0.0  # Energia trasferita ai figli (heat sink)
         self.hierarchical_heat_fraction: float = 0.9  # Frazione energia dissipata → riscaldamento figli (AUMENTATA per L3)
-        
+        self.E_zero_point_injected: float = 0.0  # Energia cumulativa dal vuoto (motore zero-point Nyquist)
+
         # PEANO-VQT ENERGY TRIAD
         self._peano_analyzer = PeanoVQTAnalyzer(
             chi_saturation_threshold=0.8,
@@ -760,7 +761,25 @@ class SolitoneComposito(AbstractSoliton):
         # Invalida cache e centroide (backward compatibility)
         self._cache_valid = False
         self._centroid = None
-    
+
+        # =====================================================================
+        # [MOTORE ZERO-POINT: modo di Nyquist lambda=2 l_P]
+        # Il modo staggered (-1)^i non puo' mai congelarsi: floor di punto-zero
+        # T-indipendente. Applicato SOLO a figli atomici (SegmentoQuantistico).
+        # Gated da physics.zero_point_amplitude (0 = off, backward-compatible).
+        # =====================================================================
+        zp_amp = getattr(self.physics, 'zero_point_amplitude', 0.0)
+        if zp_amp > 0.0 and self.N_children >= 2 and all(
+            isinstance(c, SegmentoQuantistico) for c in self.children
+        ):
+            E_zp = E_zp_from_amplitude(zp_amp, self.N_children)
+            vels = np.array([c.vel for c in self.children], dtype=float)
+            v_new, E_inj = enforce_nyquist_zero_point(vels, E_zp)
+            for c, vv in zip(self.children, v_new):
+                c.vel = float(vv)
+            self.E_zero_point_injected += E_inj
+            self._cache_valid = False  # le velocita' sono cambiate
+
     def _compute_coupling_forces(self) -> np.ndarray:
         """
         Calcola forze di accoppiamento tra figli.
@@ -1019,6 +1038,7 @@ class SolitoneComposito(AbstractSoliton):
             'E_transferred': self.E_transferred_to_children,
             'E_net_dissipated': E_net_dissipated,
             'H_conserved': H_tot + E_net_dissipated,
+            'E_zero_point': self.E_zero_point_injected,
         }
 
         # Peano-VQT triad (disponibile dopo la prima chiamata a compute_hamiltonian_coupling)
