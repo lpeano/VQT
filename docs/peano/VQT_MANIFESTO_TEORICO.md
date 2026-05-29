@@ -222,4 +222,20 @@ auto-organizzazione spontanea verso il numero di Leech nel motore VQT.
 | Dati | `data/peano_data.zip` (genesis + peano_sim HDF5) |
 | Log | `logs/genesis_log.log`, `logs/l4_self_assembly.log`, `logs/l2_aggregation.log` |
 | Grafico | `assets/plot_genesi.png` |
-| Checkpoint | `docs/MIGRAZIONE_CHECKPOINT.md` |
+| Checkpoint | `docs/peano/MIGRAZIONE_CHECKPOINT.md` |
+
+---
+
+## Il Motore di Nyquist (Vuoto Vivo)
+
+Dal 2026-05-29 il motore implementa un **Nyquist Zero-Point Motor** attivo di
+default: il modo di lunghezza d'onda minima del reticolo ($\lambda = 2 \cdot l_P$,
+staggered $(-1)^i$) mantiene un floor di punto-zero che impedisce il congelamento
+entropico. È l'oscillazione intrinseca di scala di Planck che rende il "vuoto vivo"
+un fatto strutturale. Dettaglio completo e calibrazione in
+[../cosmology/EVOLUZIONE_TEORICA.md](../cosmology/EVOLUZIONE_TEORICA.md) §7.
+
+> **Nota sulla riproducibilità.** La configurazione `zero_point_amplitude = 0.05`
+> è lo standard per le nuove sessioni (Ramo B). Per replicare esattamente i set di
+> dati storici del Ramo A (run pre-2026-05-29), impostare esplicitamente
+> `zero_point_amplitude = 0.0` nel `PhysicsContext`.

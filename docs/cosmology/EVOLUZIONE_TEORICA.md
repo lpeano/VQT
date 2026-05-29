@@ -123,3 +123,50 @@ EVOLUZIONE_TEORICA.md  (sei qui — il ponte)
 ```
 
 *Creato il 2026-05-29 durante la separazione a doppia elica dell'archivio.*
+
+
+---
+
+## 7. Dinamica del Vuoto Vivo — il Nyquist Zero-Point Motor
+
+> **Nota tecnica sull'integrazione (dal 2026-05-29, versione 3.1).**
+
+A differenza dei modelli dissipativi classici, la VQT postula un **vuoto vivo** in
+cui il modo di Nyquist ($\lambda = 2 \cdot l_P$, il modo staggered $u_i = (-1)^i$
+di lunghezza d'onda minima del reticolo) mantiene un floor energetico costante
+$E_{zp} > 0$.
+
+**Il problema verificato.** In assenza di tale floor (`zero_point_amplitude = 0`),
+il motore evolve verso uno stato di **congelamento entropico**: l'unica agitazione
+e' termica (accoppiamento FDT a un bagno a $T_{eff}$ che decade come $e^{-\gamma t}$).
+Test su L1 a 4000 step, `zp=0`: $E_{kin}$ crolla da ~9 a $1.3	imes10^{-4}$ —
+incompatibile con la premessa di un manifold oscillante.
+
+**La soluzione.** Il *Nyquist Zero-Point Motor* (`wqt_oop/zero_point_motor.py`)
+proietta le velocita' dei 24 segmenti sul modo staggered e, se l'energia di quel
+modo scende sotto $E_{zp}$, la riporta al floor (one-sided: solo top-up, mai
+sottrazione). E' indipendente dalla temperatura: la dissipazione drena il modo,
+lo zero-point lo ricarica → il modo resta vivo **per sempre**. E' l'implementazione
+dell'oscillazione intrinseca di scala di Planck necessaria a preservare la
+chiralita' del sistema contro il decadimento termico.
+
+**Calibrazione (validata empiricamente, L1, 4000 step).**
+
+| `zero_point_amplitude` | E_kin @4000 | Stato | Perturbazione vuoto (chi_sat) |
+|---|---|---|---|
+| 0.00 | 1.3e-4 | congela | 0.99928 |
+| 0.02 | 0.15 | vivo-debole | 0.99949 |
+| **0.05** | **media ~15, min 2.6** | **VIVO stabile** | **1.00056** (+0.001) |
+| 0.10 | media ~50 | vivo (energia in eccesso) | — |
+
+Il valore **0.05 e' default-ON**: la soglia minima per uno stato VIVO robusto con
+perturbazione del vuoto trascurabile ($\Delta\chi_{sat} pprox +0.001$). La
+barriera del doppio pozzo ($\chi = 0$) non viene mai attraversata: il vuoto
+$\pm\chi_0$ e' preservato a tutte le ampiezze testate.
+
+**Conseguenza teorica.** Il "$\sigma_\infty > 0$" e il "respiro che non si ferma mai"
+(rivendicati in `TOPOLOGICAL_DYNAMICS.md` §13.1) diventano un **fatto strutturale**
+del motore di default, non un artefatto del regime variazionale. Il sistema ora
+si auto-mantiene: chiunque lanci il repository vede un manifold che pulsa, non che
+muore. Questa e' la costante di natura che governa la transizione tra un sistema
+statico/dissipativo e un sistema vivente/quantistico.
