@@ -239,3 +239,72 @@ un fatto strutturale. Dettaglio completo e calibrazione in
 > è lo standard per le nuove sessioni (Ramo B). Per replicare esattamente i set di
 > dati storici del Ramo A (run pre-2026-05-29), impostare esplicitamente
 > `zero_point_amplitude = 0.0` nel `PhysicsContext`.
+
+---
+
+## Ontologia del Tempo nel Motore VQT
+
+Nel motore VQT il tempo **non** è una variabile esterna fornita dal solver: è una
+struttura emergente. Convivono quattro nozioni temporali distinte, ciascuna con un
+ruolo fisico preciso.
+
+### La Tripartizione Temporale (più il floor che la rende perpetua)
+
+**1. Tempo di Coordinata** — $t = \sum \Delta t$
+Il *metronomo algoritmico*. È il parametro discreto con cui l'integratore simplettico
+avanza lo stato. Serve solo alla stabilità numerica ed è fisicamente **mutevole**:
+raddoppiare o dimezzare $\Delta t$ non cambia la fisica osservata, solo la risoluzione
+con cui la si campiona. Non è il tempo del modello — è la sua impalcatura.
+
+**2. Tempo Proprio** — $\tau$, con $d\tau = dt \cdot \sqrt{1 - v^2/c^2}$
+La *coordinata temporale emergente*, dilatata localmente dalla dinamica. Ogni
+segmento accumula il proprio $\tau$ ([segmento_quantistico.py](../../wqt_oop/segmento_quantistico.py):
+`tau_locale += dt / gamma_inverse`), quindi due regioni del manifold con velocità
+diverse "invecchiano" a ritmi diversi. È la vera **4ª dimensione** del sistema:
+$t_{\text{macro}} = \sum_i \tau_i / N$ non è imposto dall'esterno, emerge dalla storia
+evolutiva del manifold. La freccia del tempo è la direzione in cui $\tau$ cresce —
+e cresce sempre, perché $\dot\tau \geq 0$ per costruzione.
+
+**3. Ritmo Intrinseco** — $f_{\text{dom}}$ (periodo $T_{\text{dom}}$)
+La *frequenza fondamentale di oscillazione collettiva* del campo (il "respiro" di
+$\sigma(\rho)$). È l'**orologio** del manifold: definisce la cadenza con cui il sistema
+pulsa. Misurato invariante rispetto a $N_{\text{dof}}$ (legge FSCALE-1) **e** rispetto
+al $\Delta t$ del solver (vedi sotto). È determinato dai parametri fisici
+$(\lambda, \gamma, dt_{\text{fisico}})$, non dalla risoluzione numerica.
+
+**4. Floor di Nyquist** — $E_{zp}$ (modo $\lambda = 2\,l_P$)
+La *garanzia strutturale della perpetuità*. Il modo di lunghezza d'onda minima
+$(-1)^i$ porta sempre un quanto di punto-zero: è l'**anti-congelamento** che impedisce
+all'orologio di fermarsi. Senza di esso il sistema decade termicamente verso uno stato
+statico (E_kin → 0); con esso il battito non si arresta mai. Il Floor rende
+l'**esistenza** del tempo un fatto *energetico* (c'è sempre moto), non solo geometrico
+(c'è una metrica). Distinzione chiave: $f_{\text{dom}}$ stabilisce *a che ritmo* batte
+l'orologio; $E_{zp}$ stabilisce *che l'orologio non si ferma*.
+
+### Argomentazione sull'Invarianza
+
+La prova decisiva che il tempo del modello è fisico — e non un artefatto del programma —
+è l'**invarianza del periodo rispetto al solver**. Misurando il periodo dominante in
+tempo *fisico* al variare di $\Delta t$ su un range 4×:
+
+| $\Delta t$ | n_steps (per T=40) | $T_{\text{dom}}$ (tempo fisico) |
+|---|---|---|
+| 0.020 | 2000 | **1.739** |
+| 0.010 | 4000 | **1.739** |
+| 0.005 | 8000 | **1.739** |
+
+Il periodo è **identico** (1.739) a tutte le risoluzioni. Se il sistema "eseguisse un
+programma", il ritmo dipenderebbe dal passo di integrazione; il fatto che non lo faccia
+prova che il sistema **esegue una legge fisica** con scale temporali proprie, intrinseche
+alla dinamica del campo $\chi$. (Il microstato — la traiettoria segmento per segmento —
+deriva invece di $O(\Delta t^2)$: è corretto così, ed è la firma di una teoria del
+continuo ben posta: osservabili collettivi solver-indipendenti, traiettoria microscopica
+solver-dipendente.)
+
+### Conclusione Ontologica
+
+Il VQT non simula un sistema che *scorre nel tempo*: descrive un sistema che **genera il
+proprio battito**. Il $t+1$ del codice è solo l'impalcatura algoritmica; il tempo reale
+del modello vive in tre luoghi intrinseci — $\tau$ (la coordinata che l'orologio segna),
+$f_{\text{dom}}$ (il ritmo a cui batte), $E_{zp}$ (la garanzia che non si fermi). Il
+respiro del manifold non è dentro il tempo: **è** il tempo.
