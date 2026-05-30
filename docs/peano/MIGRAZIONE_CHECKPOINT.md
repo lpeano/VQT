@@ -146,40 +146,44 @@ Test 2 chiave — dimostra che Bug1+Bug2 sono risolti:
 
 ### Prossimi Task (prioritizzati)
 
-**1. [IN CORSO] Run L4 full-stack avviato — PID=12440, avviato 2026-05-30 13:24:56**
+**1. [IN CORSO — USA VECCHIO CODICE] Run L4 avviato 2026-05-30 13:24:56, PID=12440**
 
-```
-experiments/exp2/cosmo_L4.h5    — run L4 con drain Jitterbug attivo
-experiments/exp2/cosmo_L4.log   — log (solo 50 righe finora: init ok)
-experiments/exp2/state/         — GlobalState exp2 (L1/L2/L3 registrati)
-```
+Stato: 3 step completati al 2026-05-30 13:47. Ogni step ~8 min → 600 step ≈ 80 ore.
+Il processo usa il codice PRIMA della fix get_total_E_psi: E_Psi sara' 0 in questo HDF5.
+Lasciarlo girare in background: i dati chi/H_total sono comunque utili per calibrazione.
 
-Stato al lancio: processo vivo, 354 CPU sec, 438 MB RAM.
-Computazione lenta ma corretta: L4 con 331k segmenti × 600 step.
-Ogni step impiega ~3-10 minuti (computazione ricorsiva 24^4 livelli).
-Il drain Jitterbug (soglia sqrt(2)) e' attivo dal primo step.
-
-Monitoraggio (da lanciare in PowerShell separato):
+Monitoraggio:
 ```powershell
 Get-Content -Wait C:\Users\lpeano\plank\VQT_repo\experiments\exp2\cosmo_L4.log
 ```
 
-Primo segnale atteso: log "step=10" con E_Psi > 0 (drain attivo se chi_max > 70.7).
+**2. [ALTA — PROSSIMA SESSIONE] Nuovo run L4 con fix aggregazione**
 
-Dopo completamento (ore/giorni):
-```python
-from CoreEngine_v2.recursive_manifold_manager import RecursiveManifoldManager
-from pathlib import Path
-mgr = RecursiveManifoldManager(
-    output_dir="experiments/exp2",
-    generator_script=Path("tools/rendering/generate_topological_dataset.py"))
-mgr.register_from_hdf5(4, "experiments/exp2/cosmo_L4.h5", lambda_homeo=0.1)
-print(mgr.status_report())
+Lanciare un NUOVO run L4 (che usera' il codice aggiornato con get_total_E_psi):
+```bash
+# Rimuovere il H5 vecchio prima
+del experiments\exp2\cosmo_L4.h5
+del experiments\exp2\cosmo_L4.log
+# Poi rilancio
+python experiments/exp2/launch_full_stack.py
 ```
 
-**Fix critico gia' applicato (sessione 2026-05-30):**
-`experiments/exp2/state/global_state.json` puntava a `cosmo_L3_merged.h5` (0 frame).
-Corretto: ora punta a `cosmo_L3_ext3.h5` (600 frame, run L3 piu' completo).
+ATTESO: E_Psi > 0 dal primo frame perche':
+- L4 eredita semi L3 75° percentile (chi ≈ 69-71)
+- Alcuni L1 composites hanno chi_max > sqrt(2)*50 = 70.7 → drain a L1
+- get_total_E_psi() aggrega E_Psi da tutti i livelli L1..L4
+
+**Diagnosi drain (sessione 2026-05-30):**
+- Il drain scatta a L1 (chi individuali L0 > sqrt(2)*chi_stable = 70.7)
+- Il root L3/L4 vede solo medie dei 24 figli diretti ≈ 50 → mai > 70.7
+- Senza get_total_E_psi, E_Psi era sempre 0 nell'HDF5
+- Fix commit 0876652: get_total_E_psi() somma ricorsiva O(N_composites)
+- Il drain NON scatta all'init (chi_max_init < sqrt(2)*chi_stable): scatta solo
+  a) dinamicamente dopo centinaia di step (chi_max cresce a ~70.7) o
+  b) da L4 che eredita semi L3 ad alto chi (gia' vicini a sqrt(2)*50)
+
+**3. [MEDIA] Aggiungere geometric_phase e drain_rate allo schema HDF5**
+**4. [BASSA] Plot E_chi/E_RX/E_Psi in visualizer_l3.py**
 
 **2. [MEDIA] Aggiungere geometric_phase e drain_rate allo schema HDF5**
 
