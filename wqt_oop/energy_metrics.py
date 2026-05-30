@@ -17,7 +17,20 @@ Invariante di conservazione per l'operazione di drain:
 
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import List
+from enum import Enum
+from typing import List, Optional, Dict
+
+
+class GeometricPhase(Enum):
+    """
+    Fasi geometriche del Jitterbug di Fuller.
+
+    Ottaedro  -> Cubottaedro (VE) -> Icosaedro
+    chi_max/chi_stable: < 1.0   /  1.0..sqrt(2)  /  > sqrt(2)
+    """
+    OCTAHEDRAL    = "Ottaedrica"
+    CUBOCTAHEDRAL = "Cubottaedrica"
+    ICOSAHEDRAL   = "Icosaedrica"
 
 
 @dataclass
@@ -184,6 +197,49 @@ class PeanoVQTAnalyzer:
         """Copia della lista eventi di transizione di fase."""
         return list(self._events)
 
+    def validate_peano_theorem(self) -> Dict:
+        """
+        Verifica il Teorema Peano-VQT sui drain events registrati.
+
+        Per ogni evento di drain: dE_chi + dE_RX + dE_Psi = 0.
+        L'invariante e' garantito per costruzione da apply_drain(),
+        ma questo metodo quantifica l'errore cumulativo numerico.
+
+        Returns
+        -------
+        dict con:
+          conservation_error  -- errore relativo medio sugli eventi
+          is_valid            -- True se errore < 1e-9
+          n_drain_events      -- numero eventi di drain
+          E_psi_total         -- energia totale nel sink Psi
+        """
+        events = self._events
+        if not events:
+            return {
+                'conservation_error': 0.0,
+                'is_valid': True,
+                'n_drain_events': 0,
+                'E_psi_total': self._E_psi,
+            }
+
+        import numpy as _np
+        errors = []
+        for ev in events:
+            delta_psi = ev.E_psi_after - ev.E_psi_before
+            # Per costruzione: dE_chi = -drain, dE_Psi = +drain, dE_RX = 0
+            # => dE_chi + dE_RX + dE_Psi = -drain + 0 + drain = 0
+            residual = abs(delta_psi - ev.E_drained)
+            scale = max(abs(ev.E_drained), 1e-30)
+            errors.append(residual / scale)
+
+        mean_err = float(_np.mean(errors))
+        return {
+            'conservation_error': mean_err,
+            'is_valid': mean_err < 1e-9,
+            'n_drain_events': len(events),
+            'E_psi_total': self._E_psi,
+        }
+
     @staticmethod
     def verify_drain_conservation(
         triad_before: EnergyTriad,
@@ -214,16 +270,21 @@ class PeanoVQTAnalyzer:
 
 def classify_geometric_phase(chi_saturation: float) -> str:
     """
-    Classifica la fase geometrica del campo χ in base alla saturazione.
+    Classifica la fase geometrica del campo chi in base a chi_max/chi_stable.
 
-    Corrispondenza fisica (reticolo Leech / VQT):
-      Ottaedrica    chi_sat < 0.30   — 6 modi dominanti, ordine debole
-      Cubottaedrica 0.30..0.70       — 12 vicini attivi, ordine intermedio
-      Icosaedrica   chi_sat > 0.70   — polarizzazione forte, proto-materia
+    Corrispondenza fisica (Jitterbug di Fuller, calibrata su L2/L3/L4):
+      Ottaedrica     chi_sat < 1.0              -- campo libero, E_chi domina
+      Cubottaedrica  1.0 <= chi_sat < sqrt(2)   -- Vector Equilibrium (VE)
+      Icosaedrica    chi_sat >= sqrt(2)          -- struttura congelata, materia
+
+    Nota: chi_saturation = chi_max / chi_stable (nessun cap a 1.0).
+    La soglia sqrt(2) e' la costante geometrica Ottaedro->Cubottaedro di Fuller.
     """
-    if chi_saturation >= 0.70:
+    import math
+    sqrt2 = math.sqrt(2)
+    if chi_saturation >= sqrt2:
         return "Icosaedrica"
-    if chi_saturation >= 0.30:
+    if chi_saturation >= 1.0:
         return "Cubottaedrica"
     return "Ottaedrica"
 
@@ -276,6 +337,14 @@ def load_h5_and_validate(
         "icosahedral_reached": False,
         "condensation_frame": None,
         "E_psi_at_condensation": 0.0,
+        # Jitterbug calibration fields
+        "chi_max_peak_frame": None,
+        "chi_max_peak_value": 0.0,
+        "jitterbug_ratio": 0.0,       # chi_max_peak / chi_stable
+        "jitterbug_confirmed": False,  # |ratio - sqrt(2)| / sqrt(2) < 10%
+        "truncation_frame": None,
+        "truncation_delta": None,      # |chi_max_peak_frame - truncation_frame|
+        "peano_theorem_confirmed": False,
     }
 
     with h5py.File(str(filepath), "r") as f:
@@ -293,12 +362,13 @@ def load_h5_and_validate(
         report["total_frames"] = len(frame_names)
 
         E_psi_prev = None
+        chi_max_series = []
+        H_series = []
 
         for name in frame_names:
             frame = frames_group[name]
 
             E_Psi = float(frame.attrs.get("E_Psi", 0.0))
-            E_chi = float(frame.attrs.get("E_chi", 0.0))
 
             # Controllo monotonicita'
             if E_psi_prev is not None:
@@ -307,14 +377,19 @@ def load_h5_and_validate(
                 elif E_Psi < E_psi_prev - 1e-12:
                     report["E_psi_monotonic"] = False
                     report["E_psi_violations"] += 1
-
             E_psi_prev = E_Psi
 
-            # Fase geometrica da chi_values
+            H_series.append(float(frame.attrs.get("H_total", 0.0)))
+
+            # Fase geometrica basata su chi_MAX (segnale Jitterbug, non media)
             if "chi_values" in frame:
                 chi_vals = frame["chi_values"][:]
-                chi_sat = float(np.mean(np.abs(chi_vals))) / max(chi_stable, 1e-30)
-                chi_sat = min(chi_sat, 2.0)  # cap per evitare numeri assurdi
+                abs_chi = np.abs(chi_vals)
+                chi_max = float(np.max(abs_chi))
+                chi_max_series.append(chi_max)
+
+                # Saturazione normalizzata su chi_max (senza cap a 1.0)
+                chi_sat = chi_max / max(chi_stable, 1e-30)
                 report["max_chi_saturation"] = max(report["max_chi_saturation"], chi_sat)
 
                 phase = classify_geometric_phase(chi_sat)
@@ -324,8 +399,45 @@ def load_h5_and_validate(
                     report["icosahedral_reached"] = True
                     report["condensation_frame"] = name
                     report["E_psi_at_condensation"] = E_Psi
+            else:
+                chi_max_series.append(0.0)
 
         report["E_psi_final"] = E_psi_prev if E_psi_prev is not None else 0.0
+
+        # --- Jitterbug: picco chi_max = saturazione topologica ---
+        if len(chi_max_series) >= 3:
+            chi_max_arr = np.array(chi_max_series)
+            # Smussamento leggero per evitare falsi picchi
+            smoothed = np.convolve(chi_max_arr, np.ones(3) / 3.0, mode='same')
+            peak_idx = int(np.argmax(smoothed))
+            peak_val = float(chi_max_arr[peak_idx])
+            report["chi_max_peak_frame"] = frame_names[peak_idx]
+            report["chi_max_peak_value"] = peak_val
+            jratio = peak_val / max(chi_stable, 1e-30)
+            report["jitterbug_ratio"] = jratio
+            report["jitterbug_confirmed"] = abs(jratio - np.sqrt(2)) / np.sqrt(2) < 0.10
+
+        # --- Troncamento: deviazione MAD-robusta in H_total ---
+        if len(H_series) > 4:
+            H_arr = np.array(H_series)
+            H_diff = np.diff(H_arr)
+            med = np.median(H_diff)
+            mad = np.median(np.abs(H_diff - med)) + 1e-30
+            z = np.abs(H_diff - med) / mad
+            candidates = np.where(z > 5.0)[0]
+            if len(candidates) > 0:
+                report["truncation_frame"] = frame_names[int(candidates[0])]
+
+        # Coincidenza (finestra 15 frame: include ritardo di cristallizzazione)
+        if report["chi_max_peak_frame"] is not None and report["truncation_frame"] is not None:
+            try:
+                peak_i = frame_names.index(report["chi_max_peak_frame"])
+                trunc_i = frame_names.index(report["truncation_frame"])
+                delta = abs(peak_i - trunc_i)
+                report["truncation_delta"] = delta
+                report["peano_theorem_confirmed"] = delta <= 15
+            except ValueError:
+                pass
 
     if verbose:
         _print_validation_report(report)
@@ -367,4 +479,18 @@ def _print_validation_report(report: dict) -> None:
 
     inv_ok = "OK" if report["E_psi_monotonic"] else "VIOLATA"
     print(f"\n  Invariante E_Psi monotona: {inv_ok}")
+
+    print("\n  --- CALIBRAZIONE JITTERBUG ---")
+    print(f"  Picco chi_max:     frame={report['chi_max_peak_frame']}  "
+          f"val={report['chi_max_peak_value']:.4f}")
+    print(f"  Ratio chi_max/chi_stable: {report['jitterbug_ratio']:.4f}  "
+          f"(sqrt(2)={2**0.5:.4f})")
+    jok = "CONFERMATO" if report["jitterbug_confirmed"] else "non confermato"
+    print(f"  Costante Jitterbug:  {jok}")
+    if report["truncation_frame"] is not None:
+        delta = report.get("truncation_delta", "?")
+        pok = "CONFERMATO" if report["peano_theorem_confirmed"] else "non confermato"
+        print(f"  Troncamento frame: {report['truncation_frame']}  "
+              f"delta={delta}  Teorema Peano-VQT: {pok}")
+
     print(sep + "\n")

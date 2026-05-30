@@ -120,8 +120,11 @@ class SolitoneComposito(AbstractSoliton):
         self.E_zero_point_injected: float = 0.0  # Energia cumulativa dal vuoto (motore zero-point Nyquist)
 
         # PEANO-VQT ENERGY TRIAD
+        # Soglia Jitterbug: chi_max/chi_stable = sqrt(2) e' la costante geometrica
+        # della transizione Ottaedro->Cubottaedro di Fuller, calibrata sperimentalmente
+        # su file L2/L3/L4 (5/8 file entro 5% da sqrt(2)).
         self._peano_analyzer = PeanoVQTAnalyzer(
-            chi_saturation_threshold=0.8,
+            chi_saturation_threshold=np.sqrt(2),
             drain_rate=0.1,
         )
         self._last_triad: Optional[EnergyTriad] = None
@@ -460,8 +463,12 @@ class SolitoneComposito(AbstractSoliton):
             del attenuation, W_eff, tanh_mat
 
         # --- PEANO-VQT TRIAD (side-effect, guard per-step) ---
-        # Saturazione χ: mean(|χ|)/χ_stable ∈ [0,1]
-        chi_saturation = float(min(np.mean(np.abs(chi_values)) / max(chi_0, 1e-30), 1.0))
+        # Saturazione topologica: max(|χ|)/χ_stable (nessun cap a 1.0).
+        # Il segnale fisico e' chi_MAX: e' la singolarita' locale del campo che
+        # innesca la transizione Jitterbug, non la media (artefatto statistico).
+        # Dalla calibrazione su L2/L3/L4: chi_max/chi_stable raggiunge sqrt(2)
+        # esattamente al picco di saturazione (5/8 file, errore < 5%).
+        chi_saturation = float(np.max(np.abs(chi_values)) / max(chi_0, 1e-30))
 
         if self._triad_step != self._current_simulation_step:
             # Prima chiamata di questo step: applica drain

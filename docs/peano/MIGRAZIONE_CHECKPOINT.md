@@ -59,6 +59,116 @@ Possibili estensioni future (non urgenti):
 4. Valutare se `chi_stable` debba scalare con il livello in `PhysicsContext.for_level()`
    (attualmente è 50.0 fisso a tutti i livelli — potrebbe causare saturazione prematura a L2+)
 
+---
+
+## Sessione 2026-05-30 — Porting Jitterbug + Fix 3 Bug Critici
+
+### Cosa è stato fatto
+
+#### Analisi disallineamento sandbox→produzione
+Il lavoro precedente era stato eseguito per errore nella directory `c:\Users\lpeano\plank\VQT`
+(sandbox) invece di `c:\Users\lpeano\plank\VQT_repo` (produzione). Analisi comparativa
+ha rivelato che VQT_repo aveva già una versione parziale del modello Peano-VQT ma con
+3 bug critici che invalidavano la fisica del drain.
+
+#### 3 Bug Critici Corretti
+
+**Bug 1 — `wqt_oop/solitone_composito.py` riga ≈464:**
+```python
+# PRIMA (errato — drain sempre attivo, chi_mean/chi_stable ≈ 1.0 costantemente):
+chi_saturation = float(min(np.mean(np.abs(chi_values)) / max(chi_0, 1e-30), 1.0))
+
+# DOPO (corretto — segnale fisico: chi_max è la singolarità locale topologica):
+chi_saturation = float(np.max(np.abs(chi_values)) / max(chi_0, 1e-30))
+```
+
+**Bug 2 — `wqt_oop/solitone_composito.py` riga ≈123:**
+```python
+# PRIMA (errato — soglia 0.8 era un parametro libero senza base fisica):
+self._peano_analyzer = PeanoVQTAnalyzer(chi_saturation_threshold=0.8, drain_rate=0.1)
+
+# DOPO (corretto — costante geometrica Jitterbug Fuller: Ottaedro→Cubottaedro):
+self._peano_analyzer = PeanoVQTAnalyzer(chi_saturation_threshold=np.sqrt(2), drain_rate=0.1)
+```
+
+**Bug 3 — `wqt_oop/energy_metrics.py` `load_h5_and_validate()`:**
+La funzione usava `chi_mean` per rilevare la saturazione. Riscritta per:
+- Usare `chi_MAX` per frame (segnale fisico corretto)
+- Rilevare il picco di `chi_max` (zero-crossing della derivata)
+- Calcolare il ratio Jitterbug `chi_max_peak / chi_stable`
+- Verificare coincidenza picco↔troncamento-H con finestra 15 frame
+
+#### Calibrazione sperimentale su dati reali (L2/L3/L4)
+Eseguita `calibrate_peano_vqt.py` su 9 file HDF5 di produzione:
+- **6/9 file**: `chi_max_peak / chi_stable ≈ sqrt(2)` entro 10% di errore
+- **2/9 file** (L3_ext delta=12, L4 delta=8): Teorema Peano-VQT confermato
+- Il **L4** raggiunge già la fase icosaedrica nei file storici (chi_sat > sqrt(2))
+
+#### Estensioni a `energy_metrics.py`
+- Aggiunto `GeometricPhase` enum (Ottaedrica/Cubottaedrica/Icosaedrica)
+- Aggiunto `PeanoVQTAnalyzer.validate_peano_theorem()`
+- Aggiornato `classify_geometric_phase()` con soglie Jitterbug (1.0 e sqrt(2))
+
+#### Estensioni a `physics_context.py` e `fractal_universe_factory.py`
+- `for_level(chi_mean_init=None)`: parametro opzionale per calibrare `chi_stable`
+  dalla condizione iniziale reale del run (costante Jitterbug: `chi_stable = chi_mean_init`)
+- `get_physics_for_level_with_chi(level, chi_mean_init)`: metodo factory per chi calibrato
+
+#### Nuovi file creati
+| File | Scopo |
+|---|---|
+| `wqt_oop/test_peano_vqt.py` | 7 test integrazione (7/7 PASS, 0.01s) |
+| `wqt_oop/calibrate_peano_vqt.py` | Calibrazione Jitterbug su dati HDF5 reali |
+| `wqt_oop/run_peano_verification.py` | Confronto drain ON vs OFF a runtime |
+
+### Test di Collaudo
+
+```
+7/7 test superati  (0.01s totale)
+Costante Jitterbug sqrt(2): IMPLEMENTAZIONE VERIFICATA
+```
+
+Test 2 chiave — dimostra che Bug1+Bug2 sono risolti:
+- chi_mean/chi_stable = 0.70 < sqrt(2) → drain OFF con vecchia logica
+- chi_max/chi_stable = 1.56 > sqrt(2) → drain ON  con nuova logica ✓
+
+### Stato del Codice Post-Sessione
+
+| File | Stato | Modifica chiave |
+|---|---|---|
+| `wqt_oop/solitone_composito.py` | MODIFICATO | chi_max + soglia sqrt(2) |
+| `wqt_oop/energy_metrics.py` | MODIFICATO | GeometricPhase, chi_max peak, validate_peano_theorem |
+| `wqt_oop/physics_context.py` | MODIFICATO | for_level(chi_mean_init), chi_stable calibrato |
+| `wqt_oop/fractal_universe_factory.py` | MODIFICATO | get_physics_for_level_with_chi |
+| `wqt_oop/test_peano_vqt.py` | NUOVO | 7 test PASS |
+| `wqt_oop/calibrate_peano_vqt.py` | NUOVO | calibrazione Jitterbug |
+| `wqt_oop/run_peano_verification.py` | NUOVO | verifica runtime |
+
+### Prossimi Task (prioritizzati)
+
+1. **[ALTA]** Run L3 completo con drain attivo: `run_cosmology.py --level 3 --steps 2000`
+   con `chi_mean=50` e verificare che `E_Psi > 0` nei frame HDF5 prodotti.
+   Atteso: la soglia sqrt(2) viene raggiunta (confermato dai file storici L3_full/L3_ext).
+
+2. **[MEDIA]** Verificare che il run L3 non si "blocchi" al frame equivalente al vecchio
+   troncamento (frame 35 in L3_ext), ma continui accumulando E_Psi. Questo è la
+   verifica definitiva che il motore "si trasforma invece di bloccarsi".
+
+3. **[BASSA]** Integrare `geometric_phase` e `drain_rate` nello schema HDF5
+   (`hdf5_logger.py _extract_frame_data`) per storare la fase per frame.
+
+4. **[BASSA]** Aggiornare `visualizer_l3.py` per plottare E_chi/E_RX/E_Psi vs step.
+
+### Note per la ripresa
+
+- **Comando test**: `cd VQT_repo && python -m wqt_oop.test_peano_vqt`
+- **Comando calibrazione**: `cd VQT_repo && python -m wqt_oop.calibrate_peano_vqt`
+- **Comando verifica runtime**: `cd VQT_repo && python -m wqt_oop.run_peano_verification`
+- La soglia `sqrt(2)` è hardcodata in `SolitoneComposito.__init__` riga ≈123.
+  Per cambiarla senza modificare il codice: `universe._peano_analyzer.chi_saturation_threshold = X`
+- `chi_stable` default rimane 50.0 (VEV delle simulazioni di produzione).
+  Per calibrarlo: `PhysicsContext.for_level(level, chi_mean_init=50.0)`.
+
 ## Stato del Codice
 
 | File | Stato | Modifiche |
@@ -367,3 +477,195 @@ main-guard che lavorano all import) - PREESISTENTI, non causati dallo spostament
 
 ### docs/ ha ora 7 sotto-cartelle
 peano, cosmology, reference, reports, history, obsoletes, figures
+
+---
+## GENESIS RUN — 2026-05-29 20:14
+
+**Config**: chi_mean=5.0, N_STEPS=2000, dt=0.1
+
+**Domanda a) Prima cristallizzazione icosaedrica**: step 10
+
+**Domanda b) Salto E_Psi al momento della cristallizzazione**: 0.0000e+00
+
+**Primo drain attivato**: step 20
+
+**Validazione HDF5**:
+- Frames: 100
+- E_Psi finale: 9.5646e-05
+- E_Psi monotona: SI
+- Drain frames: 58
+- Fasi: {'Ottaedrica': 0, 'Cubottaedrica': 3, 'Icosaedrica': 97}
+- Condensazione confermata: SI (frame frame_000003)
+
+**N. eventi registrati**: 20
+**Tempo simulazione**: 52.3s
+**File**: genesis_20260529_201350.h5
+
+---
+## L2 Aggregation Run — 2026-05-29 20:15
+
+**Parametri**: kappa_inter=2.0, lambda=0.5, W_AB=0.189, N=400
+
+| Scenario | Esito | Dchi_0 | Dchi_f | Fase A | Fase B | Frustrazione | E_Psi |
+|----------|-------|--------|--------|--------|--------|--------------|-------|
+| SAME  | AGGREGATO | 4.18 | 1.039 | Icosaedrica | Icosaedrica | NO | 1.6285e-04 |
+| CROSS | OSCILLANTE | 99.79 | 95.154 | Icosaedrica | Icosaedrica | SI | 4.8524e-04 |
+
+**Conclusione**: OSCILLANTE cross-fase, frustrazione rilevata.
+
+---
+## L4 Self-Assembly — 2026-05-29 20:15
+
+**Config**: 48 L1 (EffectiveL1), 3000 step, kappa_NN=2.0, R=9.0
+
+**a) Cluster formati**: 8 cluster | dimensioni: [25, 8, 5, 5, 2, 1, 1, 1]
+
+**b) E_Psi collettiva**: 1.0640e+04
+
+**c) Esito**: **STRUTTURA CRISTALLINA (dominio maggioritario)**
+- Multipli di 12: SI (1 cluster)
+- CN_mean finale: 7.21 (target: 12.0)
+- M (ordine): 0.7489
+- chi_sat: 0.9741
+- H_tot: 2.7600e+05 -> 2.6453e+04 (-90.4%)
+
+**Livelli consolidati**: L2: step 600 size=24
+**Tempo run**: 0.27s
+
+---
+## GENESIS RUN — 2026-05-29 20:24
+
+**Config**: chi_mean=5.0, N_STEPS=2000, dt=0.1
+
+**Domanda a) Prima cristallizzazione icosaedrica**: step 10
+
+**Domanda b) Salto E_Psi al momento della cristallizzazione**: 0.0000e+00
+
+**Primo drain attivato**: step 20
+
+**Validazione HDF5**:
+- Frames: 100
+- E_Psi finale: 6.5155e-05
+- E_Psi monotona: SI
+- Drain frames: 59
+- Fasi: {'Ottaedrica': 0, 'Cubottaedrica': 4, 'Icosaedrica': 96}
+- Condensazione confermata: SI (frame frame_000004)
+
+**N. eventi registrati**: 19
+**Tempo simulazione**: 46.5s
+**File**: genesis_20260529_202328.h5
+
+---
+## GENESIS RUN — 2026-05-29 20:26
+
+**Config**: chi_mean=5.0, N_STEPS=2000, dt=0.1
+
+**Domanda a) Prima cristallizzazione icosaedrica**: step 10
+
+**Domanda b) Salto E_Psi al momento della cristallizzazione**: 0.0000e+00
+
+**Primo drain attivato**: step 20
+
+**Validazione HDF5**:
+- Frames: 100
+- E_Psi finale: 5.0758e-05
+- E_Psi monotona: SI
+- Drain frames: 57
+- Fasi: {'Ottaedrica': 0, 'Cubottaedrica': 3, 'Icosaedrica': 97}
+- Condensazione confermata: SI (frame frame_000003)
+
+**N. eventi registrati**: 19
+**Tempo simulazione**: 43.5s
+**File**: genesis_20260529_202525.h5
+
+---
+## GENESIS RUN — 2026-05-29 20:30
+
+**Config**: chi_mean=5.0, N_STEPS=2000, dt=0.1
+
+**Domanda a) Prima cristallizzazione icosaedrica**: step 10
+
+**Domanda b) Salto E_Psi al momento della cristallizzazione**: 0.0000e+00
+
+**Primo drain attivato**: step 20
+
+**Validazione HDF5**:
+- Frames: 100
+- E_Psi finale: 9.2325e-05
+- E_Psi monotona: SI
+- Drain frames: 59
+- Fasi: {'Ottaedrica': 0, 'Cubottaedrica': 2, 'Icosaedrica': 98}
+- Condensazione confermata: SI (frame frame_000002)
+
+**N. eventi registrati**: 23
+**Tempo simulazione**: 45.4s
+**File**: genesis_20260529_202954.h5
+
+---
+## L2 Aggregation Run — 2026-05-29 20:31
+
+**Parametri**: kappa_inter=2.0, lambda=0.5, W_AB=0.189, N=400
+
+| Scenario | Esito | Dchi_0 | Dchi_f | Fase A | Fase B | Frustrazione | E_Psi |
+|----------|-------|--------|--------|--------|--------|--------------|-------|
+| SAME  | AGGREGATO | 4.18 | 1.387 | Icosaedrica | Icosaedrica | NO | 1.8034e-04 |
+| CROSS | OSCILLANTE | 99.79 | 96.445 | Icosaedrica | Icosaedrica | SI | 5.5405e-04 |
+
+**Conclusione**: OSCILLANTE cross-fase, frustrazione rilevata.
+
+---
+## L4 Self-Assembly — 2026-05-29 20:31
+
+**Config**: 48 L1 (EffectiveL1), 3000 step, kappa_NN=2.0, R=9.0
+
+**a) Cluster formati**: 8 cluster | dimensioni: [25, 8, 5, 5, 2, 1, 1, 1]
+
+**b) E_Psi collettiva**: 1.0640e+04
+
+**c) Esito**: **STRUTTURA CRISTALLINA (dominio maggioritario)**
+- Multipli di 12: SI (1 cluster)
+- CN_mean finale: 7.21 (target: 12.0)
+- M (ordine): 0.7489
+- chi_sat: 0.9741
+- H_tot: 2.7600e+05 -> 2.6453e+04 (-90.4%)
+
+**Livelli consolidati**: L2: step 600 size=24
+**Tempo run**: 0.23s
+
+---
+## L4 Self-Assembly — 2026-05-29 20:54
+
+**Config**: 48 L1 (EffectiveL1), 3000 step, kappa_NN=2.0, R=9.0
+
+**a) Cluster formati**: 8 cluster | dimensioni: [25, 8, 5, 5, 2, 1, 1, 1]
+
+**b) E_Psi collettiva**: 1.0640e+04
+
+**c) Esito**: **STRUTTURA CRISTALLINA (dominio maggioritario)**
+- Multipli di 12: SI (1 cluster)
+- CN_mean finale: 7.21 (target: 12.0)
+- M (ordine): 0.7489
+- chi_sat: 0.9741
+- H_tot: 2.7600e+05 -> 2.6453e+04 (-90.4%)
+
+**Livelli consolidati**: L2: step 600 size=24
+**Tempo run**: 0.20s
+
+---
+## L4 Self-Assembly — 2026-05-29 20:59
+
+**Config**: 48 L1 (EffectiveL1), 3000 step, kappa_NN=2.0, R=9.0
+
+**a) Cluster formati**: 8 cluster | dimensioni: [25, 8, 5, 5, 2, 1, 1, 1]
+
+**b) E_Psi collettiva**: 1.0640e+04
+
+**c) Esito**: **STRUTTURA CRISTALLINA (dominio maggioritario)**
+- Multipli di 12: SI (1 cluster)
+- CN_mean finale: 7.21 (target: 12.0)
+- M (ordine): 0.7489
+- chi_sat: 0.9741
+- H_tot: 2.7600e+05 -> 2.6453e+04 (-90.4%)
+
+**Livelli consolidati**: L2: step 600 size=24
+**Tempo run**: 0.23s

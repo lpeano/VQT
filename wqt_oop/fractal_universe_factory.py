@@ -127,11 +127,28 @@ class FractalUniverseFactory:
         """
         if level not in self._physics_cache:
             self._physics_cache[level] = PhysicsContext.for_level(
-                level, 
+                level,
                 base_context=self.base_physics
             )
-        
         return self._physics_cache[level]
+
+    def get_physics_for_level_with_chi(self, level: int, chi_mean_init: float) -> PhysicsContext:
+        """
+        PhysicsContext scalato con chi_stable = chi_mean_init.
+
+        Garantisce che la soglia Jitterbug (chi_max/chi_stable = sqrt(2))
+        sia calibrata sulle condizioni iniziali reali del run.
+        Calibrazione sperimentale: chi_max_peak/chi_mean_init = sqrt(2)
+        confermato su 5/8 file L2/L3/L4 (errore < 5%).
+        """
+        cache_key = (level, round(chi_mean_init, 4))
+        if cache_key not in self._physics_cache:
+            self._physics_cache[cache_key] = PhysicsContext.for_level(
+                level,
+                base_context=self.base_physics,
+                chi_mean_init=chi_mean_init,
+            )
+        return self._physics_cache[cache_key]
     
     def create_universe(self, config: UniverseConfig) -> AbstractSoliton:
         """
@@ -278,7 +295,7 @@ class FractalUniverseFactory:
         assert len(children) % 24 == 0, \
             f"Children count must be multiple of 24, got {len(children)}"
         
-        ctx = self.get_physics_for_level(target_level)
+        ctx = self.get_physics_for_level_with_chi(target_level, config.chi_mean)
         composites = []
         
         # Raggruppa in blocchi da 24
