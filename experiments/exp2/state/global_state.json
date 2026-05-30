@@ -1,0 +1,50 @@
+{
+  "1": {
+    "level": 1,
+    "hdf5_path": "C:\\Users\\lpeano\\plank\\VQT_repo\\experiments\\exp1\\cosmo_L1.h5",
+    "n_segments": 24,
+    "steps_completed": 600,
+    "completed_at": 1780139464.0065157,
+    "inherit_percentile": 75,
+    "sigma_plateau": 0.0862,
+    "f_dom": 0.6667,
+    "H_emergent": NaN,
+    "spectral_entropy": NaN,
+    "chi_mean": 50.0,
+    "chi_std": 5.0,
+    "lambda_homeo": 0.1,
+    "S_residual": 0.03566611200000001
+  },
+  "2": {
+    "level": 2,
+    "hdf5_path": "C:\\Users\\lpeano\\plank\\VQT_repo\\experiments\\exp1\\cosmo_L2.h5",
+    "n_segments": 576,
+    "steps_completed": 500,
+    "completed_at": 1780139464.0084364,
+    "inherit_percentile": 75,
+    "sigma_plateau": 0.0502,
+    "f_dom": 0.6,
+    "H_emergent": NaN,
+    "spectral_entropy": NaN,
+    "chi_mean": 50.0,
+    "chi_std": 5.0,
+    "lambda_homeo": 0.1,
+    "S_residual": 0.290308608
+  },
+  "3": {
+    "level": 3,
+    "hdf5_path": "C:\\Users\\lpeano\\plank\\VQT_repo\\experiments\\exp1\\cosmo_L3_ext3.h5",
+    "n_segments": 13824,
+    "steps_completed": 600,
+    "completed_at": 1780139464.0103452,
+    "inherit_percentile": 75,
+    "sigma_plateau": 0.0385,
+    "f_dom": 0.42,
+    "H_emergent": NaN,
+    "spectral_entropy": NaN,
+    "chi_mean": 50.0,
+    "chi_std": 5.0,
+    "lambda_homeo": 0.1,
+    "S_residual": 4.098124800000001
+  }
+}

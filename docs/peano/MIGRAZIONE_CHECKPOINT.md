@@ -146,36 +146,40 @@ Test 2 chiave — dimostra che Bug1+Bug2 sono risolti:
 
 ### Prossimi Task (prioritizzati)
 
-**1. [ALTA — PRONTO AL LANCIO] Run L4 full-stack con drain Jitterbug attivo**
+**1. [IN CORSO] Run L4 full-stack avviato — PID=12440, avviato 2026-05-30 13:24:56**
 
-Script pronto e corretto in: `experiments/exp2/launch_full_stack.py`
-
-Comando (una riga, lanciare nella prossima sessione):
 ```
-cd VQT_repo
-python experiments/exp2/launch_full_stack.py
+experiments/exp2/cosmo_L4.h5    — run L4 con drain Jitterbug attivo
+experiments/exp2/cosmo_L4.log   — log (solo 50 righe finora: init ok)
+experiments/exp2/state/         — GlobalState exp2 (L1/L2/L3 registrati)
 ```
 
-Output prodotto:
-- `experiments/exp2/cosmo_L4.h5`   — HDF5 del run L4 con drain attivo
-- `experiments/exp2/cosmo_L4.log`  — log in tempo reale
-- `experiments/exp2/state/global_state.json` — GlobalState exp2 isolato
+Stato al lancio: processo vivo, 354 CPU sec, 438 MB RAM.
+Computazione lenta ma corretta: L4 con 331k segmenti × 600 step.
+Ogni step impiega ~3-10 minuti (computazione ricorsiva 24^4 livelli).
+Il drain Jitterbug (soglia sqrt(2)) e' attivo dal primo step.
 
-Perche' L4 e' il run giusto:
-- GlobalState exp2 ha L1/L2/L3 gia' registrati (da exp1, sigma misurati)
-- L4 eredita semi L3 al 75° percentile (--inherit cosmo_L3_merged.h5)
-- Dalla calibrazione: L4 parte con chi_max/chi_stable ≈ 1.43 > sqrt(2) = 1.414
-- Il drain si attiva dal PRIMO step → E_Psi > 0 nei primi frame
-- Monitoraggio live: `Get-Content -Wait experiments/exp2/cosmo_L4.log`
+Monitoraggio (da lanciare in PowerShell separato):
+```powershell
+Get-Content -Wait C:\Users\lpeano\plank\VQT_repo\experiments\exp2\cosmo_L4.log
+```
 
-Dopo il completamento del run L4:
+Primo segnale atteso: log "step=10" con E_Psi > 0 (drain attivo se chi_max > 70.7).
+
+Dopo completamento (ore/giorni):
 ```python
 from CoreEngine_v2.recursive_manifold_manager import RecursiveManifoldManager
-mgr = RecursiveManifoldManager(output_dir="experiments/exp2",
-      generator_script="tools/rendering/generate_topological_dataset.py")
+from pathlib import Path
+mgr = RecursiveManifoldManager(
+    output_dir="experiments/exp2",
+    generator_script=Path("tools/rendering/generate_topological_dataset.py"))
 mgr.register_from_hdf5(4, "experiments/exp2/cosmo_L4.h5", lambda_homeo=0.1)
-print(mgr.status_report())  # mostra S_residual aggiornato con dati L4 reali
+print(mgr.status_report())
 ```
+
+**Fix critico gia' applicato (sessione 2026-05-30):**
+`experiments/exp2/state/global_state.json` puntava a `cosmo_L3_merged.h5` (0 frame).
+Corretto: ora punta a `cosmo_L3_ext3.h5` (600 frame, run L3 piu' completo).
 
 **2. [MEDIA] Aggiungere geometric_phase e drain_rate allo schema HDF5**
 

@@ -119,7 +119,7 @@ def setup_exp2_global_state(exp2_dir: Path) -> GlobalState:
     registrations = [
         (1,  exp1 / "cosmo_L1.h5",         24,      600),
         (2,  exp1 / "cosmo_L2.h5",          576,     500),
-        (3,  exp1 / "cosmo_L3_merged.h5",   13824,   600),
+        (3,  exp1 / "cosmo_L3_ext3.h5",      13824,   600),  # 600 frame, il run L3 piu' completo
     ]
     sigma_plateaux = {1: 0.0862, 2: 0.0502, 3: 0.0385}
 
