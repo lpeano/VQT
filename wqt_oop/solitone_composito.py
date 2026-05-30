@@ -488,11 +488,36 @@ class SolitoneComposito(AbstractSoliton):
 
     def get_energy_triad(self) -> Optional[EnergyTriad]:
         """
-        Restituisce l'ultima triade Peano-VQT calcolata.
+        Restituisce la triade Peano-VQT con E_Psi aggregata da TUTTI i livelli.
 
-        Returns None se compute_hamiltonian_coupling() non è ancora stato chiamato.
+        E_Psi nel triad = somma ricorsiva su tutta la gerarchia (L1..LN).
+        Il drain scatta a L1 dove i chi individuali possono superare sqrt(2)*chi_stable,
+        ma il root non vede quei valori (usa medie dei figli diretti).
+        Aggregare E_Psi da tutti i livelli e' necessario per osservarlo nell'HDF5.
+
+        Returns None se compute_hamiltonian_coupling() non e' ancora stato chiamato.
         """
-        return self._last_triad
+        if self._last_triad is None:
+            return None
+        return EnergyTriad(
+            E_chi=self._last_triad.E_chi,
+            E_RX=self._last_triad.E_RX,
+            E_Psi=self.get_total_E_psi(),
+        )
+
+    def get_total_E_psi(self) -> float:
+        """
+        Somma E_Psi di questo livello + tutti i livelli figli (ricorsiva).
+
+        Complessita' O(N_composites) = O(24^L) — trascurabile rispetto al coupling.
+        Necessario perche' il drain Jitterbug scatta a L1 (chi individuali > sqrt(2)*chi0)
+        ma il root non vede quei valori: usa solo le medie dei figli diretti (~50 a L3/L4).
+        """
+        total = self._peano_analyzer.E_psi_total
+        for child in self.children:
+            if isinstance(child, SolitoneComposito):
+                total += child.get_total_E_psi()
+        return total
     
     @staticmethod
     def _get_child_chi(child: AbstractSoliton) -> float:
