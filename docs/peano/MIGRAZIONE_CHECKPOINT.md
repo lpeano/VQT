@@ -146,28 +146,67 @@ Test 2 chiave — dimostra che Bug1+Bug2 sono risolti:
 
 ### Prossimi Task (prioritizzati)
 
-1. **[ALTA]** Run L3 completo con drain attivo: `run_cosmology.py --level 3 --steps 2000`
-   con `chi_mean=50` e verificare che `E_Psi > 0` nei frame HDF5 prodotti.
-   Atteso: la soglia sqrt(2) viene raggiunta (confermato dai file storici L3_full/L3_ext).
+**1. [ALTA — PRONTO AL LANCIO] Run L4 full-stack con drain Jitterbug attivo**
 
-2. **[MEDIA]** Verificare che il run L3 non si "blocchi" al frame equivalente al vecchio
-   troncamento (frame 35 in L3_ext), ma continui accumulando E_Psi. Questo è la
-   verifica definitiva che il motore "si trasforma invece di bloccarsi".
+Script pronto e corretto in: `experiments/exp2/launch_full_stack.py`
 
-3. **[BASSA]** Integrare `geometric_phase` e `drain_rate` nello schema HDF5
-   (`hdf5_logger.py _extract_frame_data`) per storare la fase per frame.
+Comando (una riga, lanciare nella prossima sessione):
+```
+cd VQT_repo
+python experiments/exp2/launch_full_stack.py
+```
 
-4. **[BASSA]** Aggiornare `visualizer_l3.py` per plottare E_chi/E_RX/E_Psi vs step.
+Output prodotto:
+- `experiments/exp2/cosmo_L4.h5`   — HDF5 del run L4 con drain attivo
+- `experiments/exp2/cosmo_L4.log`  — log in tempo reale
+- `experiments/exp2/state/global_state.json` — GlobalState exp2 isolato
 
-### Note per la ripresa
+Perche' L4 e' il run giusto:
+- GlobalState exp2 ha L1/L2/L3 gia' registrati (da exp1, sigma misurati)
+- L4 eredita semi L3 al 75° percentile (--inherit cosmo_L3_merged.h5)
+- Dalla calibrazione: L4 parte con chi_max/chi_stable ≈ 1.43 > sqrt(2) = 1.414
+- Il drain si attiva dal PRIMO step → E_Psi > 0 nei primi frame
+- Monitoraggio live: `Get-Content -Wait experiments/exp2/cosmo_L4.log`
 
-- **Comando test**: `cd VQT_repo && python -m wqt_oop.test_peano_vqt`
-- **Comando calibrazione**: `cd VQT_repo && python -m wqt_oop.calibrate_peano_vqt`
-- **Comando verifica runtime**: `cd VQT_repo && python -m wqt_oop.run_peano_verification`
-- La soglia `sqrt(2)` è hardcodata in `SolitoneComposito.__init__` riga ≈123.
-  Per cambiarla senza modificare il codice: `universe._peano_analyzer.chi_saturation_threshold = X`
-- `chi_stable` default rimane 50.0 (VEV delle simulazioni di produzione).
-  Per calibrarlo: `PhysicsContext.for_level(level, chi_mean_init=50.0)`.
+Dopo il completamento del run L4:
+```python
+from CoreEngine_v2.recursive_manifold_manager import RecursiveManifoldManager
+mgr = RecursiveManifoldManager(output_dir="experiments/exp2",
+      generator_script="tools/rendering/generate_topological_dataset.py")
+mgr.register_from_hdf5(4, "experiments/exp2/cosmo_L4.h5", lambda_homeo=0.1)
+print(mgr.status_report())  # mostra S_residual aggiornato con dati L4 reali
+```
+
+**2. [MEDIA] Aggiungere geometric_phase e drain_rate allo schema HDF5**
+
+In `wqt_oop/hdf5_logger.py _extract_frame_data`: aggiungere due campi al dict:
+- `geometric_phase`: classify_geometric_phase(chi_max/chi_stable) per frame
+- `drain_rate`: `universe._peano_analyzer.phase_events[-1].E_drained` se disponibile
+
+**3. [BASSA] Plot E_chi/E_RX/E_Psi in visualizer_l3.py**
+
+### Note tecniche per la ripresa
+
+- **Test unita'**: `cd VQT_repo && python -m wqt_oop.test_peano_vqt`  (7/7 PASS)
+- **Calibrazione**: `cd VQT_repo && python -m wqt_oop.calibrate_peano_vqt`
+- **Generatore reale**: `tools/rendering/generate_topological_dataset.py`
+  (NON alla root — bug gia' corretto in launch_full_stack.py)
+- **Soglia Jitterbug**: sqrt(2) in `SolitoneComposito.__init__` riga ~127
+- **GlobalState exp1**: `CoreEngine_v2/state/global_state.json` (L1,L2,L3 da exp1)
+- **GlobalState exp2**: `experiments/exp2/state/global_state.json` (isolato da exp1)
+- **chi_stable**: 50.0 hardcoded in PhysicsContext; override via `for_level(chi_mean_init=50.0)`
+
+### Prova Termodinamica (dati reali exp1)
+
+```
+Livello   N_DOF   sigma_inf   S_res/DOF     dS -> L+1
+L1           48    0.0862    7.43e-04     4.91e-04
+L2         1152    0.0502    2.52e-04     1.04e-04
+L3        27648    0.0385    1.48e-04     3.73e-05 (pred)
+
+tp(L1->L2) > tp(L2->L3) > tp(L3->L4): DECRESCENTE MONOTONO
+Transizione termodinamicamente obbligatoria a ogni livello.
+```
 
 ## Stato del Codice
 
