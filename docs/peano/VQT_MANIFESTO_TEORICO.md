@@ -308,3 +308,38 @@ proprio battito**. Il $t+1$ del codice è solo l'impalcatura algoritmica; il tem
 del modello vive in tre luoghi intrinseci — $\tau$ (la coordinata che l'orologio segna),
 $f_{\text{dom}}$ (il ritmo a cui batte), $E_{zp}$ (la garanzia che non si fermi). Il
 respiro del manifold non è dentro il tempo: **è** il tempo.
+
+---
+
+## Corollario Metodologico — Solver-Indipendenza e Metodi Spettrali
+
+L'invarianza degli osservabili collettivi rispetto al solver (dimostrata sopra:
+$T_{\text{dom}} = 1.739$ a tutte le risoluzioni $\Delta t$) ha una conseguenza pratica
+diretta: **si può cambiare il metodo di integrazione senza alterare la fisica**.
+
+Questo principio legittima i metodi di calcolo accelerati introdotti in
+`docs/cosmology/SPECTRAL_METHODS.md`:
+
+1. **Decomposizione spettrale** (`wqt_oop/spectral_coupling.py`).
+   La matrice di accoppiamento $W$ del reticolo cubottaedrico è circolante su $Z_{24}$.
+   I suoi autovettori sono le basi della **DFT discreta** — non del limite continuo.
+   La trasformazione $\chi_i \leftrightarrow \tilde{\chi}_k$ è biettiva: **la discretezza
+   del reticolo a 24 nodi è preservata esattamente**. Nel dominio spettrale le 24
+   equazioni si disaccoppiano in 24 oscillatori indipendenti, la cui parte lineare
+   (accoppiamento) ha soluzione analitica chiusa:
+   $$\tilde{\chi}_k(t) = e^{-\gamma t/2m}\left[A_k \cos(\Omega_k t) + B_k \sin(\Omega_k t)\right],
+   \quad \Omega_k = \sqrt{\alpha_K \mu_k/m - (\gamma/2m)^2}$$
+   dove $\mu_k$ sono gli autovalori del Laplaciano del grafo $L = D - W$.
+
+2. **Integratori simplettici** (`wqt_oop/symplectic_step.py`).
+   Störmer-Verlet (ordine 2) e Forest-Ruth (ordine 4) conservano esattamente il volume
+   nello spazio delle fasi (teorema di Liouville), eliminando la deriva energetica
+   dell'Eulero esplicito e permettendo $\Delta t$ 10–100× più grande.
+
+**La costante Jitterbug $\sqrt{2}$ è un invariante spettrale**: $\chi_{\max}/\chi_{\text{stable}}$
+è una proprietà topologica del reticolo (codificata negli autovalori $\mu_k$), indipendente
+dalla base di rappresentazione. Cambiare solver non sposta la soglia di transizione di fase.
+
+Speedup atteso per L4: da ~80 ore (Eulero, $\Delta t = 0.01$) a **minuti** (spettrale +
+Forest-Ruth). I dati prodotti sono fisicamente equivalenti — è il corollario diretto del
+principio di solver-indipendenza enunciato in questo capitolo.

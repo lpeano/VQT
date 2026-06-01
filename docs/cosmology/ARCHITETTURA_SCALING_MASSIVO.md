@@ -272,6 +272,32 @@ SpatialCache(
 
 ---
 
+## ⚡ ACCELERAZIONE ANALITICA (2026-05-31)
+
+### 6. **Spectral Coupling** (`spectral_coupling.py`)
+- ✅ Decomposizione spettrale della matrice circolante W (DFT su Z₂₄)
+- ✅ Disaccoppiamento: 24 eq. accoppiate → 24 eq. indipendenti
+- ✅ Parte lineare (coupling) risolta **analiticamente** (zero errore numerico)
+- ✅ Discretezza del reticolo PRESERVATA (DFT discreta, non limite continuo)
+- **Fisica:** autovalori μ_k del Laplaciano = frequenze proprie del reticolo
+
+### 7. **Symplectic Step** (`symplectic_step.py`)
+- ✅ Störmer-Verlet (ordine 2) e Forest-Ruth (ordine 4)
+- ✅ Conservazione esatta del volume nello spazio delle fasi (Liouville)
+- ✅ Permette dt 10-100× più grande senza deriva energetica
+- ✅ Strang splitting per combinare parte lineare + non-lineare
+- **Performance:** elimina la deriva O(dt) dell'Eulero esplicito
+
+### 8. **Fast Evolver** (`fast_evolver.py`)
+- ✅ Wrapper additivo: usa SpectralBasis + integratore simplettico
+- ✅ NON modifica SolitoneComposito (zero breaking changes)
+- ✅ Speedup atteso L4: da ~80 ore a minuti (100-1000×)
+- **Garanzia:** dati HDF5 fisicamente equivalenti (solver-indipendenza)
+
+> Dettagli completi e fondamento fisico: `docs/cosmology/SPECTRAL_METHODS.md`
+
+---
+
 ## 🏁 CONCLUSIONE
 
 **L'architettura è PRODUZIONE-READY per scaling L3+.**
