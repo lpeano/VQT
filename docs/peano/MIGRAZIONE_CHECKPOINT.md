@@ -265,12 +265,45 @@ Transizione termodinamicamente obbligatoria a ogni livello.
   e' GIA' nel path Verlet-puro.
 
 **Da fare (integrazione vera nel motore L4):**
-1. [ ] Raccordo FastEvolver con drain Peano-VQT: attualmente FastEvolver NON
-       triggera il drain Jitterbug ne' aggiorna la triade E_chi/E_RX/E_Psi.
-       Senza questo, L4 girerebbe veloce ma senza la fisica da misurare.
+1. [x] FATTO — Raccordo FastEvolver con drain Peano-VQT (enable_drain, default True).
+       Commit 2111d7b. Test 5/5 PASS: E_Psi cresce 0->1.13 quando chi_max>70.7.
 2. [ ] Dispatcher gerarchico: applicare FastEvolver a tutti i 13.824 nodi L1
-       dentro L4 (eliminando il loop Python ricorsivo, vero bottleneck).
+       dentro L4. NON ANCORA FATTO (rischio fisica + richiede ciclo test dedicato).
 3. [ ] Opzione CLI `--fast-evolver` in `generate_topological_dataset.py`.
+
+### DESIGN del Dispatcher Gerarchico (non implementato — prossima sessione)
+
+Serve un metodo NUOVO `SolitoneComposito.evolve_fast(dt, external_force)` additivo
+che riproduca la struttura di `evolve()` (righe 681-813) ma sostituendo il loop
+sui segmenti foglia con FastEvolver. Ricorsione:
+
+```
+evolve_fast(dt, ext_force):
+    gamma = self._compute_damping_coefficient()          # riusa esistente
+    propaga gamma ai figli (_set_damping_recursive)       # riusa esistente
+    internal_forces = self._compute_coupling_forces()     # riusa esistente (coupling inter-figli)
+    se figli sono SegmentoQuantistico (L1):
+        FastEvolver.step() con external_force = internal+ext   # ACCELERATO
+    altrimenti (L2+):
+        per ogni figlio: child.evolve_fast(dt, internal_forces[i]+ext[i])  # ricorsivo
+    cooling Fermi-Dirac + heat transfer + zero-point + cache  # riusa esistente
+```
+
+**Punti di rischio (da testare prima di fidarsi dei dati L4):**
+- `FastEvolver.step()` NON accetta ancora `external_force` (forza coupling inter-L1).
+  Va aggiunto: F_total = F_potential + F_coupling_intra + external_force.
+- Il damping FDT del segmento (state-dependent, esponenziale via Strang) differisce
+  dal damping lineare di FastEvolver. Verificare equivalenza degli osservabili a
+  gamma realistico (non solo gamma=0 come nel test attuale).
+- Cooling/heat-transfer/zero-point a ogni livello: verificare che l'ordine delle
+  operazioni in evolve_fast coincida con evolve.
+- TEST OBBLIGATORIO prima della produzione: confronto evolve() vs evolve_fast()
+  su L2 (576 segmenti) per N step, osservabili collettivi entro 1%.
+
+**Stato sicuro raggiunto in questa sessione:**
+FastEvolver e' VERIFICATO solo come evolutore di UN L1 standalone (precisione
+macchina vs RK45) + raccordo drain. NON ancora come motore gerarchico L4.
+Il dispatcher e' progettato ma va implementato CON il test di equivalenza L2.
 
 **Nota architetturale**: il livello L0 (SegmentoQuantistico) e' GIA' Verlet+Strang
 simplettico (vedi CHANGE_PROPOSAL_STRANG_SPLITTING.md, 2026-05-26). Il bottleneck
