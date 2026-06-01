@@ -341,6 +341,30 @@ senza --fast-evolver.
 
 **Commit**: 4b3b920 (fix+test L1), 2111d7b (drain), <dispatcher+wiring>.
 
+### BENCHMARK SPEEDUP REALE (2026-06-01) — risultato onesto
+
+Misurato evolve() vs evolve_fast() su L2, a parita' di tempo fisico (T=0.2):
+
+| Config | speedup | err chi_std |
+|---|---|---|
+| evolve_fast dt=0.01 (solo vettorizzazione) | 1.5x | 0.26% |
+| evolve_fast dt=0.02 | 3.0x | 0.34% |
+| evolve_fast dt=0.04 | 6.0x | 0.33% |
+
+**Speedup reale combinato: ~6x** (vettorizzazione foglie L1 x dt 4x grande
+con Forest-Ruth). Equivalenza fisica mantenuta (errore < 0.4%).
+Per L4: da ~80h a ~13h.
+
+IMPORTANTE: la stima iniziale "100-1000x" era ERRATA. Il bottleneck reale NON
+e' il loop di integrazione (che evolve_fast vettorizza) ma compute_hamiltonian()
+ricorsivo, chiamato 2x per step (H_before + H_after) a ogni livello della
+gerarchia. evolve_fast non lo riduce.
+
+**Per superare i 6x** (lavoro FUTURO separato):
+- Cache di compute_hamiltonian tra H_before di uno step e H_after del precedente
+- Evitare la doppia valutazione H_before/H_after (calcolare E_rad da incrementi)
+- Spingere dt oltre 0.04 (validare stabilita' a L4, non solo L2)
+
 **Nota architetturale**: il livello L0 (SegmentoQuantistico) e' GIA' Verlet+Strang
 simplettico (vedi CHANGE_PROPOSAL_STRANG_SPLITTING.md, 2026-05-26). Il bottleneck
 di L4 NON e' l'integratore del singolo segmento ma la RICORSIONE Python
