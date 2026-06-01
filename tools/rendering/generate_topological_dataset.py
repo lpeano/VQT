@@ -190,6 +190,10 @@ def parse_args():
                         "Default auto: 20 per L<=2, 5 per L3, 2 per L>=4.")
 
     # Watchdog — autotuning maturità spaziale
+    p.add_argument("--fast-evolver", action="store_true",
+                   help="Usa evolve_fast() (dispatcher gerarchico accelerato: FastEvolver "
+                        "vettoriale sulle foglie L1 + Forest-Ruth). Verificato equivalente a "
+                        "evolve() dal GATE test_evolve_fast_equivalence.py. Default: evolve() legacy.")
     p.add_argument("--watchdog", action="store_true",
                    help="Attiva MaturityWatchdog: auto-terminazione basata su σ(ρ) plateau. "
                         "In questo modo --steps diventa un limite di sicurezza (max_steps).")
@@ -893,6 +897,7 @@ def run_simulation(args) -> int:
         log_interval=max(1, args.topo_log_interval),
         verbose_interval=max(args.log_interval, args.topo_log_interval * 10),
         force_config=force_cfg,
+        use_fast_evolver=args.fast_evolver,
     )
 
     # Watchdog maturità spaziale (opt-in)

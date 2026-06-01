@@ -102,6 +102,7 @@ class TopologicalEvolutionWrapper:
         log_interval: int = 10,
         verbose_interval: int = 100,
         force_config: Optional[TopologicalForceConfig] = None,
+        use_fast_evolver: bool = False,
     ):
         """
         Parameters
@@ -132,6 +133,11 @@ class TopologicalEvolutionWrapper:
         self.physics = physics
         self.enable_validation = enable_validation
         self.enable_legacy_energy_logging = enable_legacy_energy_logging
+        # use_fast_evolver: se True, usa universe.evolve_fast() (dispatcher
+        # gerarchico accelerato) al posto di universe.evolve(). Verificato
+        # equivalente dal GATE test_evolve_fast_equivalence.py. Default False
+        # (legacy invariato). Richiede che universe abbia evolve_fast (SolitoneComposito).
+        self.use_fast_evolver = use_fast_evolver and hasattr(universe, "evolve_fast")
 
         self.current_step: int = 0
         self.current_time: float = 0.0
@@ -214,8 +220,13 @@ class TopologicalEvolutionWrapper:
         if self.force_calc is not None:
             self.force_calc.apply_symplectic_kick(self.universe, dt * 0.5)
 
-        # STEP 1: evoluzione fisica legacy (invariata) — U_phys(dt)
-        self.universe.evolve(dt, external_force)
+        # STEP 1: evoluzione fisica — U_phys(dt)
+        # evolve_fast (accelerato, verificato equivalente) se attivato, altrimenti
+        # evolve legacy invariato.
+        if self.use_fast_evolver:
+            self.universe.evolve_fast(dt, external_force)
+        else:
+            self.universe.evolve(dt, external_force)
         self.current_step += 1
         self.current_time += dt
 

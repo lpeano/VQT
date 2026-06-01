@@ -305,6 +305,42 @@ FastEvolver e' VERIFICATO solo come evolutore di UN L1 standalone (precisione
 macchina vs RK45) + raccordo drain. NON ancora come motore gerarchico L4.
 Il dispatcher e' progettato ma va implementato CON il test di equivalenza L2.
 
+---
+
+### AGGIORNAMENTO — Dispatcher Gerarchico IMPLEMENTATO E VERIFICATO (2026-06-01)
+
+**Tutti i punti sopra sono ora FATTI.** Integrazione completa end-to-end.
+
+- [x] `FastEvolver.step(external_force, advance_step_counter)`: accetta forza
+      coupling inter-L1 e delega il contatore all'orchestratore.
+- [x] `SolitoneComposito.evolve_fast(dt, external_force)`: metodo NUOVO additivo.
+      evolve() resta invariato bit-per-bit. L1->FastEvolver vettoriale,
+      L2+->ricorsione. Coupling/damping/cooling/heat/zero-point/drain verbatim.
+- [x] GATE `test_evolve_fast_equivalence.py` SUPERATO su L2 (576 seg):
+      - FDT off (struttura): errori 5e-04..3e-03 -> coupling multi-livello corretto
+      - FDT on (realistico): tutti entro 1.4% -> Rischio 1 (damping) NON materializzato
+- [x] Flag CLI `--fast-evolver` in generate_topological_dataset.py +
+      `use_fast_evolver` in TopologicalEvolutionWrapper. Default OFF (legacy).
+      Wiring end-to-end verificato (no doppio conteggio contatore).
+
+**Come lanciare L4 accelerato in exp3:**
+
+```
+cd VQT_repo
+python tools/rendering/generate_topological_dataset.py \
+  --level 4 --steps 600 --dt 0.01 --fast-evolver \
+  --inherit experiments/exp1/cosmo_L3_ext3.h5 --inherit-percentile 75 \
+  --output experiments/exp3/cosmo_L4.h5 --watchdog --watchdog-window 50
+```
+
+Atteso: speedup dato dalla vettorizzazione delle foglie L1 (no loop Python sui
+331.776 segmenti) + dt grande Forest-Ruth. evolve() classico resta disponibile
+senza --fast-evolver.
+
+**Non-regressioni**: Peano-VQT 7/7, equivalenza L1 5/5, gate L2 PASS.
+
+**Commit**: 4b3b920 (fix+test L1), 2111d7b (drain), <dispatcher+wiring>.
+
 **Nota architetturale**: il livello L0 (SegmentoQuantistico) e' GIA' Verlet+Strang
 simplettico (vedi CHANGE_PROPOSAL_STRANG_SPLITTING.md, 2026-05-26). Il bottleneck
 di L4 NON e' l'integratore del singolo segmento ma la RICORSIONE Python
