@@ -26,7 +26,7 @@ Manca quindi la prova centrale della teoria: un run reale dove
   - E_Psi accumula monotonicamente (nascita di materia / transizione Cub->Ico),
   - il sistema "si trasforma invece di bloccarsi".
 
-Da fare:
+Da fare — **COMPLETARE UN RUN L3** (13.824 segmenti) fino a far scattare il drain:
 1. Identificare condizioni che portano chi_max alla soglia 70.7:
    - run lungo (chi cresce dinamicamente per l'accoppiamento), OPPURE
    - --inherit da un L3 storico ad alto chi (cosmo_L3_ext3.h5 ha chi_max~69),
@@ -35,6 +35,16 @@ Da fare:
 3. Verificare con load_h5_and_validate: E_Psi>0 monotono, fase->Icosaedrica,
    coincidenza picco chi_max / troncamento (delta<=15 frame).
 4. Produrre i grafici della transizione (E_Psi vs step, fase vs step).
+
+**STIMA TEMPI L3 (misurata in questa sessione, --fast-evolver + validator vettorizzato):**
+- Costo per step a L3: ~20 s/step (misurato: 19-27 s/step su 13.824 segmenti).
+- 600 step (run L3 standard):  ~3-3.5 ore
+- 1200 step (run esteso per certificazione f_dom): ~6-7 ore
+- Con --watchdog: termina al plateau sigma_inf, potenzialmente molto prima
+  (i run storici L3 maturavano in poche centinaia di step).
+- Nota: la stima e' del solo tempo macchina; il drain scatta SE chi_max raggiunge
+  70.7. Con --inherit da cosmo_L3_ext3.h5 (chi_max~69) potrebbe scattare presto.
+- Riferimento storico per il confronto: cosmo_L3_ext3.h5 = 600 frame.
 
 ### TASK 2 [DOPO TASK 1] — Documento unificato Ramo A + Ramo B
 Solo DOPO aver osservato la genesi di E_Psi. Documento unico che spieghi
