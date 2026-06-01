@@ -56,6 +56,49 @@ matematicamente E verbalmente:
 - Metodi computazionali: FastEvolver, evolve_fast, validator (numeri reali ~6x/~5x).
 NON scrivere prima di Task 1: eviterebbe di documentare cio' che non e' osservato.
 
+### TASK 3 [automazione] — Pattern di terminazione automatica per L(n)
+Stato attuale dell'automazione:
+- GIA' FUNZIONA: --watchdog (MaturityWatchdog) ferma un singolo livello al plateau
+  di sigma_inf. Generico per ogni n. `--steps` diventa solo tetto di sicurezza.
+- NON wired nel generatore: PhaseTransitionSignal (criterio termodinamico:
+  mature AND f_dom certificato AND dS>0) e RecursiveManifoldManager.auto_advance()
+  (catena L->L+1 automatica). Esistono in CoreEngine_v2 ma non collegati al generatore.
+- DA PROGETTARE: stop-condition legato alla transizione Peano-VQT (fermarsi quando
+  E_Psi inizia ad accumulare stabilmente), distinto dalla maturita' geometrica (sigma).
+Sotto-task: wire PhaseTransitionSignal nel generatore + opzione di auto-advance catena.
+
+### QUESTIONE FONDAMENTALE [decidere con Task 1] — Fisica reale o trucco matematico?
+Il drain Peano-VQT e' un VERO processo fisico o un artefatto della costruzione?
+Domanda critica e onesta. CRITERI DI FALSIFICABILITA' da applicare:
+
+1. **La conservazione dE_chi+dE_RX+dE_Psi=0 NON e' una prova.** E' IMPOSTA per
+   costruzione: apply_drain() sottrae delta da E_chi e aggiunge delta a E_Psi.
+   E' tautologica, non emergente. NON puo' essere usata come evidenza di fisicita'.
+
+2. **Test di robustezza al drain_rate (parametro libero=0.1).** Se gli osservabili
+   fisici finali (rapporti di massa, struttura, soglia di transizione) dipendono
+   criticamente da drain_rate -> sospetto di artefatto. Se sono ROBUSTI al variare
+   di drain_rate (es. 0.01..0.5) -> piu' fisico. DA TESTARE.
+
+3. **Solver-indipendenza** (gia' parzialmente verificata): un trucco numerico
+   dipenderebbe dal dt/integratore. Gli osservabili collettivi sono dt-indipendenti
+   -> punto a favore della fisicita'. Estendere il test alla transizione E_Psi.
+
+4. **Predizioni NON inserite a mano.** La teoria predice qualcosa di indipendente
+   dai parametri fittati? La soglia sqrt(2) e' geometrica (Fuller, non libera) e
+   si CONFERMA sui dati storici (5/8 file). Il numero 24, la legge S_residual ~
+   decadimento per DOF. Se questi emergono e si confermano -> fisica. Verificare
+   se la transizione avviene SEMPRE a chi_max/chi_stable = sqrt(2) indipendentemente
+   dalle condizioni iniziali (questo sarebbe forte evidenza di processo reale).
+
+5. **Corrispondenza con osservabile fisico.** E_Psi ("massa") corrisponde a qualcosa
+   di misurabile o e' solo un accumulatore? Va connesso a una quantita' indipendente.
+
+Verdetto provvisorio: la soglia sqrt(2) emergente e solver-indipendente e' il
+punto piu' forte a favore della fisicita'; la conservazione imposta e il drain_rate
+libero sono i punti deboli da stress-testare. Decidere DOPO aver osservato Task 1 +
+eseguito i test 2,3,4.
+
 ---
 
 ## Stato Attuale
