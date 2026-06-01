@@ -24,23 +24,19 @@ CONFRONTO CON EVOLUZIONE STANDARD
 Standard (Eulero, dt=0.01 per L4):
     Per ogni dei 331.776 segmenti: chi += v*dt, v += F*dt
     Errore: O(dt) per step -> deriva energetica
-    dt_max: ~0.01 (stabilita' numerica)
-    Tempo L4: ~8 min/step
 
-FastEvolver (Verlet + spettrale, dt=0.1 per L1):
-    Spettrale: 24 equazioni indipendenti invece di 24*24 accoppiate
-    Verlet: O(dt^2) errore -> dt 10x piu' grande
-    Errore energetico: O(dt^2) vs O(dt) -> 100x meno deriva
-    Speedup atteso: 10-100x per livello L1
+FastEvolver (Verlet/Forest-Ruth puro sulle foglie L1, path PRODUZIONE):
+    Vettorizza i 24 segmenti di ogni L1 in un'unica operazione numpy
+    Forest-Ruth: O(dt^4) errore -> dt fino a ~4x piu' grande con equivalenza
+    SPEEDUP MISURATO (benchmark 2026-06-01): ~6x sull'evoluzione
+      (vettorizzazione x1.5 * dt 4x). L4: da ~80h a ~13h.
+    Verificato equivalente a RK45 a precisione macchina (err_std=1.1e-07).
 
-SCHEMA COMBINATO: STRANG SPLITTING
-------------------------------------
-    propagate_linear(dt/2)   [SpectralBasis: soluzione ANALITICA esatta]
-    verlet_nonlinear(dt)      [doppio pozzo: unica parte da integrare]
-    propagate_linear(dt/2)   [SpectralBasis: soluzione ANALITICA esatta]
-
-Accuratezza: O(dt^3) per passo (O(dt^2) globale).
-L'errore TOTALE e' dominato dalla parte non-lineare.
+PATH SPETTRALE (use_spectral_linear=True) — SPERIMENTALE, NON in produzione:
+    Lo schema Strang spettrale L(dt/2)-N(dt)-L(dt/2) ha una deriva nota del 38%
+    (composizione non consistente dei propagatori dopo roundtrip spettrale<->nodale).
+    Il roundtrip DFT in se' e' esatto (1e-15), ma l'integrazione spettrale va corretta.
+    Default: use_spectral_linear=False (Verlet/Forest-Ruth puro).
 
 UTILIZZO
 --------
@@ -78,7 +74,8 @@ class FastEvolver:
     solitone : SolitoneComposito
         Il solitone L1 da evolvere (DEVE avere N=24 figli SegmentoQuantistico).
     dt : float
-        Passo temporale. Puo' essere 10-100x piu' grande di Eulero.
+        Passo temporale. Con Forest-Ruth puo' essere ~4x piu' grande di Eulero
+        mantenendo l'equivalenza fisica (verificato a dt=0.04 vs RK45).
     method : str
         'verlet' (default) o 'forest_ruth' per l'integrazione non-lineare.
     use_spectral_linear : bool
@@ -158,7 +155,7 @@ class FastEvolver:
             )
 
         self._step_count = 0
-        logger.info(
+        logger.debug(
             "[FastEvolver] Inizializzato: N=%d, dt=%.3f, method=%s, "
             "spectral=%s, omega_max=%.3f",
             N, dt, method, use_spectral_linear, omega_max

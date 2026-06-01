@@ -274,27 +274,30 @@ SpatialCache(
 
 ## ⚡ ACCELERAZIONE ANALITICA (2026-05-31)
 
-### 6. **Spectral Coupling** (`spectral_coupling.py`)
-- ✅ Decomposizione spettrale della matrice circolante W (DFT su Z₂₄)
-- ✅ Disaccoppiamento: 24 eq. accoppiate → 24 eq. indipendenti
-- ✅ Parte lineare (coupling) risolta **analiticamente** (zero errore numerico)
-- ✅ Discretezza del reticolo PRESERVATA (DFT discreta, non limite continuo)
-- **Fisica:** autovalori μ_k del Laplaciano = frequenze proprie del reticolo
-
-### 7. **Symplectic Step** (`symplectic_step.py`)
+### 6. **Symplectic Step** (`symplectic_step.py`) — path di produzione
 - ✅ Störmer-Verlet (ordine 2) e Forest-Ruth (ordine 4)
 - ✅ Conservazione esatta del volume nello spazio delle fasi (Liouville)
-- ✅ Permette dt 10-100× più grande senza deriva energetica
-- ✅ Strang splitting per combinare parte lineare + non-lineare
+- ✅ Permette dt 4× più grande senza deriva energetica (verificato a dt=0.04)
 - **Performance:** elimina la deriva O(dt) dell'Eulero esplicito
 
-### 8. **Fast Evolver** (`fast_evolver.py`)
-- ✅ Wrapper additivo: usa SpectralBasis + integratore simplettico
+### 7. **Fast Evolver** (`fast_evolver.py`) — path di produzione
+- ✅ Wrapper additivo: vettorizza i 24 segmenti di ogni L1 + integratore simplettico
 - ✅ NON modifica SolitoneComposito (zero breaking changes)
-- ✅ Speedup atteso L4: da ~80 ore a minuti (100-1000×)
+- ✅ Verificato equivalente a RK45 a precisione macchina (err 1.1e-07)
+- ✅ **Speedup MISURATO: ~6×** (vettorizzazione ×1.5 × dt 4×) → L4 da ~80h a ~13h
 - **Garanzia:** dati HDF5 fisicamente equivalenti (solver-indipendenza)
 
-> Dettagli completi e fondamento fisico: `docs/cosmology/SPECTRAL_METHODS.md`
+### 8. **Validator vettorizzato** (`topological_constraint_validator.py`)
+- ✅ Secondo bottleneck a L3/L4 (~15s/step) ridotto via matrice sparsa cKDTree
+- ✅ Speedup ~5× sulla constraint-density, equivalenza numerica a 1e-14
+- **Performance:** indipendente da FastEvolver, si combina nel pipeline L4
+
+### 9. **Spectral Coupling** (`spectral_coupling.py`) — SPERIMENTALE
+- ✅ DFT su Z₂₄ biettiva, discretezza del reticolo preservata (roundtrip 1e-15)
+- ⚠️ Schema Strang spettrale con deriva 38% (chi_std): NON usato in produzione
+- **Stato:** path sperimentale, da debuggare. Il default è Verlet/Forest-Ruth puro.
+
+> Dettagli completi, benchmark e fondamento fisico: `docs/cosmology/SPECTRAL_METHODS.md`
 
 ---
 

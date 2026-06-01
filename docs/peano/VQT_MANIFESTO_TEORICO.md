@@ -320,26 +320,29 @@ diretta: **si può cambiare il metodo di integrazione senza alterare la fisica**
 Questo principio legittima i metodi di calcolo accelerati introdotti in
 `docs/cosmology/SPECTRAL_METHODS.md`:
 
-1. **Decomposizione spettrale** (`wqt_oop/spectral_coupling.py`).
-   La matrice di accoppiamento $W$ del reticolo cubottaedrico è circolante su $Z_{24}$.
-   I suoi autovettori sono le basi della **DFT discreta** — non del limite continuo.
-   La trasformazione $\chi_i \leftrightarrow \tilde{\chi}_k$ è biettiva: **la discretezza
-   del reticolo a 24 nodi è preservata esattamente**. Nel dominio spettrale le 24
-   equazioni si disaccoppiano in 24 oscillatori indipendenti, la cui parte lineare
-   (accoppiamento) ha soluzione analitica chiusa:
-   $$\tilde{\chi}_k(t) = e^{-\gamma t/2m}\left[A_k \cos(\Omega_k t) + B_k \sin(\Omega_k t)\right],
-   \quad \Omega_k = \sqrt{\alpha_K \mu_k/m - (\gamma/2m)^2}$$
-   dove $\mu_k$ sono gli autovalori del Laplaciano del grafo $L = D - W$.
-
-2. **Integratori simplettici** (`wqt_oop/symplectic_step.py`).
+1. **Integratori simplettici** (`wqt_oop/symplectic_step.py`) — *path di produzione*.
    Störmer-Verlet (ordine 2) e Forest-Ruth (ordine 4) conservano esattamente il volume
    nello spazio delle fasi (teorema di Liouville), eliminando la deriva energetica
-   dell'Eulero esplicito e permettendo $\Delta t$ 10–100× più grande.
+   dell'Eulero esplicito e permettendo $\Delta t$ più grande. Verificato equivalente a
+   un integratore RK45 di riferimento a precisione macchina (err_std $= 1.1\times10^{-7}$).
 
-**La costante Jitterbug $\sqrt{2}$ è un invariante spettrale**: $\chi_{\max}/\chi_{\text{stable}}$
-è una proprietà topologica del reticolo (codificata negli autovalori $\mu_k$), indipendente
-dalla base di rappresentazione. Cambiare solver non sposta la soglia di transizione di fase.
+2. **Decomposizione spettrale** (`wqt_oop/spectral_coupling.py`) — *sperimentale*.
+   La matrice di accoppiamento $W$ del reticolo cubottaedrico è circolante su $Z_{24}$;
+   i suoi autovettori sono le basi della **DFT discreta** (non del limite continuo), e
+   la trasformazione $\chi_i \leftrightarrow \tilde{\chi}_k$ è biettiva: la discretezza
+   del reticolo a 24 nodi è preservata esattamente. *Tuttavia* lo schema Strang spettrale
+   implementato mostra una deriva del 38% (composizione non consistente dei propagatori);
+   resta sperimentale e **non** è il path di produzione. Il roundtrip DFT in sé è esatto
+   ($10^{-15}$), ma l'integrazione spettrale va ancora corretta.
 
-Speedup atteso per L4: da ~80 ore (Eulero, $\Delta t = 0.01$) a **minuti** (spettrale +
-Forest-Ruth). I dati prodotti sono fisicamente equivalenti — è il corollario diretto del
-principio di solver-indipendenza enunciato in questo capitolo.
+**La costante Jitterbug $\sqrt{2}$ è un invariante topologico**: $\chi_{\max}/\chi_{\text{stable}}$
+è una proprietà del reticolo (codificata negli autovalori $\mu_k$), indipendente
+dalla base di rappresentazione e dal solver. Cambiare integratore non sposta la soglia
+di transizione di fase — questa è la sostanza fisica del principio di solver-indipendenza.
+
+**Speedup misurato** (benchmark 2026-06-01, non stima): ~6× sull'evoluzione
+(`evolve_fast`, Verlet/Forest-Ruth + vettorizzazione delle foglie L1) → L4 da ~80h a ~13h.
+Il `TopologicalConstraintValidator` è stato vettorizzato separatamente (~5×). I dati
+prodotti sono fisicamente equivalenti a quelli del solver Eulero classico (entro
+l'errore di arrotondamento), come garantito dal principio enunciato sopra. Dettagli
+quantitativi in `docs/cosmology/SPECTRAL_METHODS.md`.

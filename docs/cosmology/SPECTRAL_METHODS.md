@@ -10,8 +10,16 @@
 
 Il metodo numerico standard (integratore di Eulero, `dt=0.01`) richiede ~8 minuti per step
 a L4 (331.776 segmenti), portando la catena L1→L4 a ~80 ore di calcolo.
-Questo documento descrive due metodologie che accelerano il calcolo di
-**100-1000x senza alterare la fisica**.
+Questo documento descrive due metodologie che accelerano il calcolo **senza alterare la
+fisica**.
+
+> **Speedup reale misurato (benchmark 2026-06-01)**: ~6× sull'evoluzione
+> (`evolve_fast`: vettorizzazione delle foglie L1 ×1.5, passo `dt` 4× più grande con
+> Forest-Ruth). Per L4: da ~80h a **~13h**. Una stima preliminare parlava di "100-1000×":
+> era **errata** — il collo di bottiglia reale non è il loop di integrazione ma
+> `compute_hamiltonian()` ricorsivo (vedi sezione "Limiti e bottleneck reale").
+> Il `TopologicalConstraintValidator`, secondo bottleneck a L3/L4, è stato
+> separatamente vettorizzato (~5×, equivalenza numerica a 1e-14).
 
 ### Domanda critica: la discretezza del reticolo VQT è preservata?
 
@@ -154,17 +162,48 @@ correttamente la separazione tra:
 
 ---
 
-## Stima delle Prestazioni
+## Prestazioni — MISURATE (non stimate)
 
-| Configurazione | dt | Errore/step | Speedup vs Eulero | Note |
-|---|---|---|---|---|
-| Eulero (attuale) | 0.01 | O(dt) | 1× | Standard |
-| Verlet | 0.1 | O(dt²) | ~10× | Same accuracy |
-| Forest-Ruth | 0.5 | O(dt⁴) | ~15× | 3 F/step |
-| Spettrale + Verlet | 0.1 | O(dt²) lineare + O(dt³) | ~100× | Accoppiamento analitico |
-| Spettrale + FR | 0.5 | O(dt⁴) | ~500× | Massima efficienza |
+Benchmark `evolve()` vs `evolve_fast()` su L2 (576 segmenti), a parità di tempo
+fisico simulato T=0.2 (2026-06-01):
 
-Per L4: da ~80 ore a **10−60 minuti** con la combinazione ottimale.
+| Configurazione | speedup vs `evolve` | errore chi_std | Note |
+|---|---|---|---|
+| `evolve_fast` dt=0.01 | 1.5× | 0.26% | solo vettorizzazione foglie L1 |
+| `evolve_fast` dt=0.02 (Forest-Ruth) | 3.0× | 0.34% | + dt 2× |
+| `evolve_fast` dt=0.04 (Forest-Ruth) | **6.0×** | 0.33% | + dt 4× (equivalenza mantenuta) |
+
+**Speedup reale: ~6×.** Per L4: da ~80h a **~13h** (solo evoluzione).
+
+### Limiti e bottleneck reale
+
+La stima preliminare di "100-1000×" era **errata**. Due chiarimenti onesti:
+
+1. **Il collo di bottiglia dell'evoluzione non è il loop di integrazione** (che
+   `evolve_fast` vettorizza) ma `compute_hamiltonian()` chiamato ricorsivamente
+   2× per step (H_before + H_after) a ogni livello. `evolve_fast` non lo riduce.
+   Superare i 6× richiede ottimizzare *quello* (caching H, evitare la doppia
+   valutazione) — lavoro futuro.
+
+2. **Secondo bottleneck a L3/L4: il `TopologicalConstraintValidator`** (~15s/step
+   su 13.824 segmenti, ~7× il costo dell'evoluzione). È stato vettorizzato
+   separatamente (loop Python → matrice sparsa cKDTree): ~5× sulla parte
+   constraint-density, equivalenza numerica a 1e-14 (vedi `benchmark_validator.py`).
+
+I due interventi sono indipendenti e si combinano nel pipeline di produzione.
+
+### Nota sul path spettrale (Metodo 1) — SPERIMENTALE
+
+La decomposizione spettrale (`use_spectral_linear=True`) è **sperimentale e NON
+usata in produzione**. Il test di equivalenza (`test_fast_evolver_equivalence.py`)
+ha rilevato una **deriva del 38% su chi_std** dovuta alla composizione non
+consistente dei propagatori dopo il roundtrip spettrale↔nodale. La trasformata
+DFT in sé è esatta (roundtrip a 1e-15), ma lo schema Strang spettrale non lo è.
+
+**Il path di produzione è Verlet/Forest-Ruth puro** (`use_spectral_linear=False`,
+default), verificato equivalente a un integratore RK45 di riferimento a precisione
+macchina (err_std = 1.1e-07). Lo speedup ~6× viene interamente da lì; lo spettrale
+avrebbe dato solo un guadagno marginale aggiuntivo sul coupling, una volta corretto.
 
 ---
 
