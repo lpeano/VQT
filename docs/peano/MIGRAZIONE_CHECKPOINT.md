@@ -144,52 +144,56 @@ Test 2 chiave — dimostra che Bug1+Bug2 sono risolti:
 | `wqt_oop/calibrate_peano_vqt.py` | NUOVO | calibrazione Jitterbug |
 | `wqt_oop/run_peano_verification.py` | NUOVO | verifica runtime |
 
-### Prossimi Task (prioritizzati)
+---
 
-**1. [IN CORSO — USA VECCHIO CODICE] Run L4 avviato 2026-05-30 13:24:56, PID=12440**
+## Sessione 2026-05-31 — Catena completa L1→L4 in exp3
 
-Stato: 3 step completati al 2026-05-30 13:47. Ogni step ~8 min → 600 step ≈ 80 ore.
-Il processo usa il codice PRIMA della fix get_total_E_psi: E_Psi sara' 0 in questo HDF5.
-Lasciarlo girare in background: i dati chi/H_total sono comunque utili per calibrazione.
+### Stato al riavvio
 
-Monitoraggio:
-```powershell
-Get-Content -Wait C:\Users\lpeano\plank\VQT_repo\experiments\exp2\cosmo_L4.log
-```
+**exp2/cosmo_L4.h5**: 4 frame prodotti, run interrotto manualmente. Codice pre-fix
+(get_total_E_psi non attivo). E_Psi=0 in tutto il file. Utile solo per calibrazione chi/H.
 
-**2. [ALTA — PROSSIMA SESSIONE] Nuovo run L4 con fix aggregazione**
+**Fix codice attive (commit 0876652, ramo research-backup):**
+- chi_max come segnale drain (non chi_mean)
+- Soglia sqrt(2) (costante Jitterbug)
+- get_total_E_psi() aggregazione gerarchica L1..LN
+- 7/7 test PASS
 
-Lanciare un NUOVO run L4 (che usera' il codice aggiornato con get_total_E_psi):
+**Decisione**: rigenerare tutta la catena L1→L2→L3→L4 da zero in `experiments/exp3`
+con il codice corretto. Se L4 viene interrotto puo' ripartire da semi L3.
+
+### Prossimi Task
+
+**1. [IN CORSO] Catena completa exp3: L1→L2→L3→L4**
+
+Script: `experiments/exp3/run_full_chain.py`
+
+Comando di lancio:
 ```bash
-# Rimuovere il H5 vecchio prima
-del experiments\exp2\cosmo_L4.h5
-del experiments\exp2\cosmo_L4.log
-# Poi rilancio
-python experiments/exp2/launch_full_stack.py
+cd VQT_repo
+python experiments/exp3/run_full_chain.py
 ```
 
-ATTESO: E_Psi > 0 dal primo frame perche':
-- L4 eredita semi L3 75° percentile (chi ≈ 69-71)
-- Alcuni L1 composites hanno chi_max > sqrt(2)*50 = 70.7 → drain a L1
-- get_total_E_psi() aggrega E_Psi da tutti i livelli L1..L4
+Comportamento:
+- L1 (24 seg, 600 step, ~2 min): sincrono, blocca fino al termine
+- L2 (576 seg, 600 step, ~10 min): sincrono, blocca
+- L3 (13824 seg, 1200 step, ~60 min): sincrono, blocca
+- L4 (331776 seg, 600 step, ~80 ore): asincrono, parte in background
 
-**Diagnosi drain (sessione 2026-05-30):**
-- Il drain scatta a L1 (chi individuali L0 > sqrt(2)*chi_stable = 70.7)
-- Il root L3/L4 vede solo medie dei 24 figli diretti ≈ 50 → mai > 70.7
-- Senza get_total_E_psi, E_Psi era sempre 0 nell'HDF5
-- Fix commit 0876652: get_total_E_psi() somma ricorsiva O(N_composites)
-- Il drain NON scatta all'init (chi_max_init < sqrt(2)*chi_stable): scatta solo
-  a) dinamicamente dopo centinaia di step (chi_max cresce a ~70.7) o
-  b) da L4 che eredita semi L3 ad alto chi (gia' vicini a sqrt(2)*50)
+Ripresa L4 in caso di interruzione:
+```bash
+# I semi L3 sono gia' in GlobalState exp3.
+# Rilanciare semplicemente lo script: riparte da L4.
+python experiments/exp3/run_full_chain.py
+```
 
-**3. [MEDIA] Aggiungere geometric_phase e drain_rate allo schema HDF5**
-**4. [BASSA] Plot E_chi/E_RX/E_Psi in visualizer_l3.py**
+Atteso dal primo frame L4: E_Psi > 0 (semi L3 al 75° percentile con chi ~70.7 ≥ sqrt(2)*50)
 
 **2. [MEDIA] Aggiungere geometric_phase e drain_rate allo schema HDF5**
 
-In `wqt_oop/hdf5_logger.py _extract_frame_data`: aggiungere due campi al dict:
+In `wqt_oop/hdf5_logger.py _extract_frame_data`:
 - `geometric_phase`: classify_geometric_phase(chi_max/chi_stable) per frame
-- `drain_rate`: `universe._peano_analyzer.phase_events[-1].E_drained` se disponibile
+- `drain_rate`: ultimi eventi drain dal peano_analyzer
 
 **3. [BASSA] Plot E_chi/E_RX/E_Psi in visualizer_l3.py**
 
@@ -215,6 +219,88 @@ L3        27648    0.0385    1.48e-04     3.73e-05 (pred)
 tp(L1->L2) > tp(L2->L3) > tp(L3->L4): DECRESCENTE MONOTONO
 Transizione termodinamicamente obbligatoria a ogni livello.
 ```
+
+---
+
+## CHECKPOINT PRELIMINARE — Rifattorizzazione Analitica Ramo A
+
+### Data: 2026-05-31  Stato: PIANIFICATO (non ancora eseguito)
+
+### Motivazione del Change
+
+Il Ramo A (generazione dati, `generate_topological_dataset.py`) usa un integratore
+numerico Eulero di primo ordine con dt=0.01. Per L4 (24^4 = 331.776 segmenti)
+ogni step richiede ~8 minuti -> 600 step = ~80 ore. Questo e' un limite
+architetturale, non fisico.
+
+**Domanda chiave verificata**: le metodologie piu' veloci violano la discretezza
+dell'idea di base VQT (reticolo di voxel con 24 nodi per livello)?
+**Risposta**: NO. La decomposizione spettrale su N=24 nodi usa la DFT Discreta
+(Z_24), che e' biettiva e preserva esattamente la struttura del reticolo.
+Il limite continuo (N->inf) NON e' coinvolto.
+
+### Approccio: Additive, non sostitutivo
+
+I componenti esistenti NON vengono modificati o rimossi.
+Si aggiungono NUOVI moduli che implementano metodi alternativi piu' veloci:
+
+- `wqt_oop/spectral_coupling.py`  decomposizione autovettori di W
+- `wqt_oop/symplectic_step.py`    integratori simplettici Verlet/Forest-Ruth
+- `wqt_oop/fast_evolver.py`       FastEvolver: wrapper che usa i nuovi metodi
+
+Il codice esistente (`SolitoneComposito.evolve()`, etc.) rimane INVARIATO.
+
+### Fisica dei Nuovi Metodi
+
+#### Metodo 1 — Decomposizione Spettrale
+
+W e' una matrice circolante (coupling cubottaedrico su Z_24). I suoi autovettori
+sono le basi DFT: phi_k(n) = exp(2*pi*i*k*n/24) / sqrt(24), k=0..23.
+
+L'equazione del moto nel dominio spettrale si disaccoppia in 24 modi indipendenti:
+
+  d^2 chi_k / dt^2 = F_k_nonlin(t) - alpha_K * lambda_k * chi_k - gamma * d_chi_k/dt
+
+dove:
+  chi_k    = DFT(chi_i)         [24 modi spettrali]
+  lambda_k = autovalori di W    [frequenze proprie del reticolo]
+  F_k_nonlin = DFT(-dV/dchi)   [doppio pozzo, unica parte non-lineare]
+
+La parte lineare ha soluzione analitica esatta. Solo il doppio pozzo richiede
+integrazione numerica. Risultato: 24 equazioni INDIPENDENTI (vs 24x24 accoppiate).
+
+#### Metodo 2 — Integratore Simplettico Stormer-Verlet
+
+  chi(t+dt) = chi(t) + v(t)*dt + 0.5*a(t)*dt^2
+  v(t+dt)   = v(t) + 0.5*(a(t) + a(t+dt))*dt
+
+Conserva esattamente il volume nello spazio delle fasi (teorema di Liouville).
+Permette dt 10-100x piu' grande mantenendo la stessa accuratezza. Ordine 2.
+
+Forest-Ruth (ordine 4, coefficienti theta = 1/(2 - 2^(1/3))):
+  Quattro sotto-step con pesi specifici -> accuratezza O(dt^4).
+
+### Piano di Implementazione (4 step in ordine)
+
+1. Aggiungere `spectral_coupling.py`, `symplectic_step.py`, `fast_evolver.py`
+2. Documentare il MOTIVO del change in ogni modulo
+3. Documentare TUTTE le formule fisiche nel codice
+4. Rifattorizzare la documentazione scientifica
+
+### Cosa NON cambia
+
+- `SolitoneComposito.evolve()` invariato
+- `PhysicsContext` invariato
+- Tutti i test esistenti (7/7 PASS)
+- I dati HDF5 prodotti sono fisicamente equivalenti
+
+### Stima Speedup
+
+- Symplectic + dt grande: 10-100x (facile)
+- Spectral decomposition: 100-1000x (piu' elaborato)
+- Combinazione: L4 da 80 ore a minuti
+
+---
 
 ## Stato del Codice
 
