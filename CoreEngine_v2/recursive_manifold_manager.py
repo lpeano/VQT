@@ -112,6 +112,7 @@ class RecursiveManifoldManager:
         chi_mean: float = 50.0,
         chi_std: float = 5.0,
         inherit_percentile: Optional[int] = None,
+        lambda_homeo: float = 0.1,
     ) -> None:
         """
         Manually register a completed simulation level in GlobalState.
@@ -133,6 +134,8 @@ class RecursiveManifoldManager:
             spectral_entropy=spectral_entropy,
             chi_mean=chi_mean,
             chi_std=chi_std,
+            lambda_homeo=lambda_homeo,
+            # S_residual auto-computed in LevelSeed.__post_init__
         )
         self._state.register_completion(seed)
 
@@ -156,6 +159,7 @@ class RecursiveManifoldManager:
         chi_mean = 50.0
         chi_std = 5.0
         sigma_plateau = math.nan
+        lambda_homeo = 0.1  # default; overridden if stored in HDF5 metadata
 
         try:
             import h5py
@@ -167,6 +171,8 @@ class RecursiveManifoldManager:
                     n_segments = int(meta.attrs.get("N_segments", 0))
                     chi_mean = float(meta.attrs.get("chi_mean", 50.0))
                     chi_std = float(meta.attrs.get("chi_std", 5.0))
+                    # lambda_homeo stored by generate_topological_dataset.py
+                    lambda_homeo = float(meta.attrs.get("lambda_homeo", 0.1))
 
                 frames = hf.get("frames", {})
                 n_frames = len(frames)
@@ -186,6 +192,7 @@ class RecursiveManifoldManager:
             sigma_plateau=sigma_plateau,
             chi_mean=chi_mean,
             chi_std=chi_std,
+            lambda_homeo=lambda_homeo,
         )
         kw.update(overrides)
         self.register_completed_level(level=level, hdf5_path=hdf5_path, **kw)
@@ -300,6 +307,78 @@ class RecursiveManifoldManager:
         return proc
 
     # ------------------------------------------------------------------
+    # Autonomous chain driver
+    # ------------------------------------------------------------------
+
+    def auto_advance(self) -> Optional[subprocess.Popen]:
+        """
+        Find the highest completed level and launch the next one.
+
+        This is the autonomous loop driver. It never resets to L1 if higher
+        levels are already registered — it always advances forward.
+
+        Returns
+        -------
+        Popen if a new level was launched, None if nothing to do.
+        """
+        highest = self._state.highest_completed_level()
+        if highest is None:
+            logger.info("[RMM] auto_advance: GlobalState empty — nothing to advance.")
+            return None
+        return self.run_next_level(highest, blocking=False)
+
+    def bootstrap(self, level: int = 1, extra_args: Optional[List[str]] = None) -> subprocess.Popen:
+        """
+        Cold-start: launch level `level` from scratch (no --inherit).
+
+        Used when GlobalState is empty and no prior simulation exists.
+        After this run completes, call register_from_hdf5(level, ...) then
+        auto_advance() to continue the chain.
+
+        Parameters
+        ----------
+        level : int
+            Level to bootstrap (default 1 = L1, the base of the hierarchy).
+        extra_args : list[str] | None
+            Additional argv appended to the command.
+
+        Returns
+        -------
+        subprocess.Popen for the running process.
+        """
+        steps = self._STEP_BUDGET.get(level, self._DEFAULT_STEPS)
+        output_path = self._output_dir / f"cosmo_L{level}.h5"
+        log_path = self._output_dir / f"cosmo_L{level}.log"
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+
+        cmd = [
+            sys.executable,
+            str(self._generator),
+            "--level",        str(level),
+            "--steps",        str(steps),
+            "--dt",           str(self._default_dt),
+            "--output",       str(output_path),
+            "--log-interval", "10",
+            "--save-interval", "1",
+            "--gc-interval",  "5",
+        ]
+        if self._watchdog:
+            cmd += ["--watchdog", "--watchdog-window", "50"]
+        if extra_args:
+            cmd.extend(extra_args)
+
+        logger.info("[RMM] bootstrap L%d → log: %s", level, log_path)
+        log_file = open(log_path, "w", encoding="utf-8")
+        proc = subprocess.Popen(
+            cmd,
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
+            cwd=str(self._generator.parent),
+        )
+        logger.info("[RMM] L%d bootstrap started — PID=%d", level, proc.pid)
+        return proc
+
+    # ------------------------------------------------------------------
     # PhaseTransitionSignal integration hook
     # ------------------------------------------------------------------
 
@@ -342,12 +421,49 @@ class RecursiveManifoldManager:
     # Status reporting
     # ------------------------------------------------------------------
 
+    def transition_potential(self, from_level: int) -> float:
+        """
+        Thermodynamic gain from advancing from_level -> from_level+1.
+
+        Delegates to GlobalState.transition_potential().
+        Positive = transition is energetically obligatory.
+        """
+        return self._state.transition_potential(from_level)
+
+    def s_residual_table(self) -> str:
+        """
+        Human-readable table of S_residual, per-DOF density, and transition potentials.
+
+        The thermodynamic driving force for the L->L+1 transition is
+        dS_per_dof = S_per_dof(L) - S_per_dof(L+1) > 0 (always).
+        The TOTAL S_residual grows across levels (more DOF), but the density falls.
+        """
+        series = self._state.s_residual_series()
+        if not series:
+            return "S_residual: no data"
+        lines = ["Level  N_dof    sigma_inf  S_res(total)  S_res/DOF   dS_per_dof->next"]
+        lines.append("-" * 68)
+        for lvl in sorted(series):
+            seed = self._state.get_seed(lvl)
+            if seed is None:
+                continue
+            tp = seed.transition_potential_to_next()
+            tp_s = f"{tp:.4e}" if not math.isnan(tp) else "       nan"
+            spd = seed.s_residual_per_dof
+            lines.append(
+                f"  L{lvl}  {seed.n_dof:>7}  {seed.sigma_plateau:.6f}  "
+                f"{seed.S_residual:.4e}  {spd:.4e}  {tp_s}"
+            )
+        return "\n".join(lines)
+
     def status_report(self) -> str:
         lines = [
             "=" * 64,
-            "RecursiveManifoldManager — Status Report",
+            "RecursiveManifoldManager -- Status Report",
             "=" * 64,
             self._state.summary(),
+            "",
+            self.s_residual_table(),
             "",
         ]
         highest = self._state.highest_completed_level()

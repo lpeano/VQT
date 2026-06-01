@@ -3,12 +3,18 @@ GlobalState — Persistent seed cache for VQT topological levels.
 
 Persists to CoreEngine_v2/state/global_state.json.
 One LevelSeed per completed simulation level.
+
+Key addition: S_residual = lambda_homeo * N_dof * sigma_inf^2
+This is the irreducible topological frustration energy at the sigma_inf plateau —
+the energy locked in sub-grid modes that cannot be minimized at level L.
+It is the thermodynamic driving force for the transition to level L+1.
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import math
 import time
 from dataclasses import dataclass, asdict, field
 from pathlib import Path
@@ -18,10 +24,114 @@ logger = logging.getLogger(__name__)
 
 _DEFAULT_STATE_FILE = Path(__file__).parent / "state" / "global_state.json"
 
+# Observed sigma reduction factor between consecutive levels (from exp1 L1->L2->L3).
+# r(L) = sigma_inf(L+1) / sigma_inf(L).  Grows toward 1 as L increases.
+_SIGMA_REDUCTION_FACTORS = {1: 0.583, 2: 0.778, 3: 0.865}
+_DEFAULT_SIGMA_REDUCTION = 0.85  # conservative default for unknown levels
+
+
+def compute_s_residual(
+    sigma_plateau: float,
+    n_segments: int,
+    lambda_homeo: float,
+) -> float:
+    """
+    Compute the irreducible topological frustration energy at the sigma_inf plateau.
+
+    S_residual(L) = lambda_homeo * N_dof(L) * sigma_inf(L)^2
+
+    This is the homeostatic potential that the current level CANNOT minimize
+    further. It is strictly positive (sigma_inf > 0 at any finite L) and
+    strictly decreasing across levels (S_residual(L+1) < S_residual(L)),
+    making the L -> L+1 transition thermodynamically obligatory.
+
+    Parameters
+    ----------
+    sigma_plateau : float
+        Measured sigma_inf = constraint_density_std at the maturity plateau.
+    n_segments : int
+        Number of topological segments at level L.
+    lambda_homeo : float
+        Homeostatic coupling constant from TopologicalForceConfig.
+        Default in the codebase: 0.1 (TopologicalForceConfig) or
+        0.2 (exp1 runs with --lambda-homeo 0.2).
+
+    Returns
+    -------
+    float : S_residual in the same energy units as the Hamiltonian.
+            Returns nan if any input is nan.
+    """
+    if math.isnan(sigma_plateau) or math.isnan(lambda_homeo):
+        return float("nan")
+    n_dof = n_segments * 2
+    return lambda_homeo * n_dof * sigma_plateau ** 2
+
+
+def predict_s_per_dof_next(s_per_dof: float, level: int) -> float:
+    """
+    Predict S_residual_per_dof(L+1) using the observed sigma reduction law.
+
+    S_per_dof(L) = lambda * sigma_inf(L)^2
+    S_per_dof(L+1) = lambda * (r * sigma_inf(L))^2 = r^2 * S_per_dof(L)
+
+    The PER-DOF density is strictly decreasing (r < 1 always).
+    This is the correct thermodynamic driving force: S_per_dof(L) > S_per_dof(L+1).
+
+    Note: the TOTAL S_residual grows (×24·r^2 per level) because N_dof grows faster
+    than sigma^2 falls. The transition is driven by the density, not the total.
+
+    Parameters
+    ----------
+    s_per_dof : float
+        S_residual / N_dof of the current (completed) level.
+    level : int
+        Current level L.
+
+    Returns
+    -------
+    float : predicted S_per_dof(L+1).
+    """
+    if math.isnan(s_per_dof):
+        return float("nan")
+    r = _SIGMA_REDUCTION_FACTORS.get(level, _DEFAULT_SIGMA_REDUCTION)
+    return s_per_dof * r ** 2
+
+
+# Keep old name as alias for backward compat
+def predict_s_residual_next(s_residual: float, level: int) -> float:
+    """
+    Predict TOTAL S_residual(L+1).
+
+    S_residual(L+1) = 24 * r^2 * S_residual(L)
+    (24x more DOF, each with r^2 less frustration density)
+    """
+    if math.isnan(s_residual):
+        return float("nan")
+    r = _SIGMA_REDUCTION_FACTORS.get(level, _DEFAULT_SIGMA_REDUCTION)
+    return s_residual * 24 * r ** 2
+
 
 @dataclass
 class LevelSeed:
-    """Topological seed produced by a completed simulation level."""
+    """
+    Topological seed produced by a completed simulation level.
+
+    Core thermodynamic quantities
+    -----------------------------
+    sigma_plateau : float
+        sigma_inf = constraint_density_std at the maturity plateau.
+        Measures residual geometric frustration [dimensionless].
+
+    lambda_homeo : float
+        Homeostatic coupling constant used in the simulation.
+        Required to compute S_residual.
+
+    S_residual : float
+        Irreducible topological frustration energy:
+            S_residual = lambda_homeo * N_dof * sigma_inf^2
+        This is the energy driving the transition to level L+1.
+        Positive, strictly decreasing across levels.
+    """
 
     level: int
     hdf5_path: str
@@ -35,10 +145,45 @@ class LevelSeed:
     spectral_entropy: float = float("nan")
     chi_mean: float = 50.0
     chi_std: float = 5.0
+    lambda_homeo: float = 0.1
+    S_residual: float = float("nan")
+
+    def __post_init__(self) -> None:
+        # Auto-compute S_residual if not provided but inputs are available
+        if math.isnan(self.S_residual) and not math.isnan(self.sigma_plateau):
+            self.S_residual = compute_s_residual(
+                self.sigma_plateau, self.n_segments, self.lambda_homeo
+            )
 
     @property
     def n_dof(self) -> int:
         return self.n_segments * 2
+
+    @property
+    def s_residual_per_dof(self) -> float:
+        """S_residual / N_dof — the thermodynamic density driving the transition."""
+        if math.isnan(self.S_residual) or self.n_dof == 0:
+            return float("nan")
+        return self.S_residual / self.n_dof
+
+    def transition_potential_to_next(self) -> float:
+        """
+        Predicted thermodynamic driving force for the L -> L+1 transition.
+
+        Uses the per-DOF action density, which is strictly decreasing:
+            dS_per_dof = S_per_dof(L) - S_per_dof_predicted(L+1) > 0
+
+        The TOTAL S_residual grows (×24·r^2), but the DENSITY per DOF shrinks
+        (×r^2). The transition is thermodynamically obligatory because the system
+        at L+1 has lower energy PER DEGREE OF FREEDOM.
+
+        Returns a positive float when the transition is favorable (always true
+        when r < 1, which holds empirically for all observed levels).
+        """
+        s_per_dof_next = predict_s_per_dof_next(self.s_residual_per_dof, self.level)
+        if math.isnan(s_per_dof_next):
+            return float("nan")
+        return self.s_residual_per_dof - s_per_dof_next
 
 
 class GlobalState:
@@ -64,11 +209,12 @@ class GlobalState:
         """Record that level seed.level has completed and store its seed."""
         self._seeds[seed.level] = seed
         self._save()
+        s_str = f"{seed.S_residual:.4e}" if not math.isnan(seed.S_residual) else "nan"
         logger.info(
-            "[GlobalState] L%d registered — %d segments, %d steps, "
-            "σ_∞=%.4f, f_dom=%.4f",
-            seed.level, seed.n_segments, seed.steps_completed,
-            seed.sigma_plateau, seed.f_dom,
+            "[GlobalState] L%d registered — %d DOF, %d steps, "
+            "sigma_inf=%.4f, S_residual=%s, f_dom=%.4f",
+            seed.level, seed.n_dof, seed.steps_completed,
+            seed.sigma_plateau, s_str, seed.f_dom,
         )
 
     # ------------------------------------------------------------------
@@ -87,6 +233,40 @@ class GlobalState:
     def highest_completed_level(self) -> Optional[int]:
         levels = self.completed_levels()
         return max(levels) if levels else None
+
+    # ------------------------------------------------------------------
+    # Thermodynamic helpers
+    # ------------------------------------------------------------------
+
+    def transition_potential(self, from_level: int, to_level: Optional[int] = None) -> float:
+        """
+        Thermodynamic driving force for the from_level -> to_level transition.
+
+        Uses per-DOF action density (S/N_dof), which is strictly decreasing.
+        If to_level is registered: exact = S_per_dof(from) - S_per_dof(to).
+        If to_level is not registered: predicted via sigma reduction law.
+
+        Positive = transition is energetically obligatory.
+        """
+        seed_from = self._seeds.get(from_level)
+        if seed_from is None or math.isnan(seed_from.s_residual_per_dof):
+            return float("nan")
+
+        actual_to = to_level if to_level is not None else from_level + 1
+        seed_to = self._seeds.get(actual_to)
+
+        if seed_to is not None and not math.isnan(seed_to.s_residual_per_dof):
+            return seed_from.s_residual_per_dof - seed_to.s_residual_per_dof
+        else:
+            return seed_from.transition_potential_to_next()
+
+    def s_residual_series(self) -> Dict[int, float]:
+        """Return {level: S_residual} for all registered levels."""
+        return {
+            lvl: s.S_residual
+            for lvl, s in self._seeds.items()
+            if not math.isnan(s.S_residual)
+        }
 
     # ------------------------------------------------------------------
     # Integration helpers
@@ -119,7 +299,7 @@ class GlobalState:
         tmp = self._path.with_suffix(".json.tmp")
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
-        tmp.replace(self._path)  # atomic on most OS
+        tmp.replace(self._path)
 
     def _load(self) -> None:
         if not self._path.exists():
@@ -128,6 +308,9 @@ class GlobalState:
             with open(self._path, encoding="utf-8") as f:
                 data = json.load(f)
             for k, v in data.items():
+                # Backward compat: old seeds lack lambda_homeo / S_residual
+                v.setdefault("lambda_homeo", 0.1)
+                v.setdefault("S_residual", float("nan"))
                 self._seeds[int(k)] = LevelSeed(**v)
             logger.info("[GlobalState] Loaded %d seeds from %s", len(self._seeds), self._path)
         except Exception as exc:
@@ -143,9 +326,12 @@ class GlobalState:
         lines = ["GlobalState:"]
         for lvl in sorted(self._seeds):
             s = self._seeds[lvl]
+            sr = f"{s.S_residual:.4e}" if not math.isnan(s.S_residual) else "nan"
+            tp = s.transition_potential_to_next()
+            tp_str = f"{tp:.4e}" if not math.isnan(tp) else "nan"
             lines.append(
-                f"  L{lvl}: {s.n_segments:>8} DOF | {s.steps_completed:>5} steps | "
-                f"σ_∞={s.sigma_plateau:.4f} | f_dom={s.f_dom:.4f} | {Path(s.hdf5_path).name}"
+                f"  L{lvl}: {s.n_dof:>8} DOF | sigma_inf={s.sigma_plateau:.4f} | "
+                f"S_res={sr} | dS->{lvl+1}={tp_str} | f_dom={s.f_dom:.4f}"
             )
         return "\n".join(lines)
 

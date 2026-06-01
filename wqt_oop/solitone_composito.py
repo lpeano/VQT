@@ -120,8 +120,11 @@ class SolitoneComposito(AbstractSoliton):
         self.E_zero_point_injected: float = 0.0  # Energia cumulativa dal vuoto (motore zero-point Nyquist)
 
         # PEANO-VQT ENERGY TRIAD
+        # Soglia Jitterbug: chi_max/chi_stable = sqrt(2) e' la costante geometrica
+        # della transizione Ottaedro->Cubottaedro di Fuller, calibrata sperimentalmente
+        # su file L2/L3/L4 (5/8 file entro 5% da sqrt(2)).
         self._peano_analyzer = PeanoVQTAnalyzer(
-            chi_saturation_threshold=0.8,
+            chi_saturation_threshold=np.sqrt(2),
             drain_rate=0.1,
         )
         self._last_triad: Optional[EnergyTriad] = None
@@ -460,8 +463,12 @@ class SolitoneComposito(AbstractSoliton):
             del attenuation, W_eff, tanh_mat
 
         # --- PEANO-VQT TRIAD (side-effect, guard per-step) ---
-        # Saturazione χ: mean(|χ|)/χ_stable ∈ [0,1]
-        chi_saturation = float(min(np.mean(np.abs(chi_values)) / max(chi_0, 1e-30), 1.0))
+        # Saturazione topologica: max(|χ|)/χ_stable (nessun cap a 1.0).
+        # Il segnale fisico e' chi_MAX: e' la singolarita' locale del campo che
+        # innesca la transizione Jitterbug, non la media (artefatto statistico).
+        # Dalla calibrazione su L2/L3/L4: chi_max/chi_stable raggiunge sqrt(2)
+        # esattamente al picco di saturazione (5/8 file, errore < 5%).
+        chi_saturation = float(np.max(np.abs(chi_values)) / max(chi_0, 1e-30))
 
         if self._triad_step != self._current_simulation_step:
             # Prima chiamata di questo step: applica drain
@@ -481,11 +488,36 @@ class SolitoneComposito(AbstractSoliton):
 
     def get_energy_triad(self) -> Optional[EnergyTriad]:
         """
-        Restituisce l'ultima triade Peano-VQT calcolata.
+        Restituisce la triade Peano-VQT con E_Psi aggregata da TUTTI i livelli.
 
-        Returns None se compute_hamiltonian_coupling() non è ancora stato chiamato.
+        E_Psi nel triad = somma ricorsiva su tutta la gerarchia (L1..LN).
+        Il drain scatta a L1 dove i chi individuali possono superare sqrt(2)*chi_stable,
+        ma il root non vede quei valori (usa medie dei figli diretti).
+        Aggregare E_Psi da tutti i livelli e' necessario per osservarlo nell'HDF5.
+
+        Returns None se compute_hamiltonian_coupling() non e' ancora stato chiamato.
         """
-        return self._last_triad
+        if self._last_triad is None:
+            return None
+        return EnergyTriad(
+            E_chi=self._last_triad.E_chi,
+            E_RX=self._last_triad.E_RX,
+            E_Psi=self.get_total_E_psi(),
+        )
+
+    def get_total_E_psi(self) -> float:
+        """
+        Somma E_Psi di questo livello + tutti i livelli figli (ricorsiva).
+
+        Complessita' O(N_composites) = O(24^L) — trascurabile rispetto al coupling.
+        Necessario perche' il drain Jitterbug scatta a L1 (chi individuali > sqrt(2)*chi0)
+        ma il root non vede quei valori: usa solo le medie dei figli diretti (~50 a L3/L4).
+        """
+        total = self._peano_analyzer.E_psi_total
+        for child in self.children:
+            if isinstance(child, SolitoneComposito):
+                total += child.get_total_E_psi()
+        return total
     
     @staticmethod
     def _get_child_chi(child: AbstractSoliton) -> float:

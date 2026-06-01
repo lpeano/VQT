@@ -138,19 +138,24 @@ class PhysicsContext:
     dt: float = 0.1  # [s] Timestep integratore
     
     @classmethod
-    def for_level(cls, level: int, base_context: Optional['PhysicsContext'] = None) -> 'PhysicsContext':
+    def for_level(cls, level: int, base_context: Optional['PhysicsContext'] = None,
+                  chi_mean_init: Optional[float] = None) -> 'PhysicsContext':
         """
         Factory method: crea contesto per livello gerarchico.
-        
+
         SCALING FRATTALE:
-            L_n+1 = L_n · sqrt(24)
-            α_K^(n+1) = α_K^(n) · 24^2  (dimensione frattale d_f=2)
-            σ_χ^(n+1) = σ_χ^(n) · sqrt(24)
-        
+            L_n+1 = L_n * sqrt(24)
+            alpha_K^(n+1) = alpha_K^(n) * 24^2  (d_f=2)
+            sigma_chi^(n+1) = sigma_chi^(n) * sqrt(24)
+
         Args:
             level: Livello gerarchico target
             base_context: Contesto livello 0 (default: Planck scale)
-        
+            chi_mean_init: Valore medio iniziale del campo chi nella simulazione.
+                Se fornito, imposta chi_stable = chi_mean_init in modo che
+                la soglia Jitterbug (chi_max/chi_stable = sqrt(2)) sia calibrata
+                sulle condizioni iniziali reali del run.
+
         Returns:
             PhysicsContext con parametri scalati
         """
@@ -203,11 +208,18 @@ class PhysicsContext:
         # LAMBDA mantiene scaling old per backward compatibility
         lambda_scaled = base_context.lambda_exchange * energy_scale
         
+        # chi_stable: se chi_mean_init e' fornito dalla factory, usalo direttamente.
+        # Cio' garantisce che la soglia Jitterbug (chi_max/chi_stable = sqrt(2)) sia
+        # calibrata sulle condizioni iniziali reali (chi_mean=50 nelle simulazioni L3/L4).
+        chi_stable_n = (float(chi_mean_init) if chi_mean_init is not None
+                        else base_context.chi_stable)
+
         return cls(
             level=level,
             length_scale=base_context.length_scale * scale_factor,
             alpha_K=base_context.alpha_K * alpha_K_screening,  # RG FLOW: screening!
             beta_potential=base_context.beta_potential,
+            chi_stable=chi_stable_n,
             kappa_coupling=base_context.kappa_coupling * kappa_screening,  # RG FLOW
             lambda_exchange=lambda_scaled,
             sigma_chi=base_context.sigma_chi * scale_factor,
@@ -219,7 +231,7 @@ class PhysicsContext:
             gamma_cooling=base_context.gamma_cooling,  # Invariante (tasso temporale)
             fermi_epsilon=base_context.fermi_epsilon,  # Invariante (numerica)
             zero_point_amplitude=base_context.zero_point_amplitude,  # Invariante (zero-point intrinseco)
-            # SCALING GAMMA DAMPING FRATTALE: γ_n = γ_0 · (24^n)^k
+            # SCALING GAMMA DAMPING FRATTALE: gamma_n = gamma_0 * (24^n)^k
             gamma_damping_base=base_context.gamma_damping_base * (24 ** level) ** base_context.damping_scaling_exponent,
             damping_scaling_exponent=base_context.damping_scaling_exponent,  # Invariante
             thermal_feedback_strength=base_context.thermal_feedback_strength,  # Invariante
