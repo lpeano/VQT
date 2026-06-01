@@ -65,3 +65,6 @@ demo_*.h5
 # *.jpg
 # *.jpeg
 experiments/notify_completion.py
+
+# Artefatti di profiling (rigenerabili)
+profile_out.txt
