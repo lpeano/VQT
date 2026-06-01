@@ -936,116 +936,73 @@ class SolitoneComposito(AbstractSoliton):
 
     def _compute_coupling_forces(self) -> np.ndarray:
         """
-        Calcola forze di accoppiamento tra figli.
+        Calcola forze di accoppiamento tra figli (vettorizzato).
 
         F_i = -∂H_coupling/∂χᵢ
             = -∂(kappa·E_coupling + E_exchange)/∂χᵢ
             = -kappa·Σⱼ W_ij·2(χᵢ-χⱼ)
               + λ·α_K·Σⱼ W_ij·sech²(χᵢ/χ₀)·tanh(χⱼ/χ₀)/χ₀
         
-        NOTA: E_torsion è un observable geometrico (K² della connessione),
-        non genera forze dinamiche. È emergente, non primario.
-        
         Returns:
         --------
         forces : ndarray, shape (N_children,)
-            Forza su ogni figlio
         """
         chi_values = np.array([self._get_child_chi(child) for child in self.children])
-        forces = np.zeros(self.N_children)
-        # CRITICAL FIX (2026-05-26): Use chi_stable from PhysicsContext
-        chi_0 = self.physics.chi_stable  # Scala caratteristica del campo
+        chi_0 = self.physics.chi_stable
         
+        chi_diff = chi_values[:, None] - chi_values[None, :]
+        tanh_v = np.tanh(chi_values / chi_0)
+        sech2_v = 1.0 - tanh_v**2
+        exchange_term = sech2_v[:, None] * tanh_v[None, :] / chi_0
+        
+        W_dense = (self.coupling_matrix.toarray() 
+                   if issparse(self.coupling_matrix) 
+                   else self.coupling_matrix)
+
         if not self.screening_enabled:
-            # Forze senza screening
-            for i in range(self.N_children):
-                F_coupling = 0.0
-                F_exchange = 0.0
-                
-                for j in range(self.N_children):
-                    if i != j:
-                        W_ij = self.coupling_matrix[i, j]
-                        
-                        # Contributo E_coupling: (χᵢ-χⱼ)²
-                        delta_chi = chi_values[i] - chi_values[j]
-                        F_coupling += W_ij * 2 * delta_chi
-                        
-                        # Contributo E_exchange: -λ·α_K·Σ W·tanh(χᵢ/χ₀)·tanh(χⱼ/χ₀)
-                        # ∂/∂χᵢ = -λ·α_K·W·sech²(χᵢ/χ₀)·tanh(χⱼ/χ₀)/χ₀
-                        tanh_i = np.tanh(chi_values[i] / chi_0)
-                        tanh_j = np.tanh(chi_values[j] / chi_0)
-                        sech2_i = 1.0 - tanh_i**2  # sech²(x) = 1 - tanh²(x)
-                        F_exchange += -W_ij * sech2_i * tanh_j / chi_0
-                
-                # Forza totale (NO F_torsion: è geometrico, non dinamico)
-                forces[i] = (-self.physics.kappa_coupling * F_coupling 
-                           + self.physics.lambda_exchange * self.physics.alpha_K * F_exchange)
+            # Vettorizzazione forze senza screening
+            F_coupling_mat = W_dense * 2 * chi_diff
+            F_exchange_mat = -W_dense * exchange_term
             
-            # CLIP forze per evitare singolarità numeriche
-            # (protezione contro esplosioni in regioni chi~0)
-            F_max = 1e6  # Forza massima ammissibile
-            forces = np.clip(forces, -F_max, F_max)
+            F_coupling = np.sum(F_coupling_mat, axis=1)
+            F_exchange = np.sum(F_exchange_mat, axis=1)
             
-            return forces
+            forces = (-self.physics.kappa_coupling * F_coupling 
+                    + self.physics.lambda_exchange * self.physics.alpha_K * F_exchange)
+            return np.clip(forces, -1e6, 1e6)
         
-        # --- CON SCREENING ADATTIVO ---
-        # Densità locale campo
-        rho_local = np.abs(self.coupling_matrix) @ np.abs(chi_values)
+        # --- CON SCREENING ADATTIVO (vettorizzato) ---
+        rho_local = matvec(np.abs(W_dense), np.abs(chi_values))
         
-        aux = self.get_auxiliary_state()
-        velocities = np.array([self._get_child_velocity(child) for child in self.children])
-        K_squared = aux['contorsione']
-        tau_locale = aux['tau_locale']
+        agg = self.get_child_aggregates()
+        velocities = agg['vel']
+        K_squared = agg['k2_mean']
+        tau_locale = agg['tau_mean']
         
-        for i in range(self.N_children):
-            F_coupling = 0.0
-            F_exchange = 0.0
-            
-            for j in range(self.N_children):
-                if i == j:
-                    continue
-                
-                # Differenze
-                delta_chi = abs(chi_values[i] - chi_values[j])
-                delta_v = abs(velocities[i] - velocities[j])
-                delta_K2 = abs(K_squared[i] - K_squared[j])
-                delta_tau = abs(tau_locale[i] - tau_locale[j])
-                
-                # Attenuazione
-                A_chi = np.exp(-delta_chi / self.physics.sigma_chi)
-                A_v = np.exp(-delta_v / self.physics.sigma_velocity)
-                A_K = np.exp(-delta_K2 / self.physics.sigma_torsion)
-                A_tau = np.exp(-delta_tau / self.physics.sigma_tau)
-                
-                attenuation = A_chi * A_v * A_K * A_tau
-                
-                # Screening adattivo densità (Fermi-Dirac)
-                A_density_i = self.fermi_screener.screening_factor(np.array([rho_local[i]]))[0]
-                A_density_j = self.fermi_screener.screening_factor(np.array([rho_local[j]]))[0]
-                A_density = (A_density_i + A_density_j) / 2.0
-                
-                attenuation_total = attenuation * A_density
-                w_eff = self.coupling_matrix[i, j] * attenuation_total
-                
-                # Contributo da (χᵢ-χⱼ)²
-                delta_chi_signed = chi_values[i] - chi_values[j]
-                F_coupling += w_eff * 2 * delta_chi_signed
-                
-                # Contributo E_exchange (smooth)
-                tanh_i = np.tanh(chi_values[i] / chi_0)
-                tanh_j = np.tanh(chi_values[j] / chi_0)
-                sech2_i = 1.0 - tanh_i**2
-                F_exchange += -w_eff * sech2_i * tanh_j / chi_0
-            
-            # Forza totale (NO F_torsion)
-            forces[i] = (-self.physics.kappa_coupling * F_coupling 
-                       + self.physics.lambda_exchange * self.physics.alpha_K * F_exchange)
+        delta_v = velocities[:, None] - velocities[None, :]
+        delta_K2 = K_squared[:, None] - K_squared[None, :]
+        delta_tau = tau_locale[:, None] - tau_locale[None, :]
         
-        # CLIP forze per stabilità numerica
-        F_max = 1e6  # Forza massima ammissibile
-        forces = np.clip(forces, -F_max, F_max)
+        A_chi = np.exp(-np.abs(chi_diff) / self.physics.sigma_chi)
+        A_v = np.exp(-np.abs(delta_v) / self.physics.sigma_velocity)
+        A_K = np.exp(-np.abs(delta_K2) / self.physics.sigma_torsion)
+        A_tau = np.exp(-np.abs(delta_tau) / self.physics.sigma_tau)
         
-        return forces
+        A_density_v = self.fermi_screener.screening_factor(rho_local)
+        A_density_mat = (A_density_v[:, None] + A_density_v[None, :]) / 2.0
+        
+        attenuation_total = A_chi * A_v * A_K * A_tau * A_density_mat
+        W_eff = W_dense * attenuation_total
+        
+        F_coupling_mat = W_eff * 2 * chi_diff
+        F_exchange_mat = -W_eff * exchange_term
+        
+        F_coupling = np.sum(F_coupling_mat, axis=1)
+        F_exchange = np.sum(F_exchange_mat, axis=1)
+        
+        forces = (-self.physics.kappa_coupling * F_coupling 
+                + self.physics.lambda_exchange * self.physics.alpha_K * F_exchange)
+        return np.clip(forces, -1e6, 1e6)
     
     def _compute_damping_coefficient(self) -> float:
         """
