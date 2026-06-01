@@ -215,9 +215,17 @@ class FastEvolver:
     # Passo di evoluzione principale
     # ------------------------------------------------------------------
 
-    def step(self) -> None:
+    def step(self, external_force: np.ndarray = None,
+             advance_step_counter: bool = True) -> None:
         """
         Esegue un passo di evoluzione con il metodo scelto.
+
+        external_force : ndarray (N,) o None
+            Forza di accoppiamento inter-L1 dal livello superiore (L2/L3/L4).
+            Necessaria per il dispatcher gerarchico: quando questo L1 e' figlio
+            di un L2, riceve la forza di coupling con gli altri L1. Viene sommata
+            alla forza interna (doppio pozzo + coupling intra-L1).
+            Supportata SOLO nel path Verlet-puro (use_spectral_linear=False).
 
         Schema Strang splitting (se use_spectral_linear=True):
             1. propagate_linear(dt/2)   <- analitico, zero errore
@@ -279,9 +287,19 @@ class FastEvolver:
             vel_new = self._basis.from_spectral(vel_k2)
 
         else:
-            # Schema Verlet puro: F_total = F_potential + F_coupling
+            # Schema Verlet puro: F_total = F_potential + F_coupling_intra + F_ext
+            # external_force = coupling inter-L1 dal livello superiore (costante
+            # durante il passo, come nel SolitoneComposito.evolve standard dove
+            # internal_forces e' calcolato una volta e passato a child.evolve).
+            if external_force is None:
+                ext = 0.0
+            else:
+                ext = np.asarray(external_force, dtype=float)
+
             def force_total(c):
-                return self._force_potential(c) + self._force_coupling_nodal(c)
+                return (self._force_potential(c)
+                        + self._force_coupling_nodal(c)
+                        + ext)
 
             if self._method == "forest_ruth":
                 chi_new, vel_new = forest_ruth_step(
@@ -299,8 +317,11 @@ class FastEvolver:
 
         self._step_count += 1
 
-        # Aggiorna il contatore step del solitone (necessario per guard Peano-VQT)
-        self._solitone._current_simulation_step += 1
+        # Aggiorna il contatore step del solitone (necessario per guard Peano-VQT).
+        # advance_step_counter=False quando e' evolve_fast() a orchestrare il
+        # contatore e il drain a livello superiore (evita doppio incremento).
+        if advance_step_counter:
+            self._solitone._current_simulation_step += 1
 
         # --- RACCORDO DRAIN PEANO-VQT ---
         # Il drain Jitterbug (chi_max/chi_stable >= sqrt(2) -> E_chi -> E_Psi) e

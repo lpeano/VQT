@@ -812,10 +812,126 @@ class SolitoneComposito(AbstractSoliton):
             self.E_zero_point_injected += E_inj
             self._cache_valid = False  # le velocita' sono cambiate
 
+    def evolve_fast(self, dt: float, external_force: np.ndarray = None) -> None:
+        """
+        Evoluzione ACCELERATA gerarchica (additiva, NON sostituisce evolve()).
+
+        Struttura IDENTICA a evolve() ma con due differenze sull'integrazione:
+          - Foglie L1 (figli = SegmentoQuantistico): un'unica chiamata vettoriale
+            FastEvolver (Forest-Ruth) sui 24 segmenti, invece di 24 child.evolve().
+          - Livelli L2+ (figli = SolitoneComposito): ricorsione child.evolve_fast().
+
+        Tutto il resto (damping gerarchico, coupling inter-figli, cooling
+        Fermi-Dirac, heat transfer, zero-point, drain Peano-VQT via guard,
+        cache) e' replicato verbatim da evolve() per equivalenza fisica.
+
+        Verificato dal GATE test_evolve_fast_equivalence.py (evolve vs evolve_fast
+        su L2, osservabili collettivi entro 1%). Attivato da un flag a livello
+        chiamante: evolve() resta il default invariato.
+
+        Speedup: elimina il loop Python sui segmenti foglia (vero bottleneck L4).
+        """
+        from .fast_evolver import FastEvolver
+
+        # --- CALCOLO COEFFICIENTE SMORZAMENTO DINAMICO (come evolve) ---
+        gamma = self._compute_damping_coefficient()
+        self._last_gamma = gamma  # letto da FastEvolver per il damping
+        self._cache_valid = False
+
+        # Energia PRIMA evoluzione (triggera drain con guard _triad_step)
+        H_before = self.compute_hamiltonian()
+
+        # Aggiorna gamma nei figli (come evolve)
+        for child in self.children:
+            if isinstance(child, SegmentoQuantistico):
+                child.gamma_damping = gamma
+            else:
+                child._set_damping_recursive(gamma)
+
+        # Forze di accoppiamento inter-figli (riusa la logica esistente)
+        internal_forces = self._compute_coupling_forces()
+
+        # Normalizza external_force (come evolve)
+        if external_force is None:
+            ext_forces_array = np.zeros(self.N_children)
+        elif isinstance(external_force, (int, float, np.number)):
+            ext_forces_array = np.full(self.N_children, float(external_force))
+        else:
+            ext_forces_array = np.asarray(external_force)
+
+        children_are_segments = all(
+            isinstance(c, SegmentoQuantistico) for c in self.children
+        )
+
+        if children_are_segments:
+            # --- L1: integrazione vettoriale dei 24 segmenti via FastEvolver ---
+            # enable_drain=False: il drain e' gestito qui sopra da compute_hamiltonian
+            # (come in evolve), NON da FastEvolver. advance_step_counter=False: il
+            # contatore lo incrementa evolve_fast alla fine (evita doppio conteggio).
+            fe = getattr(self, "_fast_evolver_cache", None)
+            if fe is None:
+                fe = FastEvolver(self, dt=dt, method="forest_ruth",
+                                 use_spectral_linear=False, enable_drain=False)
+                self._fast_evolver_cache = fe
+            fe._dt = dt
+            total_ext = internal_forces + ext_forces_array
+            fe.step(external_force=total_ext, advance_step_counter=False)
+        else:
+            # --- L2+: ricorsione sui compositi figli ---
+            for i, child in enumerate(self.children):
+                child.evolve_fast(dt, internal_forces[i] + ext_forces_array[i])
+
+        # --- COOLING TEMPERATURA FERMI-DIRAC (verbatim da evolve) ---
+        if self.screening_enabled:
+            self.fermi_screener.update_temperature(
+                gamma_cooling=self.physics.gamma_cooling, dt=dt
+            )
+
+        # --- MISURA ENERGIA RADIATA EFFETTIVA (verbatim da evolve) ---
+        self._cache_valid = False
+        H_after = self.compute_hamiltonian()
+        E_rad_step = H_before - H_after
+        self.E_radiated_total += E_rad_step
+
+        # --- TRASFERIMENTO ENERGETICO GERARCHICO (verbatim da evolve) ---
+        if E_rad_step > 0 and self.hierarchical_heat_fraction > 0:
+            E_transfer = E_rad_step * self.hierarchical_heat_fraction
+            self._transfer_heat_to_children(E_transfer, dt)
+            self.E_transferred_to_children += E_transfer
+
+        # --- AGGIORNA SPATIAL CACHE (verbatim da evolve) ---
+        positions = np.array([child.get_position() for child in self.children])
+        chi_values = np.array([self._get_child_chi(child) for child in self.children])
+        position_mean = np.mean(positions, axis=0)
+        chi_mean = float(np.mean(chi_values))
+        chi_std = float(np.std(chi_values))
+
+        self._current_simulation_step += 1
+        self.spatial_cache.update(
+            position_mean=position_mean, chi_mean=chi_mean,
+            chi_std=chi_std, H_total=H_after,
+            current_step=self._current_simulation_step
+        )
+        self._cache_valid = False
+        self._centroid = None
+
+        # --- MOTORE ZERO-POINT (verbatim da evolve) ---
+        zp_amp = getattr(self.physics, 'zero_point_amplitude', 0.0)
+        if zp_amp > 0.0 and self.N_children >= 2 and all(
+            isinstance(c, SegmentoQuantistico) for c in self.children
+        ):
+            E_zp = E_zp_from_amplitude(zp_amp, self.N_children)
+            vels = np.array([c.vel for c in self.children], dtype=float)
+            v_new, E_inj = enforce_nyquist_zero_point(vels, E_zp)
+            for c, vv in zip(self.children, v_new):
+                c.vel = float(vv)
+            self.E_zero_point_injected += E_inj
+            self._cache_valid = False
+
     def _compute_coupling_forces(self) -> np.ndarray:
         """
         Calcola forze di accoppiamento tra figli.
-        
+
         F_i = -∂H_coupling/∂χᵢ
             = -∂(kappa·E_coupling + E_exchange)/∂χᵢ
             = -kappa·Σⱼ W_ij·2(χᵢ-χⱼ)
