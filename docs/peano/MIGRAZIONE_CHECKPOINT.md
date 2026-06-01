@@ -81,20 +81,70 @@ emergenza viene SOLO dai dati storici di calibrazione (file L2/L3/L4 generati
 SENZA drain attivo, dove chi_max_peak/chi_stable risultava ~sqrt(2) al troncamento
 in 5/8 file). Quindi la fisicita' va cercata LI', non nel drain stesso.
 
-Test concreti, in ordine, eseguibili PRIMA di L3:
-- TEST A [emergenza sqrt(2), su dati storici, ZERO calcolo]: ri-analizzare i file
-  storici (generati SENZA drain) con calibrate_peano_vqt.py / load_h5_and_validate.
-  Domanda: chi_max/chi_stable converge a sqrt(2) al troncamento INDIPENDENTEMENTE
-  dalle condizioni iniziali (seed/chi_mean/chi_std)? Se SI -> sqrt(2) e' emergente,
-  proprieta' geometrica reale della dinamica, non imposta. E' il test decisivo.
-- TEST B [robustezza drain_rate, L1/L2, minuti]: variare drain_rate (0.01..0.5).
-  Se la SOGLIA di transizione resta fissa e solo la velocita' di accumulo cambia
-  -> il rate e' solo cinetica, la soglia e' fisica. Se la soglia dipende dal rate
-  -> artefatto.
-- TEST C [solver-indipendenza della transizione, L1/L2]: la transizione avviene
-  allo stesso chi_max con dt diversi e integratori diversi (evolve vs evolve_fast)?
+Test concreti, in ordine, eseguibili PRIMA di L3 (script: experiments/exp3/test_falsificabilita.py):
 
-Solo DOPO questi test, con verdetto fisica reale, ha senso lanciare L3 (Task 1).
+- TEST A [emergenza sqrt(2), su dati storici, ZERO calcolo]: ri-analizzare i file
+  storici (generati SENZA drain efficace) con load_h5_and_validate. Domanda:
+  chi_max/chi_stable converge a sqrt(2) al troncamento INDIPENDENTEMENTE dalle
+  condizioni iniziali (seed/chi_mean/chi_std)? Se SI -> sqrt(2) emergente, non
+  imposto. Test decisivo sulla circolarita' della soglia.
+
+- TEST B [robustezza drain_rate, L1/L2, minuti]: variare drain_rate (0.01..0.5)
+  in regime dove il drain SCATTA (chi_max > 70.7). Se il PLATEAU di E_Psi e la
+  soglia di transizione restano fissi e solo la velocita' di accumulo cambia ->
+  il rate e' cinetica, la soglia e' fisica. Se il plateau dipende dal rate -> artefatto.
+
+- TEST C [riconfigurazione drain OFF, regime critico]: con chi_max > 70.7,
+  confronto drain ON vs OFF. Se OFF -> instabilita'/detorsion divergente, il drain
+  e' un meccanismo di scarico FISICO necessario. Se OFF resta stabile, il drain e'
+  una patch.
+  CAVEAT CRITICI (dal repository):
+  (i) I run storici SENZA drain efficace (E_Psi=0) NON esplodevano: il sistema ha
+      ALTRI stabilizzatori (damping FDT, force-clipping, zero-point). Il test C
+      deve ISOLARE il drain disattivando/controllando questi altri meccanismi,
+      altrimenti misura la stabilita' del damping FDT, non l'assenza del drain.
+  (ii) Va fatto in regime chi_max > sqrt(2)*chi_stable=70.7 (chi_mean iniziale
+       ~60-65 o inherit da L3 alto), altrimenti ON e OFF sono identici (drain
+       non scatta) e il test e' vuoto.
+
+### >>> RISULTATI TEST FALSIFICABILITA' (2026-06-01) — ESEGUITI <<<
+Script: experiments/exp3/test_falsificabilita.py. Verdetto: 1 a favore, 2 contro.
+
+- TEST A [FAVOREVOLE]: sqrt(2) EMERGE dai dati storici (75% file entro 10%,
+  media 1.345). Pattern: il ratio cresce L2->L3->L4 verso sqrt(2) (L4=1.429).
+  La transizione di fase geometrica del campo chi e' REALE.
+
+- TEST B [SFAVOREVOLE]: il plateau di E_Psi scala LINEARMENTE col drain_rate
+  (E_Psi ~ 15.7 * drain_rate; CV=0.95). NON c'e' plateau fisico intrinseco:
+  la "materia" prodotta dipende interamente dalla velocita' del drain.
+  Comportamento da bookkeeping arbitrario, non da transizione termodinamica.
+
+- TEST C [SFAVOREVOLE]: con FDT+zero-point OFF, senza drain il sistema resta
+  STABILE (chi_max identico, E_RX piu' basso, zero divergenze). Il drain NON e'
+  necessario alla stabilita' -> e' bookkeeping, non meccanismo di scarico fisico.
+
+VERDETTO: separare cio' che e' fisico da cio' che e' trucco.
+  - Transizione di fase chi a sqrt(2)*chi_stable (geometria Fuller): FISICA REALE.
+  - E_Psi come accumulo via rampa drain_rate: ARTEFATTO (dipende dal parametro libero).
+Conferma il sospetto: la geometria e' reale, ma il drain FORZA il risultato invece
+di lasciarlo emergere da una soglia termodinamica intrinseca.
+
+### NUOVO TASK [precede L3] — Riformulare E_Psi come energia geometrica intrinseca
+E_Psi NON deve essere drain_rate * eccesso (artefatto), ma l'energia effettivamente
+immagazzinata nella configurazione frustrata, calcolabile dalla TOPOLOGIA senza
+parametri liberi: difetto di chiusura (720 deg), torsione residua del difetto
+icosaedrico, energia elastica della frustrazione (Frank-Kasper). Solo allora E_Psi
+ha valore intrinseco indipendente dalla cinetica, e i Test B/C passerebbero.
+Finche' E_Psi resta una rampa, L3 NON dimostrerebbe nascita di materia fisica.
+
+Solo DOPO la riformulazione di E_Psi (e re-test B/C), ha senso lanciare L3.
+
+Verdetto atteso (ipotesi da verificare): il SUBSTRATO e' fisico (Landau-Ginzburg +
+frustrazione icosaedrica / Frank-Kasper -> vetri/quasicristalli). Il processo, se
+reale, e' una CONDENSAZIONE TOPOLOGICA DEL VUOTO: il campo di torsione non sostiene
+piu' la frustrazione geometrica e la espelle creando un difetto (la "materia"=E_Psi).
+Il rischio "trucco" e' nella rampa di drain (drain_rate fisso) che FORZA il risultato
+invece di lasciarlo emergere da una soglia termodinamica intrinseca.
 
 ### QUESTIONE FONDAMENTALE [criteri completi] — Fisica reale o trucco matematico?
 Il drain Peano-VQT e' un VERO processo fisico o un artefatto della costruzione?
