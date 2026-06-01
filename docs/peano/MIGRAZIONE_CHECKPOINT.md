@@ -139,6 +139,36 @@ Finche' E_Psi resta una rampa, L3 NON dimostrerebbe nascita di materia fisica.
 
 Solo DOPO la riformulazione di E_Psi (e re-test B/C), ha senso lanciare L3.
 
+### NOTA DI DESIGN — E_Psi geometrica ancorata al validator (2026-06-01)
+Le quantita' necessarie ESISTONO GIA' in TopologicalConstraintValidator (verificato):
+- closure_error_deg / closure_error_normalized (= err/360): deficit di chiusura 720 deg.
+- detorsion_pattern_quality (in [0,1]): qualita' del pattern di detorsione +-180 deg.
+- K_squared = aux['contorsione']: torsione locale al quadrato per nodo.
+- H_torsion_emergent = compute_hamiltonian_coupling(): energia di torsione emergente.
+
+Cambio di paradigma: da E_Psi guidata da parametro (drain_rate) a E_Psi guidata
+dalla GEOMETRIA. Formulazione candidata (da testare, SENZA parametri liberi):
+
+  E_Psi_intrinseca = alpha_K * sum_i K_squared_i * (1 - detorsion_pattern_quality)
+                     [energia di torsione residua NON risolvibile = frustrazione localizzata]
+
+  oppure, equivalente via deficit di chiusura:
+  E_Psi_intrinseca ~ (closure_error_normalized)^2 * H_torsion_emergent
+                     [energia immagazzinata nel difetto di chiusura dei loop 720 deg]
+
+Razionale fisico: quando il sistema non riesce a chiudere i loop di torsione (720 deg)
+ne' a soddisfare il pattern di detorsione, quel RESIDUO geometrico E' l'energia che
+deve essere localizzata in Psi (la "massa" = difetto topologico congelato, Frank-Kasper).
+Nessuna rampa: E_Psi e' una funzione ISTANTANEA dello stato geometrico.
+
+CRITERIO DI VALIDAZIONE (re-Test B): il PLATEAU di E_Psi_intrinseca a saturazione
+deve essere INDIPENDENTE da dt e dalla velocita' di evoluzione (a differenza
+dell'attuale E_Psi ~ 15.7*drain_rate). Se costante -> e' un osservabile fisico.
+
+Implementazione: nuovo metodo in energy_metrics.py o SolitoneComposito che calcola
+E_Psi dai campi geometrici, in parallelo (NON sostitutivo) all'attuale drain, per
+poterli confrontare. Mantenere il drain attuale come baseline di confronto.
+
 Verdetto atteso (ipotesi da verificare): il SUBSTRATO e' fisico (Landau-Ginzburg +
 frustrazione icosaedrica / Frank-Kasper -> vetri/quasicristalli). Il processo, se
 reale, e' una CONDENSAZIONE TOPOLOGICA DEL VUOTO: il campo di torsione non sostiene
