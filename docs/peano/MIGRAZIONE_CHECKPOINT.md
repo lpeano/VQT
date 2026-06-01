@@ -1,4 +1,52 @@
-# Checkpoint VQT - Ultimo Aggiornamento: 2026-05-29 (sessione corrente)
+# Checkpoint VQT - Ultimo Aggiornamento: 2026-06-01
+
+## >>> PROSSIMI TASK PRIORITARI (2026-06-01) <<<
+
+Stato sintetico: **convergenza ingegneristica raggiunta, validazione scientifica
+ancora mancante.** L'infrastruttura e' pronta e verificata; manca la prova fisica
+centrale della teoria.
+
+### Cosa e' FATTO e VERIFICATO (infrastruttura)
+- Ramo B (teoria Peano-VQT): triade dE_chi+dE_RX+dE_Psi=0, soglia Jitterbug sqrt(2),
+  drain, fasi geometriche. Test Peano-VQT 7/7 PASS.
+- FastEvolver (L1): equivalente a RK45 a precisione macchina (err 1.1e-07). 5/5.
+- evolve_fast (dispatcher gerarchico additivo): GATE L2 superato (evolve vs
+  evolve_fast entro 1.4%). evolve() classico invariato. Flag --fast-evolver.
+- Validator vettorizzato (Gemini): ~5x, equivalenza numerica 1e-14.
+- Speedup evoluzione: ~6x misurato (L4 da ~80h a ~13h). Documentazione allineata.
+
+### TASK 1 [PRIORITA' MASSIMA] — Validazione fisica: osservare E_Psi crescere
+**Il drain NON e' MAI scattato in un run di produzione.** Nei run L1/L2/L3 exp3
+E_Psi=0 ovunque, perche' chi_max non raggiunge la soglia sqrt(2)*chi_stable=70.7.
+Il drain e' stato visto SOLO in test sintetici (chi forzato a 75).
+
+Manca quindi la prova centrale della teoria: un run reale dove
+  - chi cresce fino a sqrt(2)*chi_stable,
+  - il drain scatta,
+  - E_Psi accumula monotonicamente (nascita di materia / transizione Cub->Ico),
+  - il sistema "si trasforma invece di bloccarsi".
+
+Da fare:
+1. Identificare condizioni che portano chi_max alla soglia 70.7:
+   - run lungo (chi cresce dinamicamente per l'accoppiamento), OPPURE
+   - --inherit da un L3 storico ad alto chi (cosmo_L3_ext3.h5 ha chi_max~69),
+     OPPURE chi_mean iniziale piu' alto.
+2. Lanciare con --fast-evolver + validator vettorizzato (tempi gestibili).
+3. Verificare con load_h5_and_validate: E_Psi>0 monotono, fase->Icosaedrica,
+   coincidenza picco chi_max / troncamento (delta<=15 frame).
+4. Produrre i grafici della transizione (E_Psi vs step, fase vs step).
+
+### TASK 2 [DOPO TASK 1] — Documento unificato Ramo A + Ramo B
+Solo DOPO aver osservato la genesi di E_Psi. Documento unico che spieghi
+matematicamente E verbalmente:
+- Ramo A (cosmologia/RG-flow): gerarchia frattale 24^L, sigma_inf, S_residual.
+- Ramo B (Peano-VQT): triade, drain Jitterbug sqrt(2), nascita materia.
+- Unificazione: E_Psi (B) <-> S_residual (A); sigma_inf = sqrt(E_Psi/(lambda*N_dof)).
+- Capitolo sperimentale CENTRALE: la prova della transizione (grafici reali Task 1).
+- Metodi computazionali: FastEvolver, evolve_fast, validator (numeri reali ~6x/~5x).
+NON scrivere prima di Task 1: eviterebbe di documentare cio' che non e' osservato.
+
+---
 
 ## Stato Attuale
 
