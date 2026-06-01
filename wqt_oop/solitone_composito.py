@@ -287,7 +287,7 @@ class SolitoneComposito(AbstractSoliton):
     
     def get_auxiliary_state(self) -> Dict[str, np.ndarray]:
         """
-        Concatena variabili ausiliarie di tutti i figli.
+        Concatena variabili ausiliarie di tutti i figli (flat iterativo).
         
         Returns:
         --------
@@ -302,16 +302,22 @@ class SolitoneComposito(AbstractSoliton):
         K_list = []
         closure_list = []
         
-        for child in self.children:
-            aux = child.get_auxiliary_state()
-            tau_list.append(aux['tau_locale'])
-            K_list.append(aux['contorsione'])
-            closure_list.append(aux['chiusura_spinore'])
+        stack = [self]
+        from .segmento_quantistico import SegmentoQuantistico
         
+        while stack:
+            curr = stack.pop()
+            if isinstance(curr, SegmentoQuantistico):
+                tau_list.append(curr.tau_locale)
+                K_list.append(0.0)  # Placeholder per compatibilità
+                closure_list.append(curr.chiusura)
+            else:
+                stack.extend(reversed(curr.children))
+                
         return {
-            'tau_locale': np.concatenate(tau_list),
-            'contorsione': np.concatenate(K_list),
-            'chiusura_spinore': np.concatenate(closure_list)
+            'tau_locale': np.array(tau_list, dtype=np.float64),
+            'contorsione': np.array(K_list, dtype=np.float64),
+            'chiusura_spinore': np.array(closure_list, dtype=np.float64)
         }
 
     def get_child_aggregates(self) -> Dict[str, np.ndarray]:
