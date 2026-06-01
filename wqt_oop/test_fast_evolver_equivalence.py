@@ -103,7 +103,7 @@ def _total_energy(chi, vel, W, alpha_K, beta, chi_0, mass, degree):
 def test_energy_conservation():
     print("\n--- TEST 1: Conservazione energia FastEvolver (gamma=0) ---")
     sol = _make_l1()
-    fe = FastEvolver.from_solitone(sol, dt=0.05, method="forest_ruth")
+    fe = FastEvolver.from_solitone(sol, dt=0.05, method="forest_ruth", enable_drain=False)
 
     E0 = fe.energy_check()["H"]
     for _ in range(200):
@@ -155,7 +155,7 @@ def test_equivalence_with_reference():
     # FastEvolver (spettrale + Forest-Ruth), stesso stato iniziale
     dt = 0.01
     n_steps = int(round(T_final / dt))
-    fe = FastEvolver.from_solitone(sol, dt=dt, method="forest_ruth")
+    fe = FastEvolver.from_solitone(sol, dt=dt, method="forest_ruth", enable_drain=False)
     for _ in range(n_steps):
         fe.step()
     chi_fe = np.array([c.chi for c in sol.children])
@@ -211,8 +211,8 @@ def test_integrator_consistency():
     sol_v = _make_l1(seed=13)
     sol_f = _make_l1(seed=13)  # stesso stato iniziale
 
-    fe_v = FastEvolver.from_solitone(sol_v, dt=0.01, method="verlet")
-    fe_f = FastEvolver.from_solitone(sol_f, dt=0.01, method="forest_ruth")
+    fe_v = FastEvolver.from_solitone(sol_v, dt=0.01, method="verlet", enable_drain=False)
+    fe_f = FastEvolver.from_solitone(sol_f, dt=0.01, method="forest_ruth", enable_drain=False)
 
     for _ in range(100):
         fe_v.step()
@@ -226,6 +226,39 @@ def test_integrator_consistency():
                  f"verlet={np.mean(chi_v):.4f} fr={np.mean(chi_f):.4f} err={err_mean:.2e}")
 
 
+# ===========================================================================
+# TEST 5: Raccordo drain Peano-VQT via FastEvolver
+# ===========================================================================
+
+def test_drain_coupling():
+    print("\n--- TEST 5: Raccordo drain Peano-VQT ---")
+    # L1 con chi sopra la soglia Jitterbug (chi_max > sqrt(2)*chi_stable = 70.7)
+    rng = np.random.default_rng(1)
+    base0 = PhysicsContext.for_level(0)
+    p1 = PhysicsContext.for_level(1, base_context=base0)
+    segs = [SegmentoQuantistico(chi=75 + 5 * rng.standard_normal(), vel=0.1,
+                                physics=base0) for _ in range(24)]
+    sol = SolitoneComposito(segs, p1, screening_enabled=False)
+    chi_max = max(abs(s.chi) for s in sol.children)
+
+    fe = FastEvolver.from_solitone(sol, dt=0.01, method="forest_ruth", enable_drain=True)
+    e0 = sol._peano_analyzer.E_psi_total
+    for _ in range(5):
+        fe.step()
+    e1 = sol._peano_analyzer.E_psi_total
+    triad = sol.get_energy_triad()
+
+    all_pass = True
+    all_pass &= check(chi_max > np.sqrt(2) * 50, "chi_max sopra soglia Jitterbug",
+                      f"chi_max={chi_max:.2f} > {np.sqrt(2)*50:.2f}")
+    all_pass &= check(e1 > e0, "E_Psi cresce via FastEvolver (drain attivo)",
+                      f"E_Psi: {e0:.3e} -> {e1:.3e}")
+    all_pass &= check(triad is not None and triad.E_Psi > 0,
+                      "Triade Peano-VQT aggiornata via FastEvolver",
+                      f"triad.E_Psi={triad.E_Psi:.3e}" if triad else "None")
+    return all_pass
+
+
 def run_all():
     print("=" * 64)
     print("  TEST EQUIVALENZA FISICA — FastEvolver vs Reference")
@@ -235,6 +268,7 @@ def run_all():
         test_equivalence_with_reference,
         test_spectral_invariance,
         test_integrator_consistency,
+        test_drain_coupling,
     ]
     results = []
     for fn in tests:

@@ -104,10 +104,15 @@ class FastEvolver:
         dt: float = 0.1,
         method: str = "verlet",
         use_spectral_linear: bool = False,
+        enable_drain: bool = True,
     ):
         from .spectral_coupling import SpectralBasis
-        from .symplectic_step import verlet_step, forest_ruth_step
         from .segmento_quantistico import SegmentoQuantistico
+
+        # enable_drain=True: dopo ogni step invoca compute_hamiltonian_coupling()
+        # per attivare il drain Jitterbug e aggiornare la triade Peano-VQT.
+        # Impostare False solo per test di pura dinamica (es. equivalenza RK45).
+        self._enable_drain = enable_drain
 
         self._solitone = solitone
         self._dt = dt
@@ -165,9 +170,11 @@ class FastEvolver:
         solitone,
         dt: float = 0.1,
         method: str = "verlet",
+        enable_drain: bool = True,
     ) -> "FastEvolver":
         """Factory method con parametri di produzione (Verlet-puro verificato)."""
-        return cls(solitone, dt=dt, method=method, use_spectral_linear=False)
+        return cls(solitone, dt=dt, method=method,
+                   use_spectral_linear=False, enable_drain=enable_drain)
 
     # ------------------------------------------------------------------
     # Forze fisiche
@@ -294,6 +301,17 @@ class FastEvolver:
 
         # Aggiorna il contatore step del solitone (necessario per guard Peano-VQT)
         self._solitone._current_simulation_step += 1
+
+        # --- RACCORDO DRAIN PEANO-VQT ---
+        # Il drain Jitterbug (chi_max/chi_stable >= sqrt(2) -> E_chi -> E_Psi) e
+        # l'aggiornamento della triade E_chi/E_RX/E_Psi sono un side-effect di
+        # compute_hamiltonian_coupling() (con guard _triad_step per evitare doppio
+        # drain). FastEvolver bypassa SolitoneComposito.evolve(), quindi DEVE
+        # invocare esplicitamente questo metodo dopo aver aggiornato i chi, per
+        # mantenere la fisica Peano-VQT (altrimenti L4 girerebbe veloce ma con
+        # E_Psi sempre = 0). Il metodo legge i chi appena scritti nei figli.
+        if self._enable_drain:
+            self._solitone.compute_hamiltonian_coupling()
 
     # ------------------------------------------------------------------
     # Diagnostica
