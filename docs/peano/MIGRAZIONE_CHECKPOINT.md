@@ -222,9 +222,65 @@ Transizione termodinamicamente obbligatoria a ogni livello.
 
 ---
 
-## CHECKPOINT PRELIMINARE — Rifattorizzazione Analitica Ramo A
+## CHECKPOINT — Rifattorizzazione Analitica Ramo A
 
-### Data: 2026-05-31  Stato: PIANIFICATO (non ancora eseguito)
+### Data: 2026-05-31  Stato: ESEGUITO (4 step completati)
+
+**Stato esecuzione:**
+- [x] Step 1 — Creati `spectral_coupling.py`, `symplectic_step.py`, `fast_evolver.py`
+- [x] Step 2 — Motivo del change documentato in ogni modulo (docstring iniziale)
+- [x] Step 3 — Formule fisiche documentate nel codice (equazioni del moto spettrali,
+      soluzione analitica oscillatore smorzato, coefficienti Forest-Ruth, Liouville)
+- [x] Step 4 — Documentazione scientifica:
+  - Creato `docs/cosmology/SPECTRAL_METHODS.md`
+  - Aggiornato `docs/peano/VQT_MANIFESTO_TEORICO.md` (Corollario Metodologico:
+    solver-indipendenza → legittima i metodi spettrali; √2 invariante spettrale)
+  - Aggiornato `docs/cosmology/ARCHITETTURA_SCALING_MASSIVO.md` (moduli 6/7/8)
+
+**Test:** 7/7 PASS dopo l'aggiunta dei moduli (verificato: nessuna regressione).
+
+### Integrazione FastEvolver — Sessione 2026-06-01
+
+**Obiettivo**: collegare FastEvolver al motore per accelerare L4 (da ~80h).
+
+**Fatto e VERIFICATO:**
+- [x] Fix bug critico: `fast_evolver.py` usava `chi_0=4.5` hardcoded.
+      Corretto a `physics.chi_stable` (=50). Stesso fix del 2026-05-26 sul segmento.
+- [x] Test equivalenza fisica `test_fast_evolver_equivalence.py` (4/4 PASS):
+      confronto contro reference RK45 ad alta precisione (rtol=1e-10).
+
+**Risultato diagnostico chiave:**
+
+| Modalita' | err_std vs RK45 | Verdetto |
+|---|---|---|
+| Verlet-puro (use_spectral_linear=False) | 1.1e-07 | ESATTO (precisione macchina) |
+| Spettrale (use_spectral_linear=True) | 38% | BUG nello splitting, sperimentale |
+
+- L'integratore simplettico (Verlet/Forest-Ruth) e' fisicamente esatto.
+- La forza di coupling nodale (alpha_K * L_graph) e' esatta.
+- Il path SPETTRALE ha una deriva nota (composizione propagatori non consistente
+  dopo roundtrip spettrale<->nodale). Marcato SPERIMENTALE, non usare in produzione.
+- **DEFAULT cambiato a use_spectral_linear=False** (verificato).
+- Lo speedup principale (vettorizzazione 24 segmenti + dt grande Forest-Ruth)
+  e' GIA' nel path Verlet-puro.
+
+**Da fare (integrazione vera nel motore L4):**
+1. [ ] Raccordo FastEvolver con drain Peano-VQT: attualmente FastEvolver NON
+       triggera il drain Jitterbug ne' aggiorna la triade E_chi/E_RX/E_Psi.
+       Senza questo, L4 girerebbe veloce ma senza la fisica da misurare.
+2. [ ] Dispatcher gerarchico: applicare FastEvolver a tutti i 13.824 nodi L1
+       dentro L4 (eliminando il loop Python ricorsivo, vero bottleneck).
+3. [ ] Opzione CLI `--fast-evolver` in `generate_topological_dataset.py`.
+
+**Nota architetturale**: il livello L0 (SegmentoQuantistico) e' GIA' Verlet+Strang
+simplettico (vedi CHANGE_PROPOSAL_STRANG_SPLITTING.md, 2026-05-26). Il bottleneck
+di L4 NON e' l'integratore del singolo segmento ma la RICORSIONE Python
+(~346k chiamate annidate per step). FastEvolver vettorizza i 24 segmenti di ogni
+L1 in un'unica operazione numpy, eliminando il loop interno.
+
+---
+
+### [Storico] Pianificazione iniziale (pre-esecuzione)
 
 ### Motivazione del Change
 

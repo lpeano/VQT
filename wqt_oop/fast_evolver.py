@@ -82,8 +82,20 @@ class FastEvolver:
     method : str
         'verlet' (default) o 'forest_ruth' per l'integrazione non-lineare.
     use_spectral_linear : bool
-        Se True, risolve la parte lineare analiticamente (SpectralBasis).
-        Se False, usa solo Verlet per tutto (piu' semplice, meno veloce).
+        DEFAULT False (verificato fisicamente).
+
+        IMPORTANTE (verifica 2026-06-01, test_fast_evolver_equivalence.py):
+        - use_spectral_linear=False (Verlet/Forest-Ruth puro sulla forza totale):
+          riproduce la dinamica di riferimento RK45 a PRECISIONE MACCHINA
+          (err_std = 1.1e-07). Questo e' il path PRODUZIONE.
+        - use_spectral_linear=True (Strang splitting spettrale): ha una deriva
+          nota (~38% su chi_std) dovuta alla composizione non-consistente dei
+          propagatori dopo il roundtrip spettrale<->nodale. SPERIMENTALE, da
+          debuggare. NON usare in produzione.
+
+        Lo speedup principale (vettorizzazione dei 24 segmenti + dt grande con
+        Forest-Ruth) e' GIA' presente nel path Verlet-puro. La decomposizione
+        spettrale dava solo un guadagno marginale aggiuntivo sul coupling.
     """
 
     def __init__(
@@ -91,7 +103,7 @@ class FastEvolver:
         solitone,
         dt: float = 0.1,
         method: str = "verlet",
-        use_spectral_linear: bool = True,
+        use_spectral_linear: bool = False,
     ):
         from .spectral_coupling import SpectralBasis
         from .symplectic_step import verlet_step, forest_ruth_step
@@ -120,7 +132,12 @@ class FastEvolver:
         self._alpha_K = physics.alpha_K
         self._gamma = 0.0  # sara' aggiornato dinamicamente da solitone
         self._mass = solitone.children[0].mass
-        self._chi_0 = 4.5  # doppio pozzo: V = beta*(chi^2 - chi_0^2)^2
+        # CRITICAL FIX (2026-06-01): chi_0 = physics.chi_stable (NON 4.5 hardcoded!)
+        # Il fix del 2026-05-26 in SegmentoQuantistico stabili' che il minimo del
+        # doppio pozzo V = beta*(chi^2 - chi_0^2)^2 deve coincidere con il VEV di
+        # inizializzazione (chi_stable=50), altrimenti il campo collassa nel pozzo
+        # sbagliato (chi ~ -50). FastEvolver DEVE usare lo stesso chi_0 del segmento.
+        self._chi_0 = physics.chi_stable
         self._beta = physics.beta_potential
 
         # Stima dt ottimale e avverte se troppo grande
@@ -149,8 +166,8 @@ class FastEvolver:
         dt: float = 0.1,
         method: str = "verlet",
     ) -> "FastEvolver":
-        """Factory method con parametri di default ragionevoli."""
-        return cls(solitone, dt=dt, method=method, use_spectral_linear=True)
+        """Factory method con parametri di produzione (Verlet-puro verificato)."""
+        return cls(solitone, dt=dt, method=method, use_spectral_linear=False)
 
     # ------------------------------------------------------------------
     # Forze fisiche
