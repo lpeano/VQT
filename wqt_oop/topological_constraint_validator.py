@@ -397,17 +397,34 @@ class TopologicalConstraintValidator:
 
         try:
             from scipy.spatial import cKDTree
-            tree = cKDTree(positions)
-            neighbors_list = tree.query_ball_tree(tree, neighborhood_radius)
+            import scipy.sparse as sp
 
-            for i, hood_indices in enumerate(neighbors_list):
-                if len(hood_indices) <= 1:
-                    continue
-                K_local = K_squared_values[list(hood_indices)]
-                K_mean = float(np.mean(K_local))
-                if K_mean > 1e-12:
-                    CV = float(np.std(K_local)) / K_mean
-                    f_detorsion[i] = 1.0 / (1.0 + CV)
+            tree = cKDTree(positions)
+            pairs = np.array(list(tree.query_pairs(neighborhood_radius)))
+            
+            if len(pairs) > 0:
+                row = np.concatenate([pairs[:, 0], pairs[:, 1], np.arange(N)])
+                col = np.concatenate([pairs[:, 1], pairs[:, 0], np.arange(N)])
+                data = np.ones(len(row), dtype=np.float64)
+                
+                A = sp.csr_matrix((data, (row, col)), shape=(N, N))
+                
+                counts = A.sum(axis=1).A1
+                
+                K_sums = A.dot(K_squared_values)
+                K_mean = K_sums / counts
+                
+                K_sq_sums = A.dot(K_squared_values**2)
+                K_var = (K_sq_sums / counts) - K_mean**2
+                K_var = np.maximum(K_var, 0.0)
+                K_std = np.sqrt(K_var)
+                
+                valid = (K_mean > 1e-12) & (counts > 1)
+                
+                CV = np.zeros(N, dtype=np.float64)
+                CV[valid] = K_std[valid] / K_mean[valid]
+                
+                f_detorsion[valid] = 1.0 / (1.0 + CV[valid])
 
         except ImportError:
             # Fallback senza scipy: usa indici lineari come proxy di vicinanza
@@ -593,14 +610,19 @@ class TopologicalConstraintValidator:
     # ------------------------------------------------------------------
 
     def _extract_all_positions(self, soliton: AbstractSoliton) -> np.ndarray:
-        """Estrae posizioni di tutti i segmenti atomici (ricorsivo sul Composite)."""
-        if isinstance(soliton, SegmentoQuantistico):
-            return soliton.position.reshape(1, 3)
-        elif isinstance(soliton, SolitoneComposito):
-            parts = [self._extract_all_positions(child) for child in soliton.children]
-            return np.vstack(parts)
-        else:
+        """Estrae posizioni di tutti i segmenti atomici (ricorsivo flat ottimizzato)."""
+        leaves = []
+        stack = [soliton]
+        while stack:
+            curr = stack.pop()
+            if isinstance(curr, SegmentoQuantistico):
+                leaves.append(curr.position)
+            elif isinstance(curr, SolitoneComposito):
+                stack.extend(reversed(curr.children))
+        
+        if not leaves:
             return np.zeros((1, 3), dtype=np.float64)
+        return np.array(leaves, dtype=np.float64)
 
     def get_summary(self, state: TopologicalState) -> str:
         """Genera riassunto testuale dello stato topologico."""

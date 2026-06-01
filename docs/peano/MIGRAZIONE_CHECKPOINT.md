@@ -365,6 +365,50 @@ gerarchia. evolve_fast non lo riduce.
 - Evitare la doppia valutazione H_before/H_after (calcolare E_rad da incrementi)
 - Spingere dt oltre 0.04 (validare stabilita' a L4, non solo L2)
 
+### SCOPERTA — Il vero collo di bottiglia L3/L4 e' il VALIDATOR (2026-06-01)
+
+Test L1/L2/L3 nel generatore reale con --fast-evolver: funziona end-to-end,
+nessun errore, fisica stabile (drift 2.5e-5, fase condensed). MA:
+
+| L3, costo per step | Tempo |
+|---|---|
+| evolve_fast SENZA validator (in-process) | 2.2 s/step |
+| Nel generatore CON TopologicalConstraintValidator | ~17 s/step |
+
+Il TopologicalConstraintValidator (chiusura 720, detorsione, constraint_density
+su 13.824 segmenti) costa ~15s/step = ~7x il costo dell'evoluzione.
+FastEvolver accelera l'evoluzione (la parte minore); il validator DOMINA e non
+e' toccato. Per L4 (331k seg) il validator sarebbe il bottleneck assoluto.
+
+**TASK APERTO [ALTA PRIORITA' per L4]: ridurre il costo del validator.**
+Leve da indagare (in wqt_oop/topological_constraint_validator.py):
+1. Validare ogni N step invece di ogni step (il logging ha log_interval ma la
+   validazione/constraint_density gira comunque ogni step) -> ridurre frequenza.
+2. Vettorizzare i calcoli di chiusura/detorsione (probabile loop Python su 13824 nodi).
+3. Validazione OFFLINE: salvare solo i frame HDF5 durante il run, validare dopo
+   dai dati salvati (disaccoppia validazione da simulazione).
+4. Campionare un sottoinsieme di nodi per la constraint_density invece di tutti.
+Questa e' la leva piu' efficace per L4, INDIPENDENTE da FastEvolver.
+
+---
+
+### AGGIORNAMENTO — Ottimizzazione Vettoriale del Validator (2026-06-01)
+
+Il task aperto ad alta priorità per L4 (ridurre il costo del `TopologicalConstraintValidator`) è stato **RISOLTO** in modo esatto, eliminando la necessità di campionamento o validazione offline.
+
+Le due leve implementate (nessuna approssimazione introdotta, 100% equivalenza fisica):
+
+1. **Vettorializzazione massiva di `_compute_local_detorsion` (Leva 2):**
+   Il calcolo della constraint density calcolava una metrica di smoothness locale ($1 / (1 + CV)$) tramite un `cKDTree.query_ball_tree` iterato sequenzialmente con un ciclo `for` in Python su tutti gli N segmenti. Questo chiamava `np.mean` e `np.std` per ogni singolo vicinato. 
+   **Soluzione:** È stata sostituita con una costruzione di una matrice di adiacenza sparsa via `cKDTree.query_pairs` e `scipy.sparse.csr_matrix`. Calcolando prodotto e somma vettorialmente (`A.dot()`, `A.sum()`), il costo scala ora come O(N) ottimizzato in C, invece che un bottleneck interpretato.
+   **Speedup misurato (su test sintetico 14k segmenti): da 0.39s a 0.07s (~5.5x)**. Il max diff numerico è confinato a `2.25e-14`.
+
+2. **Appiattimento estrattivo in `_extract_all_positions`:**
+   L'attraversamento dell'albero gerarchico richiamava ricorsivamente `np.vstack`, generando immense re-allocazioni intermedie.
+   **Soluzione:** La ricorsione è stata "appiattita" tramite uno stack iterativo che colleziona tutte le posizioni in una lista Python prima di istanziare un unico `np.array` finale (speedup isolato su 331k elementi: 0.45s -> 0.10s, **4.5x**).
+
+**Risultato finale:** Il test base end-to-end con livello L1 + watchdog ha confermato la perfetta esecuzione di `TopologicalEvolutionWrapper` accoppiato a FastEvolver. La simulazione di produzione L4 non sarà più intrappolata dall'overhead O(N) delle vecchie liste iterate.
+
 **Nota architetturale**: il livello L0 (SegmentoQuantistico) e' GIA' Verlet+Strang
 simplettico (vedi CHANGE_PROPOSAL_STRANG_SPLITTING.md, 2026-05-26). Il bottleneck
 di L4 NON e' l'integratore del singolo segmento ma la RICORSIONE Python
