@@ -67,7 +67,36 @@ Stato attuale dell'automazione:
   E_Psi inizia ad accumulare stabilmente), distinto dalla maturita' geometrica (sigma).
 Sotto-task: wire PhaseTransitionSignal nel generatore + opzione di auto-advance catena.
 
-### QUESTIONE FONDAMENTALE [decidere con Task 1] — Fisica reale o trucco matematico?
+### >>> TASK 0 [PRIORITA' ASSOLUTA — PRIMA DI L3] <<< Fisica reale o trucco matematico?
+DECISIONE (2026-06-01): affrontare QUESTA questione PRIMA di lanciare L3.
+Motivo: (a) scientificamente, prima si stabilisce se il meccanismo e' reale, poi
+lo si misura; (b) economicamente, i test di falsificabilita' girano su L1/L2
+(minuti) o su DATI STORICI GIA' ESISTENTI (zero calcolo), mentre L3 costa ore.
+Se il drain fosse un trucco, L3 confermerebbe solo una tautologia.
+
+PUNTO CRITICO DA AFFRONTARE PER PRIMO:
+La soglia sqrt(2) nel DRAIN e' HARDCODED (chi_saturation_threshold=np.sqrt(2)):
+il drain scatta a sqrt(2) PER COSTRUZIONE, non perche' emerge. L'evidenza di
+emergenza viene SOLO dai dati storici di calibrazione (file L2/L3/L4 generati
+SENZA drain attivo, dove chi_max_peak/chi_stable risultava ~sqrt(2) al troncamento
+in 5/8 file). Quindi la fisicita' va cercata LI', non nel drain stesso.
+
+Test concreti, in ordine, eseguibili PRIMA di L3:
+- TEST A [emergenza sqrt(2), su dati storici, ZERO calcolo]: ri-analizzare i file
+  storici (generati SENZA drain) con calibrate_peano_vqt.py / load_h5_and_validate.
+  Domanda: chi_max/chi_stable converge a sqrt(2) al troncamento INDIPENDENTEMENTE
+  dalle condizioni iniziali (seed/chi_mean/chi_std)? Se SI -> sqrt(2) e' emergente,
+  proprieta' geometrica reale della dinamica, non imposta. E' il test decisivo.
+- TEST B [robustezza drain_rate, L1/L2, minuti]: variare drain_rate (0.01..0.5).
+  Se la SOGLIA di transizione resta fissa e solo la velocita' di accumulo cambia
+  -> il rate e' solo cinetica, la soglia e' fisica. Se la soglia dipende dal rate
+  -> artefatto.
+- TEST C [solver-indipendenza della transizione, L1/L2]: la transizione avviene
+  allo stesso chi_max con dt diversi e integratori diversi (evolve vs evolve_fast)?
+
+Solo DOPO questi test, con verdetto fisica reale, ha senso lanciare L3 (Task 1).
+
+### QUESTIONE FONDAMENTALE [criteri completi] — Fisica reale o trucco matematico?
 Il drain Peano-VQT e' un VERO processo fisico o un artefatto della costruzione?
 Domanda critica e onesta. CRITERI DI FALSIFICABILITA' da applicare:
 
