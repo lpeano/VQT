@@ -42,10 +42,16 @@ di una configurazione solitonica. Velocity-quench -> KE->0 -> E_psi_anchored res
 ## >>> TASK APERTI (in ordine di priorita') <<<
 
 ### Linea scientifica ATTIVA (massa / difetti topologici)
-1. **Mappare la soglia di formazione** (scan pre-steps 40..100) e verificare se
-   COINCIDE con l'istante in cui chi_max attraversa sqrt(2)*chi_stable. Se si',
-   riconcilia sqrt(2) e massa (sqrt2 = quando il difetto si forma).
+1. [FATTO 2026-06-01] Mappata la soglia di formazione vs attraversamento sqrt(2).
+   ESITO: NON coincidono. cross_sqrt2 ~12 step, soglia_massa ~63 step (ritardo +51,
+   correlazione -0.81). L'ipotesi "sqrt2 = istante di formazione" e' FALSIFICATA.
+   STRUTTURA A DUE TEMPI: (t~12) chi_max attraversa sqrt2 -> entra in regime
+   frustrato (necessario); (t~63) il difetto si CONGELA stabilmente -> nascita
+   massa. Il ritardo e' il tempo di intrappolamento (Kibble-Zurek: la formazione
+   del difetto e' rilassamento, non l'istante di attraversamento).
+   Script: experiments/exp3/test_soglia_formazione.py + figures/soglia_formazione.png
 2. **Confermare su L2** (576 nodi): la massa si quantizza meglio? bimodalita' tiene?
+   E verificare se la struttura a due tempi (cross ~12, congelamento ~63) scala.
 3. **Caratterizzare la cicatrice**: localizzazione (IPR), struttura icosaedrica 5-fold?
 4. **L3** con obiettivo nuovo: spettro di masse dei difetti su larga scala.
 5. **Interazione** tra difetti (energia di legame tra cicatrici).
