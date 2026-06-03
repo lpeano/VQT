@@ -547,9 +547,43 @@ def compute_geometric_E_psi(solitone) -> dict:
     chi_stable = getattr(solitone.physics, "chi_stable", 50.0)
     chi_max = float(_np.max(_np.abs(chi)))
 
+    # --- VARIANTE ANCORATA agli invarianti topologici reali (720 deg + 180 deg) ---
+    # Ancoraggio del 2026-06-01: invece del CV statistico, lega E_Psi ai due
+    # invarianti che il TopologicalConstraintValidator usa per definire la materia:
+    #   (1) DEFICIT DI CHIUSURA 720 deg: closure_err = dist(sum(tau) mod 4pi).
+    #       Se i loop spinoriali non chiudono, c'e' frustrazione di chiusura.
+    #   (2) DETORSIONE NON RISOLTA (1 - detorsion_quality): detorsion_quality e' la
+    #       frazione di coppie adiacenti di rho_tors che alternano (pattern +-180).
+    #       1-quality = frazione di torsione NON strutturata = frustrata.
+    # E_Psi_anchored = E_tors * (1 - detorsion_quality) * (1 + closure_err_norm)
+    # E' energia di torsione PESATA dalla frustrazione topologica reale, non dal CV.
+    four_pi = 4.0 * _np.pi
+    try:
+        aux = solitone.get_auxiliary_state()
+        tau = _np.asarray(aux.get("tau_locale", _np.zeros(len(chi))), dtype=float)
+    except Exception:
+        tau = _np.zeros(len(chi))
+    total_tau = float(_np.sum(tau))
+    residual = total_tau % four_pi
+    closure_err_rad = min(residual, four_pi - residual)
+    closure_err_norm = float(_np.degrees(closure_err_rad)) / 360.0  # in [0, 0.5]
+
+    # detorsion_quality dal pattern di alternanza di rho_tors (come il validator su K^2)
+    if len(rho_tors) >= 3:
+        d = _np.diff(rho_tors)
+        prod = d[:-1] * d[1:]
+        detorsion_quality = float(_np.sum(prod < 0)) / float(len(prod))
+    else:
+        detorsion_quality = 1.0
+
+    E_psi_anchored = E_tors * (1.0 - detorsion_quality) * (1.0 + closure_err_norm)
+
     return {
         "E_tors": E_tors,
         "frustration": frustration,
         "E_psi_geom": float(E_psi_geom),
+        "detorsion_quality": detorsion_quality,
+        "closure_err_norm": closure_err_norm,
+        "E_psi_anchored": float(E_psi_anchored),
         "chi_max_over_stable": chi_max / chi_stable,
     }

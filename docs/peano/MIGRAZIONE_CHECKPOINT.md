@@ -201,6 +201,29 @@ PROSSIMI STEP:
 3. SOLO ORA L3 ha senso: lanciarlo loggando E_Psi_geom (oltre al drain) e
    verificare se la transizione Cub->Ico produce un salto di E_Psi_geom reale.
 
+### >>> ANCORAGGIO E_Psi agli invarianti topologici (2026-06-01) <<<
+compute_geometric_E_psi() ora restituisce ANCHE E_psi_anchored, legata ai due
+invarianti reali del TopologicalConstraintValidator:
+  E_psi_anchored = E_tors * (1 - detorsion_quality) * (1 + closure_err_norm)
+  - closure_err_norm = dist(sum(tau) mod 4pi)/360  [deficit chiusura spinoriale 720]
+  - detorsion_quality = frazione alternanza del pattern di rho_tors  [+-180]
+Razionale: la massa e' la torsione PESATA dalla frustrazione topologica REALE
+(loop che non chiudono + detorsione non strutturata), non da un CV statistico.
+
+VERIFICA (eseguita):
+- STABILITA' [OK]: CV E_psi_anchored = 0.116 (vs CV statistico 0.128). L'ancoraggio
+  NON reintroduce dipendenza da dt/rate. Resta un osservabile fisico.
+- CATTURA TRANSIZIONE [NON CONCLUSIVA - onesto]: scansione di chi_mean (stati
+  rilassati) NON mostra un salto a sqrt(2), perche' quegli stati arrivano solo a
+  chi_max/cs~1.26 e NON raggiungono sqrt(2)=1.414. La soglia sqrt(2) e' il PICCO
+  DINAMICO durante l'evoluzione (come nei dati storici), non uno stato statico.
+  -> Il "salto a sqrt(2)" va cercato in REGIME DINAMICO, non in scansione statica.
+
+PROSSIMO STEP (preciso): test dinamico su L2 (veloce) e poi L3 — evolvere
+loggando E_psi_anchored vs chi_max nel tempo, e verificare se quando chi_max
+attraversa sqrt(2)*chi_stable c'e' un salto/ginocchio in E_psi_anchored. Questo
+e' l'esperimento della "nascita di materia" con la metrica fisica corretta.
+
 Verdetto atteso (ipotesi da verificare): il SUBSTRATO e' fisico (Landau-Ginzburg +
 frustrazione icosaedrica / Frank-Kasper -> vetri/quasicristalli). Il processo, se
 reale, e' una CONDENSAZIONE TOPOLOGICA DEL VUOTO: il campo di torsione non sostiene
