@@ -65,11 +65,36 @@ RIFONDATO il concetto di massa. In ordine:
     loc_post max ~3 (risoluzione grossolana: 1/24). A L2 (576 nodi) loc_post = 57
     nella stessa finestra: 24x risoluzione -> il difetto SPICCA. Conferma la
     predizione "serve abbastanza reticolo per risolvere la particella".
+  - **n_eff COSTANTE (~5-10 nodi) da L1 a L2**: il difetto ha dimensione INTRINSECA
+    indipendente da N. L2 e' adeguato ("quantum foam" falsificato): la particella
+    occupa 1.7% del reticolo (non e' confinata dal bordo).
   - La soglia geometrica sqrt(2)=1.414 NON e' la soglia di massa (che e' a ~1.8):
     sqrt(2) e' prerequisito, la massa/particella si accende piu' in alto (coerente
     con la struttura a due tempi).
   Script: experiments/exp3/test_quench_localizzazione.py
   Figure: figures/quench_localizzazione_L{1,2}.png
+- **[2026-06-03] RIPRODUCIBILITA' del difetto (20 seed, no pooling). STRUTTURA
+  A QUATTRO REGIMI** (aggiorna la "finestra" semplice con un quadro stratificato):
+
+  | peak chi/stable | nucleaz. | dispersione M_tot | interpretazione              |
+  |-----------------|----------|-------------------|------------------------------|
+  | <1.7            | 75%      | 2.5 decadi        | bordo d'entrata (bistabile)  |
+  | ~1.84 (cm=68)   | 100%     | 5.4 decadi        | centro transizione (bistabile)|
+  | ~1.96 (cm=74)   | 100%     | 0.6 decadi        | FASE PARTICELLA ROBUSTA       |
+  | >2.1            | (da test quench) | alta    | sovra-saturazione (campo)    |
+
+  ESITI CHIAVE:
+  - **peak~1.96 (cm=74) = la FASE SOLIDA**: 20/20 nucleazione, M_tot 1470-6240
+    (0.6 decadi = 4x range). Questa e' una fase termodinamica stabile, non un
+    evento raro.
+  - **peak~1.84 (cm=68) = BORDO di transizione**: 100% nucleazione MA M_tot su 5.4
+    decadi (da 3e-3 a 8e+2). Il sistema oscilla tra cicatrice fredda e difetto
+    energetico -> e' la bimodalita' reale che il pooling 6-seed aveva confuso con
+    la SOC.
+  - La "finestra" non e' un intervallo uniforme: ha un bordo d'entrata (bistabile)
+    e una zona core stabile. La fase particella robusta inizia a peak~1.9-2.0.
+  Script: experiments/exp3/test_riproducibilita_difetto.py
+  Figure: figures/riproducibilita_difetto_L2.png
 - **[2026-06-03] SOC FALSIFICATA + scoperta la STOCASTICITA' del difetto.** Test:
   P(rho_tors) sulle foglie congelate nella finestra (potenza vs esponenziale, CCDF).
   - 2 seed: sembrava potenza (R2=0.95, alpha=1.73) -> ILLUSIONE di small-sample.
