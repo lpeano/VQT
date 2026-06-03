@@ -299,6 +299,21 @@ PROSSIMI STEP (in ordine):
    icosaedrica (5-fold)? Mappa spaziale di rho_tors nei nodi "caldi".
 4. SOLO ORA L3 ha un obiettivo fisico chiaro: misurare lo spettro di masse dei
    difetti congelati e verificarne la quantizzazione su larga scala.
+5. [fase successiva] INTERAZIONE tra difetti: due solitoni con cicatrice si
+   attraggono/respingono? Misurare E_psi_anchored del sistema combinato vs somma
+   dei singoli (energia di legame tra difetti topologici).
+6. [fase successiva] VITA MEDIA / stabilita': un difetto congelato e' eterno o
+   decade? Evolvere uno stato massivo a lungo (con/senza perturbazione termica) e
+   misurare se E_psi_anchored resta costante (particella stabile) o decade.
+
+NOTA METODOLOGICA: freeze_and_measure_mass() e' ora lo STRUMENTO DI MISURA
+standard della "massa a riposo" di una configurazione solitonica, riproducibile
+e indipendente dal rumore termico. E' la "bilancia" della VQT.
+
+STATO ONESTO (per non sovra-interpretare alla ripresa): il risultato e' solido
+ma su L1 (24 nodi, 36 stati). Dimostrato: irriducibilita' + bimodalita' + soglia
+di formazione. NON ancora dimostrato: quantizzazione netta della massa (banda
+larga CV 0.32), scalabilita' a L2/L3, connessione causale soglia<->sqrt(2).
 
 Verdetto atteso (ipotesi da verificare): il SUBSTRATO e' fisico (Landau-Ginzburg +
 frustrazione icosaedrica / Frank-Kasper -> vetri/quasicristalli). Il processo, se
