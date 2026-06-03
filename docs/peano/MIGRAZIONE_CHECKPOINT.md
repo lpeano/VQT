@@ -255,6 +255,15 @@ Ripensare: (a) E_Psi e' davvero la massa? (b) la transizione sqrt(2) produce un
 osservabile diverso (es. un cambio nella detorsion_quality o nella f_dom)?
 (c) la "massa" e' uno stato finale stabile, non un salto durante l'attraversamento?
 
+>>> PROSSIMO STEP PRIORITARIO ALLA RIPRESA: ipotesi (c) — la piu' promettente.
+La massa NON nasce mentre attraversi sqrt(2), ma e' il risultato di un QUENCH
+(raffreddamento rapido) che congela il sistema in uno stato di bassa simmetria
+(icosaedrico). Test proposto: portare il sistema sopra sqrt(2), poi raffreddare
+(gamma alto / quench) e misurare se E_psi_anchored si STABILIZZA su un plateau
+finale NON nullo, indipendente dalla velocita' di quench. Confrontare lo stato
+finale "quenchato" (rapido) vs "ricotto" (lento): se la massa residua differisce,
+e' un vero congelamento geometrico (vetro/quasicristallo), non un transito.
+
 Verdetto atteso (ipotesi da verificare): il SUBSTRATO e' fisico (Landau-Ginzburg +
 frustrazione icosaedrica / Frank-Kasper -> vetri/quasicristalli). Il processo, se
 reale, e' una CONDENSAZIONE TOPOLOGICA DEL VUOTO: il campo di torsione non sostiene
