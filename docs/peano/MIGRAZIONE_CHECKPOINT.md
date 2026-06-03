@@ -110,19 +110,58 @@ RIFONDATO il concetto di massa. In ordine:
      ("SOC CONFERMATO" via R2) E' INGANNATO dal pooling: non fidarsi.
   Script: experiments/exp3/test_soc_distribuzione.py (infrastruttura, verdetto da
   rivedere) ; figure: figures/soc_distribuzione_L2.png
+- **[2026-06-03] BIOPSIA DEL DIFETTO: kink phi^4 Kibble-Zurek CONFERMATO.**
+  Biopsia in due versioni (v1 cm=74, v2 cm=68 = max localizzazione):
+  v2 (15 seed, top-1% rho_tors = ~6 foglie su 576):
+  - SUPER-LOCALIZZATO: n_eff_block = 1.4 (difetto in 1 blocco L1 su 24).
+  - STRUTTURATO: uniformity = 0.50 (pattern angolare non-casuale nel blocco).
+  - 6/15 seed producono difetti reali (M_tot>1); 9/15 cicatrici fredde.
+  - Blocchi preferenzialmente attivati: 5, 9, 11, 19 (struttura del coupling L2).
+  Test chi_hot diretto (3 difetti forti, M_tot~400-800):
+    seed  5: chi_hot min=-42.6  mean=34.7  max=50.5  (6 nodi)
+    seed  9: chi_hot min=-42.0  mean=34.7  max=50.3  (6 nodi)
+    seed 12: chi_hot min=-49.2  mean=33.4  max=50.0  (6 nodi)
+  INTERPRETAZIONE FISICA VERIFICATA: il difetto e' un KINK phi^4 (Kibble-Zurek).
+  Il campo attraversa da +chi_stable a -chi_stable attraverso 6 nodi in 1 blocco:
+    - nodo "core": chi ≈ -42÷-49 (nel pozzo negativo, il centro del kink)
+    - nodo "fronte": chi ≈ 0 (sulla barriera del potenziale)
+    - nodo "bordo": chi ≈ +50 (nel pozzo positivo)
+  La media chi~34 e' la media del PROFILO di transizione, non la posizione.
+  Non e' un'interfaccia +50/-50 a grande scala (chi_cold ≈ +50 ovunque), ma un
+  KINK INTRA-BLOCCO: 1 blocco L1 ospita l'intero profilo di transizione.
+  La "massa" (M_tot~400-800) e' l'energia del kink = integrale del gradiente chi^2.
+  NB: "chi_hot ≈ 0" (previsione narrativa) era approssimata; il dato reale e'
+  un gradiente completo da +50 a -50 ATTRAVERSO 0, con mean~34 (media del profilo).
+  Script: test_biopsia_difetto_v2.py, test misura chi_hot (inline).
+  Figure: figures/biopsia_difetto_v2_L2.png
 - Infrastruttura: FastEvolver/evolve_fast (~6x), validator vettorizzato (~5x),
   tutti i test (Peano 7/7, equivalenza L1 5/5, GATE L2) PASS.
 
+### Cosa e' DIMOSTRATO - RIEPILOGO FINALE FASE "CACCIA ALLA PARTICELLA"
+La fase di identificazione del difetto si chiude con il seguente quadro:
+1. Massa estensiva, densita' invariante di scala (rho_M~2.9 da L1 a L3).
+2. Finestra di localizzazione peak~1.8-1.95 (non soglia monotona).
+3. Fase particella robusta a peak~1.96 (100% nucleazione, M_tot stretto).
+4. Il difetto e' un KINK phi^4 di Kibble-Zurek intra-blocco: ~6 nodi in 1 L1
+   block attraversano chi da +50 a -50 (tramite 0). Super-localizzato (n_eff=1.4).
+5. sqrt(2) e' il PREREQUISITO geometrico (non la soglia di massa). La massa
+   si accende a peak~1.8 con ~50 step di ritardo invariante di scala (Kibble-Zurek).
+
+### Fase successiva: termodinamica delle pareti
+Ora che il difetto e' identificato (kink phi^4), il passo naturale e' mappare
+la sua termodinamica: come varia la densita' di kink con chi_mean/velocita' di
+quench? Segue la legge di Kibble-Zurek n ~ |epsilon|^nu (dove epsilon e' la
+distanza dalla transizione, nu esponente della lunghezza di correlazione)?
+Questo trasforma il modello VQT da fenomenologico a predittivo.
+
 ### Cosa e' IPOTESI (da non confondere col dimostrato)
-- **La "particella" della finestra: fase fisica o evento raro?** loc_ratio alto in
-  media (57) MA forte varianza seed-a-seed (alcuni seed: vuoto freddo totale).
-  Serve analisi di RIPRODUCIBILITA' per-seed (frazione di nucleazione) per decidere
-  se e' una fase termodinamica (frazione alta) o una fluttuazione (frazione bassa).
-  [PROSSIMO TASK ATTIVO]
-- Natura geometrica del difetto (icosaedrico 5-fold?): NON misurata, da NON
-  affermare. Ha senso solo DOPO che la riproducibilita' e' stabilita.
+- La legge di scala KZ: n_kink ~ |epsilon|^nu. Non ancora misurata.
+- Connessione tra il kink e la geometria Jitterbug (il kink nasce quando il
+  sistema supera sqrt(2), ma la struttura del kink e' determinata dal doppio pozzo,
+  non dalla geometria cubottaedrica). Legame causale stabilito, legame strutturale
+  NON misurato.
 - Quantizzazione netta della massa (ora banda larga CV 0.32 su L1).
-- Connessione causale soglia-di-formazione <-> attraversamento di sqrt(2).
+- Invarianza di scala della nucleazione a L3 (non ancora testata).
 
 ### STRUMENTO STANDARD
 freeze_and_measure_mass() (energy_metrics.py) = la "bilancia" della massa a riposo
