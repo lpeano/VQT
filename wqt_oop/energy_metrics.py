@@ -595,7 +595,8 @@ def compute_geometric_E_psi(solitone) -> dict:
 
 def freeze_and_measure_mass(solitone, gamma_quench: float = 0.5,
                             max_steps: int = 2000, dt: float = 0.01,
-                            tol: float = 1e-6, window: int = 50) -> dict:
+                            tol: float = 1e-6, window: int = 50,
+                            return_frozen: bool = False) -> dict:
     """
     Protocollo di QUENCH: congela lo stato corrente (rilassamento adiabatico T->0)
     e misura l'energia di frustrazione RESIDUA IRRIDUCIBILE = candidata "massa".
@@ -704,7 +705,7 @@ def freeze_and_measure_mass(solitone, gamma_quench: float = 0.5,
     thr = _np.mean(rho_tors) + 2 * _np.std(rho_tors)
     n_localized = int(_np.sum(rho_tors > thr))
 
-    return {
+    out = {
         "E_psi_initial": float(E_psi_initial),
         "E_psi_residual": float(E_psi_residual),
         "KE_final": float(KE_final),
@@ -716,6 +717,12 @@ def freeze_and_measure_mass(solitone, gamma_quench: float = 0.5,
         "converged": converged,
         "steps_used": steps_used,
     }
+    # Opt-in additivo: restituisce anche lo STATO CONGELATO, cosi' il chiamante puo'
+    # rimisurare con compute_hierarchical_mass (IPR sulle FOGLIE, non sul root) per
+    # i livelli L2+ dove l'IPR del root e' distorto dalle medie dei figli.
+    if return_frozen:
+        out["frozen"] = sol
+    return out
 
 
 # ============================================================================

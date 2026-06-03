@@ -44,6 +44,32 @@ RIFONDATO il concetto di massa. In ordine:
   -> La "transizione particella->campo a L3" e' FALSIFICATA: non c'e' transizione,
      c'e' un campo di frustrazione estensivo a densita' costante che il root non
      vedeva. Script: experiments/exp3/test_massa_gerarchica.py
+- **[2026-06-03] LA PARTICELLA ESISTE: localizzazione in una FINESTRA di
+  super-criticalita' (quench oltre sqrt(2)).** Protocollo: porta in regime
+  super-critico (sweep di chi_mean), quench T->0, misura loc_ratio = IPR*N sulle
+  FOGLIE dello stato congelato. Risultato a confronto di scala:
+
+  | chimax/st peak | loc_post L1 (24) | loc_post L2 (576) | regime L2     |
+  |----------------|------------------|-------------------|---------------|
+  | ~1.6           | 1.5              | 8.4               | formazione    |
+  | ~1.8           | 3.1 (max L1)     | 57.2 (max L2)     | PARTICELLA    |
+  | ~1.95          | -                | 50.2              | PARTICELLA    |
+  | ~2.07          | 1.5              | 4.95              | intermedio    |
+  | >2.2           | 1.2              | 1.2-1.8           | campo (saturo)|
+
+  - **FINESTRA, non soglia monotona.** Tre regimi: troppo poco (peak<1.7) -> niente
+    massa; FINESTRA (peak~1.8-1.95) -> DIFETTO LOCALIZZATO (n_eff ~10-11 nodi su 576,
+    1.7% del reticolo = particella); sovra-saturazione (peak>2.1) -> ogni nodo
+    frustrato -> campo distribuito ad alta M_tot (fino a 51000).
+  - **La localizzazione e' un effetto DI SCALA + DI FINESTRA.** A L1 (24 nodi)
+    loc_post max ~3 (risoluzione grossolana: 1/24). A L2 (576 nodi) loc_post = 57
+    nella stessa finestra: 24x risoluzione -> il difetto SPICCA. Conferma la
+    predizione "serve abbastanza reticolo per risolvere la particella".
+  - La soglia geometrica sqrt(2)=1.414 NON e' la soglia di massa (che e' a ~1.8):
+    sqrt(2) e' prerequisito, la massa/particella si accende piu' in alto (coerente
+    con la struttura a due tempi).
+  Script: experiments/exp3/test_quench_localizzazione.py
+  Figure: figures/quench_localizzazione_L{1,2}.png
 - Infrastruttura: FastEvolver/evolve_fast (~6x), validator vettorizzato (~5x),
   tutti i test (Peano 7/7, equivalenza L1 5/5, GATE L2) PASS.
 
@@ -124,10 +150,23 @@ output bufferizzato su experiments/exp3/soglia_L3.log. Piu' lento del previsto
    particella->campo a L3" e' FALSIFICATA: non c'e' transizione, c'e' un campo di
    frustrazione estensivo che il root non vedeva. Dettagli in STATO ATTUALE.
    Script: experiments/exp3/test_massa_gerarchica.py
-3. **Caratterizzare la cicatrice**: localizzazione (IPR su foglie GIA' disponibile
-   in compute_hierarchical_mass). Mancano: struttura icosaedrica 5-fold; e
-   misurare l'IPR DOPO un quench oltre sqrt(2) (regime "particella" atteso quando
-   il difetto si localizza, vs "campo" pre-materia osservato a chi_max < sqrt2).
+2d. [FATTO 2026-06-03] Quench oltre sqrt(2): la PARTICELLA esiste in una FINESTRA.
+   loc_ratio post-quench: L1 max ~3 (24 nodi, sotto-risoluzione), L2 max ~57 a
+   peak~1.8 (n_eff ~10/576 = particella localizzata). Tre regimi: <1.7 niente
+   massa; 1.8-1.95 PARTICELLA; >2.1 sovra-saturazione (campo ad alta M_tot).
+   La localizzazione e' effetto DI SCALA (serve reticolo) + DI FINESTRA. Dettagli
+   in STATO ATTUALE. Script: test_quench_localizzazione.py ; figure L1/L2.
+   PROSSIMO (in ordine):
+     (a) Mappare i BORDI della finestra a L2 con sweep fine (chi-means 50-90 fitti)
+         + piu' seed -> larghezza e centro della finestra di localizzazione.
+     (b) TEST SOC: istogramma log-log di P(rho_tors) sulle 576 foglie nella
+         finestra. Legge di potenza P(s)~s^-tau => criticalita' auto-organizzata;
+         esponenziale => campo termico ordinario. Discrimina "vuoto in ebollizione"
+         (ipotesi utente) da semplice campo. NON dichiarare SOC senza questo test.
+     (c) L3: la finestra di localizzazione si conferma/sposta a 13824 nodi?
+3. **Caratterizzare la cicatrice**: nella finestra (peak~1.8) il difetto e'
+   localizzato (n_eff~10). Manca: struttura geometrica della cicatrice
+   (icosaedrica 5-fold? disposizione dei ~10 nodi caldi).
 4. **L3** con obiettivo nuovo: spettro di masse dei difetti su larga scala.
 5. **Interazione** tra difetti (energia di legame tra cicatrici).
 6. **Vita media** / stabilita' del difetto congelato.
