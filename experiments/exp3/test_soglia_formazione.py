@@ -83,7 +83,20 @@ def make(seed, chi_mean=65.0, level=1):
 
 
 def chi_max(sol):
-    return float(np.max(np.abs([sol._get_child_chi(c) for c in sol.children])))
+    """chi_max sui SEGMENTI FOGLIA (ricorsivo), non sulle medie dei figli diretti.
+    Fix 2026-06-03: a livello root (L2+) _get_child_chi restituisce la MEDIA dei
+    figli L1, che non raggiunge mai sqrt(2)*chi_stable. I picchi reali vivono nelle
+    foglie. Per L1 e' identico (i figli diretti SONO le foglie)."""
+    leaves = []
+
+    def _walk(n):
+        if isinstance(n, SegmentoQuantistico):
+            leaves.append(abs(n.chi))
+        else:
+            for c in n.children:
+                _walk(c)
+    _walk(sol)
+    return float(np.max(leaves))
 
 
 def main():
