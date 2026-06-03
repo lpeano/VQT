@@ -494,3 +494,62 @@ def _print_validation_report(report: dict) -> None:
               f"delta={delta}  Teorema Peano-VQT: {pok}")
 
     print(sep + "\n")
+
+
+# ============================================================================
+# E_Psi GEOMETRICA — energia intrinseca del difetto (NO drain_rate)
+# ============================================================================
+
+def compute_geometric_E_psi(solitone) -> dict:
+    """
+    Calcola E_Psi come energia geometrica ISTANTANEA del difetto topologico,
+    SENZA parametri liberi (drain_rate). Riformulazione del 2026-06-01 dopo il
+    verdetto dei test di falsificabilita': l'attuale E_Psi (accumulo via rampa
+    drain_rate) e' un artefatto (E_Psi ~ 15.7*drain_rate). Questa versione e' una
+    funzione dello STATO geometrico corrente, quindi indipendente dalla cinetica.
+
+    Razionale fisico (Frank-Kasper / frustrazione icosaedrica):
+    L'energia di massa e' la torsione RESIDUA NON RISOLVIBILE per frustrazione
+    geometrica, NON la torsione totale. Misure (tutte istantanee):
+
+      rho_tors_i = sum_j W_ij * (chi_i - chi_j)^2     [densita' di torsione per nodo]
+      E_tors     = 0.5 * alpha_K * sum_i rho_tors_i   [energia di torsione totale = E_RX]
+      frustration = std(rho_tors) / (mean(rho_tors)+eps)   [CV: inomogeneita' = difetti]
+
+      E_Psi_geom = 0.5 * alpha_K * sum_i rho_tors_i * frustration
+
+    Interpretazione: in un reticolo rilassato la torsione e' uniforme (CV basso) ->
+    poca E_Psi; in uno frustrato (icosaedrico) la torsione si concentra nei difetti
+    (CV alto) -> E_Psi alta. E' la geometria della frustrazione, non una rampa.
+
+    Restituisce dict con E_tors, frustration, E_psi_geom (+ chi_max/chi_stable).
+    NON sostituisce il drain attuale: si calcola in parallelo per confronto.
+    """
+    import numpy as _np
+    children = solitone.children
+    chi = _np.array([solitone._get_child_chi(c) for c in children])
+    W = solitone.coupling_matrix
+    W_dense = (W.toarray() if hasattr(W, "toarray") else _np.asarray(W))
+    alpha_K = solitone.physics.alpha_K
+
+    # Densita' di torsione per nodo: rho_i = sum_j W_ij (chi_i - chi_j)^2
+    chi_diff_sq = (chi[:, None] - chi[None, :]) ** 2
+    rho_tors = _np.sum(W_dense * chi_diff_sq, axis=1)
+
+    E_tors = 0.5 * alpha_K * float(_np.sum(rho_tors))
+
+    mean_rho = float(_np.mean(rho_tors))
+    std_rho = float(_np.std(rho_tors))
+    frustration = std_rho / (mean_rho + 1e-30)  # coefficiente di variazione
+
+    E_psi_geom = E_tors * frustration
+
+    chi_stable = getattr(solitone.physics, "chi_stable", 50.0)
+    chi_max = float(_np.max(_np.abs(chi)))
+
+    return {
+        "E_tors": E_tors,
+        "frustration": frustration,
+        "E_psi_geom": float(E_psi_geom),
+        "chi_max_over_stable": chi_max / chi_stable,
+    }

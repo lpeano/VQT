@@ -229,6 +229,39 @@ def test_C_drain_off():
         return "patch"
 
 
+def test_B2_geometrica():
+    """Re-Test B con E_Psi GEOMETRICA (istantanea, no drain_rate).
+    Confronta la dipendenza da dt/rate dell'accumulo vs della formula geometrica."""
+    print("\n" + "=" * 70)
+    print("  TEST B2 — E_Psi geometrica vs accumulo (indipendenza da dt/rate)")
+    print("=" * 70)
+    from wqt_oop.energy_metrics import compute_geometric_E_psi
+    print(f"  {'dt':>6} {'rate':>6} {'E_Psi_accum':>13} {'E_Psi_geom':>12}")
+    print("  " + "-" * 42)
+    accum, geom = [], []
+    for dt, rate in [(0.005, 0.1), (0.01, 0.1), (0.02, 0.1),
+                     (0.01, 0.01), (0.01, 0.3), (0.01, 0.5)]:
+        sol = make_l1_critical(chi_mean=62.0, chi_std=6.0, seed=42,
+                               fdt=False, zero_point=False, drain_rate=rate)
+        nst = int(round(0.8 / dt))
+        for _ in range(nst):
+            sol.compute_hamiltonian()
+            sol.evolve(dt)
+        a_v = sol.get_total_E_psi()
+        g_v = compute_geometric_E_psi(sol)["E_psi_geom"]
+        accum.append(a_v); geom.append(g_v)
+        print(f"  {dt:>6.3f} {rate:>6.2f} {a_v:>13.4e} {g_v:>12.4e}")
+    accum, geom = np.array(accum), np.array(geom)
+    cv_a = np.std(accum) / (np.mean(accum) + 1e-30)
+    cv_g = np.std(geom) / (np.mean(geom) + 1e-30)
+    print(f"\n  CV accumulo (drain): {cv_a:.3f}  (alto = artefatto)")
+    print(f"  CV geometrica:       {cv_g:.3f}  (basso = fisico)")
+    verdetto = cv_g < cv_a / 2
+    print(f"  -> E_Psi geometrica {'RIMUOVE' if verdetto else 'NON rimuove'} "
+          f"la dipendenza dal rate.")
+    return cv_a, cv_g
+
+
 def main():
     print("#" * 70)
     print("#  FALSIFICABILITA' DEL DRAIN PEANO-VQT — fisica o trucco?")
@@ -236,6 +269,7 @@ def main():
     a = test_A_emergenza()
     b = test_B_robustezza_rate()
     c = test_C_drain_off()
+    b2 = test_B2_geometrica()
 
     print("\n" + "#" * 70)
     print("#  SINTESI")
@@ -244,6 +278,8 @@ def main():
     print(f"  TEST B (CV plateau vs rate):  {b if b is not None else 'nd'}"
           + ("  (basso=fisico)" if b is not None else ""))
     print(f"  TEST C (drain OFF):           {c}")
+    print(f"  TEST B2 (geom vs accumulo):   CV_accum={b2[0]:.2f} CV_geom={b2[1]:.2f}"
+          + ("  -> geometrica fisica" if b2[1] < b2[0]/2 else ""))
     print("#" * 70)
 
 

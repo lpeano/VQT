@@ -169,6 +169,38 @@ Implementazione: nuovo metodo in energy_metrics.py o SolitoneComposito che calco
 E_Psi dai campi geometrici, in parallelo (NON sostitutivo) all'attuale drain, per
 poterli confrontare. Mantenere il drain attuale come baseline di confronto.
 
+### >>> ESITO — E_Psi GEOMETRICA IMPLEMENTATA E VERIFICATA (2026-06-01) <<<
+Implementata compute_geometric_E_psi() in energy_metrics.py (funzione istantanea,
+NO drain_rate): E_Psi_geom = 0.5*alpha_K*sum_i rho_tors_i * frustration, dove
+rho_tors_i = sum_j W_ij (chi_i-chi_j)^2 e frustration = CV(rho_tors) (inomogeneita'
+= concentrazione della torsione nei difetti).
+
+Re-Test B (experiments/exp3/test_falsificabilita.py, funzione test_B2_geometrica):
+confronto al variare di dt in {0.005,0.01,0.02} e drain_rate in {0.01..0.5}:
+  - E_Psi ACCUMULO (drain attuale): CV = 0.87 (scala col rate: 0.16 -> 7.88) = ARTEFATTO
+  - E_Psi GEOMETRICA (istantanea):  CV = 0.20. A dt fisso, variando rate 0.01..0.5,
+    resta ~135-169 (PRATICAMENTE COSTANTE) -> dipendenza dal rate RIMOSSA.
+
+RISULTATO: la riformulazione geometrica risolve il difetto del Test B. E_Psi
+istantanea = osservabile fisico (la "massa" come energia di frustrazione), non
+piu' un contatore guidato dal parametro libero. Proof-of-concept RIUSCITO.
+
+CAVEAT (onesti, da chiudere):
+- CV residuo 0.20 viene dal dt=0.02 (convergenza dello stato, meno step a T fisso),
+  NON da dipendenza dal rate. A dt fisso la formula e' quasi perfettamente costante.
+- La formula (torsione * CV) e' una candidata difendibile ma proof-of-concept. La
+  versione FINALE va ancorata a detorsion_pattern_quality e closure_error del
+  TopologicalConstraintValidator (nota di design sopra), per legare E_Psi al
+  deficit di chiusura 720 deg, non solo alla disomogeneita' di torsione.
+
+PROSSIMI STEP:
+1. [opz] Raffinare E_Psi_geom con detorsion_quality/closure dal validator.
+2. Test C con E_Psi_geom: ora che E_Psi e' geometrica, ha un senso fisico parlare
+   di "transizione" -> ri-verificare l'emergenza della soglia sqrt(2) sulla
+   E_Psi geometrica (non sul drain).
+3. SOLO ORA L3 ha senso: lanciarlo loggando E_Psi_geom (oltre al drain) e
+   verificare se la transizione Cub->Ico produce un salto di E_Psi_geom reale.
+
 Verdetto atteso (ipotesi da verificare): il SUBSTRATO e' fisico (Landau-Ginzburg +
 frustrazione icosaedrica / Frank-Kasper -> vetri/quasicristalli). Il processo, se
 reale, e' una CONDENSAZIONE TOPOLOGICA DEL VUOTO: il campo di torsione non sostiene
