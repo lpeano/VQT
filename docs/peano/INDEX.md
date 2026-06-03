@@ -15,6 +15,7 @@ Auto-organizzazione, triade energetica, leggi di aggregazione. È la linea di ri
 | Documento | Contenuto |
 |---|---|
 | [VQT_MANIFESTO_TEORICO.md](VQT_MANIFESTO_TEORICO.md) | Le 3 leggi Peano-VQT (Aggregazione, Repulsione topologica, Dissipazione radiativa), ancorate ai log delle run e verificate formula-per-formula |
+| [FORMALIZZAZIONE_MASSA_TOPOLOGICA.md](FORMALIZZAZIONE_MASSA_TOPOLOGICA.md) | Derivazione formale (per "Il Muratore di Planck"): massa = difetto topologico congelato. Soglia geometrica √2 vs energia di frustrazione, struttura a due tempi (ritardo ~50 step invariante di scala), quench come operatore di proiezione. Con status epistemico [DEF]/[OSS]/[CNG] |
 | [MIGRAZIONE_CHECKPOINT.md](MIGRAZIONE_CHECKPOINT.md) | Checkpoint persistente: cronologia run (Genesis, L2, L4 Leech, Self-Assembly), riorganizzazione archivio |
 
 **Codice**: `experiments/genesis_run.py`, `l2_aggregation_run.py`, `l4_self_assembly_run.py` → `wqt_oop/energy_metrics.py` (`PeanoVQTAnalyzer`)
