@@ -716,3 +716,86 @@ def freeze_and_measure_mass(solitone, gamma_quench: float = 0.5,
         "converged": converged,
         "steps_used": steps_used,
     }
+
+
+# ============================================================================
+# MASSA GERARCHICA — aggregatore consapevole della struttura (no bias del root)
+# ============================================================================
+
+def compute_hierarchical_mass(root) -> dict:
+    """
+    Misura la massa (frustrazione topologica) AGGREGANDO su tutta la gerarchia,
+    senza farsi ingannare dal filtro passa-basso del root.
+
+    Motivazione (2026-06-03): compute_geometric_E_psi(root) a L3 misura la
+    frustrazione tra i 24 figli diretti = MEDIE dei L2 (~uniformi) -> ~0. Ma la
+    frustrazione vive nelle FOGLIE. Questo aggregatore restituisce tre osservabili
+    distinti che separano "particella" (localizzata) da "campo" (distribuito):
+
+      M_tot     : somma ricorsiva di E_psi_anchored su tutti i nodi compositi
+                  (test di conservazione della massa totale).
+      rho_M     : densita' di massa = M_tot / N_foglie (test di diluizione con N).
+      IPR       : Inverse Participation Ratio sulla densita' di torsione di TUTTE
+                  le foglie. IPR >> 1/N -> localizzata (particella); IPR ~ 1/N ->
+                  distribuita (campo). E' il discriminante particella/campo
+                  non-distorto (guarda le foglie reali, non le medie).
+
+    Restituisce dict: M_tot, n_leaves, rho_M, IPR, n_eff, localization_ratio,
+    regime ("particella" | "intermedio" | "campo").
+    """
+    import numpy as _np
+    from .segmento_quantistico import SegmentoQuantistico
+    from .solitone_composito import SolitoneComposito
+
+    # --- M_tot: somma ricorsiva della frustrazione su tutti i compositi ---
+    def _mtot(node):
+        e = compute_geometric_E_psi(node)["E_psi_anchored"]
+        for c in node.children:
+            if isinstance(c, SolitoneComposito):
+                e += _mtot(c)
+        return e
+    M_tot = float(_mtot(root))
+
+    # --- densita' di torsione per ogni FOGLIA, raccolta da tutti gli L1 ---
+    rho_all = []
+
+    def _collect(node):
+        # un nodo i cui figli sono segmenti e' un L1: calcola rho_tors delle 24 foglie
+        if node.children and isinstance(node.children[0], SegmentoQuantistico):
+            chi = _np.array([c.chi for c in node.children])
+            W = node.coupling_matrix
+            Wd = (W.toarray() if hasattr(W, "toarray") else _np.asarray(W))
+            rho = _np.sum(Wd * (chi[:, None] - chi[None, :]) ** 2, axis=1)
+            rho_all.extend(rho.tolist())
+        else:
+            for c in node.children:
+                if isinstance(c, SolitoneComposito):
+                    _collect(c)
+    _collect(root)
+
+    rho = _np.asarray(rho_all, dtype=float)
+    n_leaves = int(rho.size)
+    rho_M = M_tot / max(n_leaves, 1)
+
+    p = rho / (_np.sum(rho) + 1e-30)
+    IPR = float(_np.sum(p ** 2)) if n_leaves > 0 else 0.0
+    n_eff = 1.0 / (IPR + 1e-30)
+    uniform = 1.0 / max(n_leaves, 1)
+    localization_ratio = IPR / uniform if uniform > 0 else 0.0  # 1 = uniforme
+
+    if localization_ratio > 10:
+        regime = "particella"          # frustrazione concentrata in pochi nodi
+    elif localization_ratio > 2:
+        regime = "intermedio"
+    else:
+        regime = "campo"               # frustrazione ~uniforme sul reticolo
+
+    return {
+        "M_tot": M_tot,
+        "n_leaves": n_leaves,
+        "rho_M": float(rho_M),
+        "IPR": IPR,
+        "n_eff": float(n_eff),
+        "localization_ratio": float(localization_ratio),
+        "regime": regime,
+    }

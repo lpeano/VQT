@@ -1,6 +1,6 @@
-# Checkpoint VQT - Ultimo Aggiornamento: 2026-06-01
+# Checkpoint VQT - Ultimo Aggiornamento: 2026-06-03
 
-## >>> STATO ATTUALE (riorganizzato 2026-06-01) <<<
+## >>> STATO ATTUALE (riorganizzato 2026-06-01, aggiornato 2026-06-03) <<<
 
 ### Il filo della ricerca (cronologia delle conclusioni)
 La teoria e' passata attraverso una catena di falsificazioni rigorose che hanno
@@ -25,6 +25,25 @@ RIFONDATO il concetto di massa. In ordine:
 ### Cosa e' DIMOSTRATO (sui dati)
 - La massa-come-difetto e' irriducibile al quench, bimodale, con soglia di formazione.
 - Soglia geometrica sqrt(2) EMERGE come picco di chi_max (5/8 file storici, Test A).
+- **[2026-06-03] La "no-massa" a L3 era un ARTEFATTO del root (filtro passa-basso).**
+  Nuovo aggregatore consapevole della gerarchia: `compute_hierarchical_mass()`.
+  Misura su L1/L2/L3 (seed 1, pre=60):
+
+  | metrica         | L1 (24)  | L2 (576) | L3 (13824) | nota                |
+  |-----------------|----------|----------|------------|---------------------|
+  | E_psi_ROOT      | 6.6e+01  | 1.6e-01  | 1.8e-04    | artefatto (medie)   |
+  | M_tot (ricors.) | 6.6e+01  | 1.65e+03 | 4.01e+04   | la massa REALE      |
+  | rho_M = M/N     | 2.73     | 2.87     | 2.90       | densita' COSTANTE   |
+  | loc_ratio (IPR) | 2.12     | 1.66     | 1.65       | regime "campo"      |
+
+  - **M_tot ~ N^1.01**: massa ESTENSIVA (cresce col volume, non sparisce a L3).
+  - **rho_M ~ N^0.01**: densita' di massa INVARIANTE DI SCALA (~2.9/nodo a ogni L).
+  - **loc_ratio -> ~1.65** (stabile, non cresce con N): frustrazione DISTRIBUITA
+    (campo), non concentrata in un difetto singolo localizzato (particella).
+    A chi_max/stable ~1.1-1.24 (< sqrt2) il sistema e' pre-materia: coerente.
+  -> La "transizione particella->campo a L3" e' FALSIFICATA: non c'e' transizione,
+     c'e' un campo di frustrazione estensivo a densita' costante che il root non
+     vedeva. Script: experiments/exp3/test_massa_gerarchica.py
 - Infrastruttura: FastEvolver/evolve_fast (~6x), validator vettorizzato (~5x),
   tutti i test (Peano 7/7, equivalenza L1 5/5, GATE L2) PASS.
 
@@ -95,7 +114,20 @@ output bufferizzato su experiments/exp3/soglia_L3.log. Piu' lento del previsto
    Script: test_soglia_formazione.py --level {1,2} ; figures/soglia_formazione_L{1,2}.png
 
    PROSSIMO: confermare il ritardo su L3 (con misura foglie) + piu' seed a L2.
-3. **Caratterizzare la cicatrice**: localizzazione (IPR), struttura icosaedrica 5-fold?
+
+2c. [FATTO 2026-06-03] Fix dell'aggregatore di massa: `compute_hierarchical_mass()`
+   in energy_metrics.py. Risolve l'artefatto del root (E_psi_ROOT ~0 a L3 perche'
+   misurava la frustrazione tra le MEDIE dei figli, non tra le foglie). Tre
+   osservabili: M_tot (somma ricorsiva), rho_M (densita'), IPR (foglie).
+   ESITO: massa ESTENSIVA (M_tot~N^1.01), densita' INVARIANTE DI SCALA (rho_M~2.9
+   a ogni livello), regime "campo" (loc_ratio ~1.65 stabile). La "transizione
+   particella->campo a L3" e' FALSIFICATA: non c'e' transizione, c'e' un campo di
+   frustrazione estensivo che il root non vedeva. Dettagli in STATO ATTUALE.
+   Script: experiments/exp3/test_massa_gerarchica.py
+3. **Caratterizzare la cicatrice**: localizzazione (IPR su foglie GIA' disponibile
+   in compute_hierarchical_mass). Mancano: struttura icosaedrica 5-fold; e
+   misurare l'IPR DOPO un quench oltre sqrt(2) (regime "particella" atteso quando
+   il difetto si localizza, vs "campo" pre-materia osservato a chi_max < sqrt2).
 4. **L3** con obiettivo nuovo: spettro di masse dei difetti su larga scala.
 5. **Interazione** tra difetti (energia di legame tra cicatrici).
 6. **Vita media** / stabilita' del difetto congelato.
