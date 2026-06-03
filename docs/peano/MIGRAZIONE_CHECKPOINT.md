@@ -70,12 +70,33 @@ RIFONDATO il concetto di massa. In ordine:
     con la struttura a due tempi).
   Script: experiments/exp3/test_quench_localizzazione.py
   Figure: figures/quench_localizzazione_L{1,2}.png
+- **[2026-06-03] SOC FALSIFICATA + scoperta la STOCASTICITA' del difetto.** Test:
+  P(rho_tors) sulle foglie congelate nella finestra (potenza vs esponenziale, CCDF).
+  - 2 seed: sembrava potenza (R2=0.95, alpha=1.73) -> ILLUSIONE di small-sample.
+  - 6 seed: R2 crolla a 0.79, alpha salta a 1.16 (NON stabile) e la "retta" e'
+    tracciata sul VUOTO tra due cluster -> artefatto di pooling, non power-law.
+  - Diagnostica 4 seed (chi_mean=68): TUTTE le 2304 foglie con rho_tors<1e-5
+    (median 4.3e-8): la finestra a quei seed e' VUOTO FREDDO, nessun difetto
+    assoluto. I punti "caldi" del grafico 6-seed venivano da 1-2 seed (5,6).
+  => La "bimodalita'" era VARIABILITA' SEED-A-SEED, non una distribuzione fisica.
+     La SOC ("vuoto in ebollizione scale-free") e' FALSIFICATA. La loc_ratio=57 e'
+     una misura RELATIVA (concentrazione) e puo' essere alta anche con torsione
+     assoluta minuscola (cicatrice fredda). NB: il verdetto automatico dello script
+     ("SOC CONFERMATO" via R2) E' INGANNATO dal pooling: non fidarsi.
+  Script: experiments/exp3/test_soc_distribuzione.py (infrastruttura, verdetto da
+  rivedere) ; figure: figures/soc_distribuzione_L2.png
 - Infrastruttura: FastEvolver/evolve_fast (~6x), validator vettorizzato (~5x),
   tutti i test (Peano 7/7, equivalenza L1 5/5, GATE L2) PASS.
 
 ### Cosa e' IPOTESI (da non confondere col dimostrato)
+- **La "particella" della finestra: fase fisica o evento raro?** loc_ratio alto in
+  media (57) MA forte varianza seed-a-seed (alcuni seed: vuoto freddo totale).
+  Serve analisi di RIPRODUCIBILITA' per-seed (frazione di nucleazione) per decidere
+  se e' una fase termodinamica (frazione alta) o una fluttuazione (frazione bassa).
+  [PROSSIMO TASK ATTIVO]
+- Natura geometrica del difetto (icosaedrico 5-fold?): NON misurata, da NON
+  affermare. Ha senso solo DOPO che la riproducibilita' e' stabilita.
 - Quantizzazione netta della massa (ora banda larga CV 0.32 su L1).
-- Scalabilita' a L2/L3 del fenomeno massa.
 - Connessione causale soglia-di-formazione <-> attraversamento di sqrt(2).
 
 ### STRUMENTO STANDARD
