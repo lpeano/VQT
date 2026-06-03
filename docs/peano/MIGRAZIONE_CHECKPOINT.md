@@ -42,6 +42,17 @@ di una configurazione solitonica. Velocity-quench -> KE->0 -> E_psi_anchored res
 ## >>> TASK APERTI (in ordine di priorita') <<<
 
 ### Linea scientifica ATTIVA (massa / difetti topologici)
+
+>>> IN CORSO (2026-06-03): L3 terzo punto di scala del ritardo. Run in background
+(test_soglia_formazione.py --level 3 --seeds 2 --pre 40,70,100 --quench-steps 400),
+output bufferizzato su experiments/exp3/soglia_L3.log. Piu' lento del previsto
+(>73 min, i quench L3 a 13824 nodi non convergono entro 400 step). ALLA RIPRESA:
+  - leggere soglia_L3.log (cross_sqrt2, soglia_massa, RITARDO a L3);
+  - confrontare il ritardo L3 con L1 (+50.4) e L2 (+54.2): se ~50 -> legge di
+    scala confermata su 3 punti; se diverge -> il ritardo non e' universale;
+  - se il run non e' finito o e' troppo lento, considerare quench-steps piu' alto
+    (i quench non convergevano) OPPURE meno pre-points / evolve_fast per velocizzare.
+
 1. [FATTO 2026-06-01] Mappata la soglia di formazione vs attraversamento sqrt(2).
    ESITO: NON coincidono. cross_sqrt2 ~12 step, soglia_massa ~63 step (ritardo +51,
    correlazione -0.81). L'ipotesi "sqrt2 = istante di formazione" e' FALSIFICATA.
