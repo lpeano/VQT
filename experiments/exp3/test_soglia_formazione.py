@@ -52,17 +52,32 @@ FIGDIR = os.path.join(ROOT, "experiments", "exp3", "figures")
 os.makedirs(FIGDIR, exist_ok=True)
 
 
-def make(seed, chi_mean=65.0):
+def _make_segs(rng, chi_mean, base0, n=24):
+    segs = [SegmentoQuantistico(chi=chi_mean + 8 * rng.standard_normal(),
+                                vel=1.0 * rng.standard_normal(), physics=base0)
+            for _ in range(n)]
+    for s in segs:
+        s._fdt_enabled = True
+    return segs
+
+
+def make(seed, chi_mean=65.0, level=1):
+    """Costruisce un SolitoneComposito L1 o L2 in regime critico (chi_max>70.7)."""
     rng = np.random.default_rng(seed)
     base0 = dc_replace(PhysicsContext.for_level(0), zero_point_amplitude=0.0)
     p1 = dc_replace(PhysicsContext.for_level(1, base_context=base0),
                     zero_point_amplitude=0.0)
-    segs = [SegmentoQuantistico(chi=chi_mean + 8 * rng.standard_normal(),
-                                vel=1.0 * rng.standard_normal(), physics=base0)
-            for i in range(24)]
-    for s in segs:
-        s._fdt_enabled = True
-    sol = SolitoneComposito(segs, p1, screening_enabled=False)
+    if level == 1:
+        sol = SolitoneComposito(_make_segs(rng, chi_mean, base0), p1,
+                                screening_enabled=False)
+    elif level == 2:
+        p2 = dc_replace(PhysicsContext.for_level(2, base_context=base0),
+                        zero_point_amplitude=0.0)
+        L1s = [SolitoneComposito(_make_segs(rng, chi_mean, base0), p1,
+                                 screening_enabled=False) for _ in range(24)]
+        sol = SolitoneComposito(L1s, p2, screening_enabled=False)
+    else:
+        raise ValueError("level deve essere 1 o 2")
     sol._peano_analyzer = PeanoVQTAnalyzer(chi_saturation_threshold=1e12, drain_rate=0.0)
     return sol
 
@@ -72,20 +87,30 @@ def chi_max(sol):
 
 
 def main():
-    print("=" * 72)
-    print("  SOGLIA DI FORMAZIONE DIFETTO vs ATTRAVERSAMENTO sqrt(2)*chi_stable")
-    print(f"  soglia chi: sqrt(2)*{CHI_STABLE:.0f} = {THRESH:.2f}")
-    print("=" * 72)
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--level", type=int, default=1)
+    ap.add_argument("--seeds", type=int, default=10)
+    ap.add_argument("--pre", type=str, default="40,50,60,70,80,90,100")
+    ap.add_argument("--quench-steps", type=int, default=1500)
+    args = ap.parse_args()
 
-    pre_points = [40, 50, 60, 70, 80, 90, 100]
-    seeds = list(range(1, 11))
+    level = args.level
+    pre_points = [int(x) for x in args.pre.split(",")]
+    seeds = list(range(1, args.seeds + 1))
+    q_steps = args.quench_steps
     dt = 0.01
+
+    print("=" * 72)
+    print(f"  SOGLIA DI FORMAZIONE DIFETTO vs ATTRAVERSAMENTO sqrt(2)*chi_stable [L{level}]")
+    print(f"  soglia chi: sqrt(2)*{CHI_STABLE:.0f} = {THRESH:.2f}  |  N_seg = {24**level}")
+    print("=" * 72)
 
     soglia_massa, cross_steps = [], []
     mass_grid = np.zeros((len(seeds), len(pre_points)))
 
     for si, seed in enumerate(seeds):
-        sol = make(seed)
+        sol = make(seed, level=level)
         chimax_traj = [chi_max(sol)]
         cross = None
         snapshots = {}
@@ -104,7 +129,7 @@ def main():
         # quench ad ogni pre-step
         masses = []
         for pj, pre in enumerate(pre_points):
-            r = freeze_and_measure_mass(snapshots[pre], max_steps=1500, dt=dt)
+            r = freeze_and_measure_mass(snapshots[pre], max_steps=q_steps, dt=dt)
             masses.append(r["E_psi_residual"])
             mass_grid[si, pj] = r["E_psi_residual"]
         masses = np.array(masses)
@@ -160,7 +185,7 @@ def main():
     fig.suptitle("Riconciliazione: soglia di formazione del difetto vs sqrt(2)",
                  fontweight="bold")
     fig.tight_layout()
-    out = os.path.join(FIGDIR, "soglia_formazione.png")
+    out = os.path.join(FIGDIR, f"soglia_formazione_L{level}.png")
     fig.savefig(out, dpi=120); plt.close(fig)
     print(f"\n  Grafico salvato: {out}")
 
