@@ -1,73 +1,74 @@
 # Checkpoint VQT - Ultimo Aggiornamento: 2026-06-01
 
-## >>> PROSSIMI TASK PRIORITARI (2026-06-01) <<<
+## >>> STATO ATTUALE (riorganizzato 2026-06-01) <<<
 
-Stato sintetico: **convergenza ingegneristica raggiunta, validazione scientifica
-ancora mancante.** L'infrastruttura e' pronta e verificata; manca la prova fisica
-centrale della teoria.
+### Il filo della ricerca (cronologia delle conclusioni)
+La teoria e' passata attraverso una catena di falsificazioni rigorose che hanno
+RIFONDATO il concetto di massa. In ordine:
 
-### Cosa e' FATTO e VERIFICATO (infrastruttura)
-- Ramo B (teoria Peano-VQT): triade dE_chi+dE_RX+dE_Psi=0, soglia Jitterbug sqrt(2),
-  drain, fasi geometriche. Test Peano-VQT 7/7 PASS.
-- FastEvolver (L1): equivalente a RK45 a precisione macchina (err 1.1e-07). 5/5.
-- evolve_fast (dispatcher gerarchico additivo): GATE L2 superato (evolve vs
-  evolve_fast entro 1.4%). evolve() classico invariato. Flag --fast-evolver.
-- Validator vettorizzato (Gemini): ~5x, equivalenza numerica 1e-14.
-- Speedup evoluzione: ~6x misurato (L4 da ~80h a ~13h). Documentazione allineata.
+1. **Il "drain" era un artefatto.** E_Psi accumulato via rampa scalava col
+   parametro libero drain_rate (E_Psi ~ 15.7*drain_rate). NON era fisica.
+   Inoltre senza drain il sistema resta stabile (drain = bookkeeping, non scarico).
+2. **E_Psi riformulata come grandezza geometrica ISTANTANEA** (no drain_rate):
+   stabile (CV 0.13 vs 0.87), poi ANCORATA agli invarianti topologici reali
+   (chiusura 720 deg + detorsione +-180): E_psi_anchored.
+3. **Il legame sqrt(2) <-> massa come "salto alla soglia" e' FALSIFICATO.**
+   Il ginocchio di E_psi_anchored vs chi_max NON e' a sqrt(2) (si sposta col range:
+   L1=1.45, L2=0.77). Transizione geometrica e massa erano due fenomeni separati.
+4. **LA MASSA ESISTE come difetto topologico congelato (quench test).** Protocollo
+   freeze_and_measure_mass(): rilassamento T->0. Risultato (36 stati L1):
+   - E_Psi RESIDUA IRRIDUCIBILE in 24/36 stati (~1360); 12/36 a massa ~0.
+   - BIMODALE (difetto presente/assente), non un continuum.
+   - SOGLIA DI FORMAZIONE legata alla storia (Kibble-Zurek): <40 step 0% massivi,
+     >=100 step 100% massivi.
 
-### TASK 1 [PRIORITA' MASSIMA] — Validazione fisica: osservare E_Psi crescere
-**Il drain NON e' MAI scattato in un run di produzione.** Nei run L1/L2/L3 exp3
-E_Psi=0 ovunque, perche' chi_max non raggiunge la soglia sqrt(2)*chi_stable=70.7.
-Il drain e' stato visto SOLO in test sintetici (chi forzato a 75).
+### Cosa e' DIMOSTRATO (sui dati)
+- La massa-come-difetto e' irriducibile al quench, bimodale, con soglia di formazione.
+- Soglia geometrica sqrt(2) EMERGE come picco di chi_max (5/8 file storici, Test A).
+- Infrastruttura: FastEvolver/evolve_fast (~6x), validator vettorizzato (~5x),
+  tutti i test (Peano 7/7, equivalenza L1 5/5, GATE L2) PASS.
 
-Manca quindi la prova centrale della teoria: un run reale dove
-  - chi cresce fino a sqrt(2)*chi_stable,
-  - il drain scatta,
-  - E_Psi accumula monotonicamente (nascita di materia / transizione Cub->Ico),
-  - il sistema "si trasforma invece di bloccarsi".
+### Cosa e' IPOTESI (da non confondere col dimostrato)
+- Quantizzazione netta della massa (ora banda larga CV 0.32 su L1).
+- Scalabilita' a L2/L3 del fenomeno massa.
+- Connessione causale soglia-di-formazione <-> attraversamento di sqrt(2).
 
-Da fare — **COMPLETARE UN RUN L3** (13.824 segmenti) fino a far scattare il drain:
-1. Identificare condizioni che portano chi_max alla soglia 70.7:
-   - run lungo (chi cresce dinamicamente per l'accoppiamento), OPPURE
-   - --inherit da un L3 storico ad alto chi (cosmo_L3_ext3.h5 ha chi_max~69),
-     OPPURE chi_mean iniziale piu' alto.
-2. Lanciare con --fast-evolver + validator vettorizzato (tempi gestibili).
-3. Verificare con load_h5_and_validate: E_Psi>0 monotono, fase->Icosaedrica,
-   coincidenza picco chi_max / troncamento (delta<=15 frame).
-4. Produrre i grafici della transizione (E_Psi vs step, fase vs step).
+### STRUMENTO STANDARD
+freeze_and_measure_mass() (energy_metrics.py) = la "bilancia" della massa a riposo
+di una configurazione solitonica. Velocity-quench -> KE->0 -> E_psi_anchored residua.
 
-**STIMA TEMPI L3 (misurata in questa sessione, --fast-evolver + validator vettorizzato):**
-- Costo per step a L3: ~20 s/step (misurato: 19-27 s/step su 13.824 segmenti).
-- 600 step (run L3 standard):  ~3-3.5 ore
-- 1200 step (run esteso per certificazione f_dom): ~6-7 ore
-- Con --watchdog: termina al plateau sigma_inf, potenzialmente molto prima
-  (i run storici L3 maturavano in poche centinaia di step).
-- Nota: la stima e' del solo tempo macchina; il drain scatta SE chi_max raggiunge
-  70.7. Con --inherit da cosmo_L3_ext3.h5 (chi_max~69) potrebbe scattare presto.
-- Riferimento storico per il confronto: cosmo_L3_ext3.h5 = 600 frame.
+---
 
-### TASK 2 [DOPO TASK 1] — Documento unificato Ramo A + Ramo B
-Solo DOPO aver osservato la genesi di E_Psi. Documento unico che spieghi
-matematicamente E verbalmente:
-- Ramo A (cosmologia/RG-flow): gerarchia frattale 24^L, sigma_inf, S_residual.
-- Ramo B (Peano-VQT): triade, drain Jitterbug sqrt(2), nascita materia.
-- Unificazione: E_Psi (B) <-> S_residual (A); sigma_inf = sqrt(E_Psi/(lambda*N_dof)).
-- Capitolo sperimentale CENTRALE: la prova della transizione (grafici reali Task 1).
-- Metodi computazionali: FastEvolver, evolve_fast, validator (numeri reali ~6x/~5x).
-NON scrivere prima di Task 1: eviterebbe di documentare cio' che non e' osservato.
+## >>> TASK APERTI (in ordine di priorita') <<<
 
-### TASK 3 [automazione] — Pattern di terminazione automatica per L(n)
-Stato attuale dell'automazione:
-- GIA' FUNZIONA: --watchdog (MaturityWatchdog) ferma un singolo livello al plateau
-  di sigma_inf. Generico per ogni n. `--steps` diventa solo tetto di sicurezza.
-- NON wired nel generatore: PhaseTransitionSignal (criterio termodinamico:
-  mature AND f_dom certificato AND dS>0) e RecursiveManifoldManager.auto_advance()
-  (catena L->L+1 automatica). Esistono in CoreEngine_v2 ma non collegati al generatore.
-- DA PROGETTARE: stop-condition legato alla transizione Peano-VQT (fermarsi quando
-  E_Psi inizia ad accumulare stabilmente), distinto dalla maturita' geometrica (sigma).
-Sotto-task: wire PhaseTransitionSignal nel generatore + opzione di auto-advance catena.
+### Linea scientifica ATTIVA (massa / difetti topologici)
+1. **Mappare la soglia di formazione** (scan pre-steps 40..100) e verificare se
+   COINCIDE con l'istante in cui chi_max attraversa sqrt(2)*chi_stable. Se si',
+   riconcilia sqrt(2) e massa (sqrt2 = quando il difetto si forma).
+2. **Confermare su L2** (576 nodi): la massa si quantizza meglio? bimodalita' tiene?
+3. **Caratterizzare la cicatrice**: localizzazione (IPR), struttura icosaedrica 5-fold?
+4. **L3** con obiettivo nuovo: spettro di masse dei difetti su larga scala.
+5. **Interazione** tra difetti (energia di legame tra cicatrici).
+6. **Vita media** / stabilita' del difetto congelato.
 
-### >>> TASK 0 [PRIORITA' ASSOLUTA — PRIMA DI L3] <<< Fisica reale o trucco matematico?
+### Tecnici / infrastrutturali (rimasti indietro)
+- **Logging di E_psi_anchored negli HDF5**: la metrica si calcola solo in-process,
+  NON viene salvata nei run. Aggiungere a hdf5_logger._extract_frame_data.
+- **Documento unificato A+B**: mai scritto, e ora va RICONCEPITO (massa = difetto
+  congelato Kibble-Zurek, non transito a sqrt(2)). NON scrivere prima di L2.
+- **Automazione terminazione**: --watchdog OK; PhaseTransitionSignal +
+  auto_advance esistono ma NON wired nel generatore.
+- **Run L4 / catena L1->L4 in exp3**: mai completati (sospesi, meno prioritari).
+- **Ottimizzazione compute_hamiltonian ricorsivo**: per superare il tetto ~6x.
+
+---
+
+## DIARIO DI RICERCA (cronologico — dettaglio dei risultati)
+
+> Le sezioni seguenti sono il record cronologico dei test e delle decisioni.
+> Lo STATO ATTUALE sopra e' la sintesi aggiornata; sotto c'e' il dettaglio storico.
+
+### >>> TASK 0 [storico] <<< Fisica reale o trucco matematico?
 DECISIONE (2026-06-01): affrontare QUESTA questione PRIMA di lanciare L3.
 Motivo: (a) scientificamente, prima si stabilisce se il meccanismo e' reale, poi
 lo si misura; (b) economicamente, i test di falsificabilita' girano su L1/L2
