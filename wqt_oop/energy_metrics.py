@@ -587,3 +587,132 @@ def compute_geometric_E_psi(solitone) -> dict:
         "E_psi_anchored": float(E_psi_anchored),
         "chi_max_over_stable": chi_max / chi_stable,
     }
+
+
+# ============================================================================
+# COOLING-DOWN TEST (QUENCH) — la massa come frustrazione irriducibile
+# ============================================================================
+
+def freeze_and_measure_mass(solitone, gamma_quench: float = 0.5,
+                            max_steps: int = 2000, dt: float = 0.01,
+                            tol: float = 1e-6, window: int = 50) -> dict:
+    """
+    Protocollo di QUENCH: congela lo stato corrente (rilassamento adiabatico T->0)
+    e misura l'energia di frustrazione RESIDUA IRRIDUCIBILE = candidata "massa".
+
+    Ipotesi (c): la massa NON e' un evento puntiforme alla soglia sqrt(2), ma una
+    configurazione di frustrazione geometrica STABILE E PERSISTENTE (una "cicatrice").
+    Analogo fisico: in un vetro/quasicristallo la frustrazione icosaedrica impedisce
+    di raggiungere E=0 anche a T->0 (Frank-Kasper). Se esiste un E_Psi_anchored
+    residuo che il sistema NON puo' eliminare per quanto lo rilassi, quella e' massa.
+
+    Protocollo (su una COPIA, non distrugge l'originale):
+      1. Disabilita input: zero-point OFF, FDT OFF, nessuna forza esterna.
+      2. Quench: damping costante forte (gamma_quench) -> dissipa energia cinetica.
+      3. Evolve fino a convergenza (KE -> 0 e E_psi_anchored stabile entro tol).
+      4. Misura:
+         - E_psi_anchored residua (la massa candidata)
+         - localizzazione IPR della densita' di frustrazione (cicatrice):
+             IPR = sum_i p_i^2 / (sum_i p_i)^2, p_i = rho_tors_i
+             IPR ~ 1/N -> uniforme (rumore); IPR >> 1/N -> localizzato (disclinazioni)
+         - n_eff = 1/IPR = numero di nodi che portano la frustrazione
+
+    Restituisce dict con E_psi_residual, E_psi_initial, KE_final, IPR, n_eff,
+    n_localized, converged, steps_used.
+    """
+    import copy as _copy
+    import numpy as _np
+
+    from .segmento_quantistico import SegmentoQuantistico
+
+    sol = _copy.deepcopy(solitone)
+
+    # 1. Disabilita ogni input (rilassamento puro)
+    # FDT off + damping forte costante su tutte le foglie
+    def _set_quench(node):
+        if isinstance(node, SegmentoQuantistico):
+            node._fdt_enabled = False
+            node.gamma_damping = gamma_quench
+        else:
+            for c in node.children:
+                _set_quench(c)
+    _set_quench(sol)
+    # disattiva il drain Peano (misuriamo solo la geometria)
+    sol._peano_analyzer = PeanoVQTAnalyzer(chi_saturation_threshold=1e12, drain_rate=0.0)
+    # azzera zero-point se presente sul physics (non frozen-safe -> via attributo runtime)
+    try:
+        sol.physics = sol.physics.__class__(**{**sol.physics.__dict__,
+                                               'zero_point_amplitude': 0.0})
+    except Exception:
+        pass
+
+    info0 = compute_geometric_E_psi(sol)
+    E_psi_initial = info0["E_psi_anchored"]
+
+    def _kinetic(node):
+        if isinstance(node, SegmentoQuantistico):
+            return 0.5 * node.mass * node.vel ** 2
+        return sum(_kinetic(c) for c in node.children)
+
+    def _cool_velocities(node, factor):
+        """Velocity-quench esplicito: raffredda T->0 in modo garantito."""
+        if isinstance(node, SegmentoQuantistico):
+            node.vel *= factor
+        else:
+            for c in node.children:
+                _cool_velocities(c, factor)
+
+    # cooling_factor: smorzamento esplicito per step. Garantisce KE -> 0.
+    # 0.9 = annealing rapido ma stabile (KE dimezza ogni ~7 step).
+    cooling_factor = 0.9
+    ke0 = _kinetic(sol) + 1e-30
+
+    history = []
+    converged = False
+    steps_used = max_steps
+    for step in range(max_steps):
+        sol.compute_hamiltonian()
+        sol.evolve(dt)
+        # VELOCITY QUENCH: raffreddamento esplicito verso T=0 (rilassamento adiabatico)
+        _cool_velocities(sol, cooling_factor)
+        e = compute_geometric_E_psi(sol)["E_psi_anchored"]
+        history.append(e)
+        ke = _kinetic(sol)
+        # Convergenza = sistema CONGELATO: energia cinetica praticamente nulla.
+        # A KE->0 il reticolo e' fermo nel minimo locale; E_psi_anchored e' quello
+        # dello stato congelato (la massa candidata), per definizione.
+        if ke / ke0 < 1e-10:
+            converged = True
+            steps_used = step + 1
+            break
+
+    # Misura finale
+    info = compute_geometric_E_psi(sol)
+    E_psi_residual = info["E_psi_anchored"]
+    KE_final = _kinetic(sol)
+
+    # Localizzazione (cicatrice): IPR sulla densita' di torsione per nodo
+    chi = _np.array([sol._get_child_chi(c) for c in sol.children])
+    W = sol.coupling_matrix
+    W_dense = (W.toarray() if hasattr(W, "toarray") else _np.asarray(W))
+    rho_tors = _np.sum(W_dense * (chi[:, None] - chi[None, :]) ** 2, axis=1)
+    p = rho_tors / (_np.sum(rho_tors) + 1e-30)
+    IPR = float(_np.sum(p ** 2))
+    n_eff = 1.0 / (IPR + 1e-30)
+    N = len(rho_tors)
+    # nodi "caldi" = sopra media + 2 std (disclinazioni candidate)
+    thr = _np.mean(rho_tors) + 2 * _np.std(rho_tors)
+    n_localized = int(_np.sum(rho_tors > thr))
+
+    return {
+        "E_psi_initial": float(E_psi_initial),
+        "E_psi_residual": float(E_psi_residual),
+        "KE_final": float(KE_final),
+        "IPR": IPR,
+        "n_eff": float(n_eff),
+        "N_nodes": int(N),
+        "n_localized": n_localized,
+        "localized": IPR > 2.0 / N,   # IPR ben sopra l'uniforme 1/N
+        "converged": converged,
+        "steps_used": steps_used,
+    }

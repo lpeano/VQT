@@ -264,6 +264,42 @@ finale NON nullo, indipendente dalla velocita' di quench. Confrontare lo stato
 finale "quenchato" (rapido) vs "ricotto" (lento): se la massa residua differisce,
 e' un vero congelamento geometrico (vetro/quasicristallo), non un transito.
 
+### >>> ESITO QUENCH TEST (2026-06-01) — LA MASSA ESISTE (difetto congelato) <<<
+Implementata freeze_and_measure_mass() in energy_metrics.py (velocity-quench
+esplicito: v *= 0.9/step -> KE->0 garantito = rilassamento adiabatico T->0).
+Misura E_psi_anchored RESIDUA dopo congelamento + IPR (localizzazione cicatrice).
+Script: experiments/exp3/test_quench_mass.py + figures/quench_mass.png.
+
+RISULTATI (36 stati L1, storie dinamiche diverse, tutti congelati KE->0):
+- BIMODALITA' NETTA: 24/36 massivi (E_psi_resid ~ 1360) vs 12/36 a massa ~0.
+  Il sistema congela in DUE classi: difetto presente o assente. Non un continuum.
+- SOGLIA DI FORMAZIONE legata alla storia (il dato piu' forte):
+    storia 40 step:    0% massivi  (rilassano completamente)
+    storia 100 step: 100% massivi
+    storia 200 step: 100% massivi
+  -> esiste una soglia temporale oltre la quale il difetto si forma e SI BLOCCA.
+- Massa a banda larga (CV 0.32, range 500-2267): non quantizzata nettamente a L1.
+
+INTERPRETAZIONE (Kibble-Zurek): la massa e' un DIFETTO TOPOLOGICO che si forma
+DURANTE l'evoluzione (attraversando una transizione) e si CONGELA, irriducibile
+al quench. NON e' il transito a sqrt(2) (falsificato prima), ma il RESIDUO che
+persiste. E_psi_anchored e' ora una massa fisica: irriducibile, bimodale, con
+soglia di formazione.
+
+POSSIBILE RIAVVICINAMENTO sqrt(2)<->massa: se la soglia di formazione del difetto
+(tra 40 e 100 step) COINCIDE con l'attraversamento di chi_max=sqrt(2)*chi_stable,
+allora i due fenomeni sono collegati: sqrt(2)=quando il difetto si forma,
+massa=cio' che resta congelato. DA VERIFICARE.
+
+PROSSIMI STEP (in ordine):
+1. Mappare finemente la soglia di formazione (scan pre-steps 40..100) e verificare
+   se coincide con l'istante in cui chi_max attraversa sqrt(2)*chi_stable.
+2. Confermare su L2 (576 nodi): la massa si quantizza meglio? la bimodalita' tiene?
+3. Caratterizzare la cicatrice: dove si localizza il difetto, ha struttura
+   icosaedrica (5-fold)? Mappa spaziale di rho_tors nei nodi "caldi".
+4. SOLO ORA L3 ha un obiettivo fisico chiaro: misurare lo spettro di masse dei
+   difetti congelati e verificarne la quantizzazione su larga scala.
+
 Verdetto atteso (ipotesi da verificare): il SUBSTRATO e' fisico (Landau-Ginzburg +
 frustrazione icosaedrica / Frank-Kasper -> vetri/quasicristalli). Il processo, se
 reale, e' una CONDENSAZIONE TOPOLOGICA DEL VUOTO: il campo di torsione non sostiene
