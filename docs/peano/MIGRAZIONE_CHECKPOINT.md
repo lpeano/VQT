@@ -50,8 +50,21 @@ di una configurazione solitonica. Velocity-quench -> KE->0 -> E_psi_anchored res
    massa. Il ritardo e' il tempo di intrappolamento (Kibble-Zurek: la formazione
    del difetto e' rilassamento, non l'istante di attraversamento).
    Script: experiments/exp3/test_soglia_formazione.py + figures/soglia_formazione.png
-2. **Confermare su L2** (576 nodi): la massa si quantizza meglio? bimodalita' tiene?
-   E verificare se la struttura a due tempi (cross ~12, congelamento ~63) scala.
+2. [PARZIALE 2026-06-03] Test di scala su L2 (576 nodi, 4 seed).
+   ESITO DUPLICE:
+   - POSITIVO: la SOGLIA DI FORMAZIONE della massa a L2 = 60-100 step, CONSISTENTE
+     con L1 (~63). La scala temporale del congelamento del difetto TIENE L1->L2.
+   - LIMITE METODOLOGICO: cross_sqrt2 = "mai" per tutti i seed, perche' a L2
+     chi_max e' misurato sul ROOT = max delle MEDIE dei 24 figli L1 (~65), non dei
+     576 segmenti foglia. Le medie non raggiungono mai sqrt(2)*50=70.7. Stesso
+     artefatto del drain a L3/L4 (il root vede medie, non i picchi delle foglie).
+   -> Il confronto cross<->soglia a L2 NON e' valido cosi'. La massa pero' si forma
+     comunque (a livello piu' profondo, frustrazione interna/inter-L1).
+   Script: test_soglia_formazione.py --level 2 ; figures/soglia_formazione_L2.png
+
+2b. **[PROSSIMO] Rifare la misura sulle FOGLIE**: tracciare chi_max e E_psi sui
+   24^L segmenti foglia (non sulle medie del root) per un confronto cross<->soglia
+   valido a L2/L3. Aggiungere chi_max_leaves() e una E_psi sulle foglie.
 3. **Caratterizzare la cicatrice**: localizzazione (IPR), struttura icosaedrica 5-fold?
 4. **L3** con obiettivo nuovo: spettro di masse dei difetti su larga scala.
 5. **Interazione** tra difetti (energia di legame tra cicatrici).
