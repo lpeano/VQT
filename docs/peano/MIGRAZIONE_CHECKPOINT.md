@@ -224,6 +224,37 @@ loggando E_psi_anchored vs chi_max nel tempo, e verificare se quando chi_max
 attraversa sqrt(2)*chi_stable c'e' un salto/ginocchio in E_psi_anchored. Questo
 e' l'esperimento della "nascita di materia" con la metrica fisica corretta.
 
+### >>> ESITO TEST DINAMICO (2026-06-01) — IL LEGAME sqrt(2)<->E_Psi NON REGGE <<<
+Script: experiments/exp3/test_transizione_dinamica.py (+ grafico
+figures/transizione_dinamica.png). Test rigoroso NON circolare: trovata la
+posizione del ginocchio reale (max curvatura di E_psi_anchored vs chi_max/cs)
+su piu' seed e piu' livelli.
+
+RISULTATI:
+- L1 (24 nodi), 7 seed: ginocchio medio 1.450 +- 0.140 (vicino a sqrt2=1.414 MA
+  dispersione alta, 57% entro 0.10). Indizio suggestivo ma non conclusivo.
+- L2 (576 nodi), 4 seed: ginocchio medio 0.774 +- 0.124. NON a sqrt(2).
+- Il ginocchio SI SPOSTA col range esplorato (L1 range [1.07,1.73] -> knee 1.45;
+  L2 range [0.40,1.41] -> knee 0.77). E' un artefatto della FORMA della curva
+  E(ratio), NON una soglia fisica fissa.
+
+VERDETTO ONESTO:
+- La transizione geometrica a sqrt(2) resta REALE (Test A: il PICCO di chi_max
+  converge a sqrt(2)*chi_stable — non in discussione).
+- MA E_psi_anchored NON mostra una firma a sqrt(2). Il legame ipotizzato
+  "transizione sqrt(2) -> salto di massa E_Psi" NON e' confermato.
+- Allo stato, massa-come-E_Psi e transizione-a-sqrt(2) sono DUE FENOMENI SEPARATI,
+  non causalmente legati come la teoria postulava.
+- E_psi_anchored e' stabile (osservabile fisico, CV 0.12) ma non si aggancia alla
+  soglia. La metrica geometrica attuale NON cattura una "nascita di materia" a sqrt(2).
+
+IMPLICAZIONE: NON lanciare L3 per questo scopo (se L2 non mostra il legame, L3
+nemmeno; costa ore per confermare un nulla). La teoria ha una base geometrica
+solida (sqrt2 emergente) ma il MECCANISMO della massa resta non dimostrato.
+Ripensare: (a) E_Psi e' davvero la massa? (b) la transizione sqrt(2) produce un
+osservabile diverso (es. un cambio nella detorsion_quality o nella f_dom)?
+(c) la "massa" e' uno stato finale stabile, non un salto durante l'attraversamento?
+
 Verdetto atteso (ipotesi da verificare): il SUBSTRATO e' fisico (Landau-Ginzburg +
 frustrazione icosaedrica / Frank-Kasper -> vetri/quasicristalli). Il processo, se
 reale, e' una CONDENSAZIONE TOPOLOGICA DEL VUOTO: il campo di torsione non sostiene
