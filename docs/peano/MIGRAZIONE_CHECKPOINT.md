@@ -62,9 +62,28 @@ di una configurazione solitonica. Velocity-quench -> KE->0 -> E_psi_anchored res
      comunque (a livello piu' profondo, frustrazione interna/inter-L1).
    Script: test_soglia_formazione.py --level 2 ; figures/soglia_formazione_L2.png
 
-2b. **[PROSSIMO] Rifare la misura sulle FOGLIE**: tracciare chi_max e E_psi sui
-   24^L segmenti foglia (non sulle medie del root) per un confronto cross<->soglia
-   valido a L2/L3. Aggiungere chi_max_leaves() e una E_psi sulle foglie.
+2b. [FATTO 2026-06-03] Misura corretta sulle FOGLIE (chi_max ricorsivo sui
+   segmenti, non medie del root). Test di scala VALIDO L1 vs L2:
+
+   | metrica       | L1 (24)    | L2 (576)   |
+   |---------------|------------|------------|
+   | cross sqrt2   | 13.6 +-2.0 | 20.8 +-1.9 |
+   | soglia massa  | 64 +-8     | 75 +-17    |
+   | RITARDO       | +50.4      | +54.2      |
+   | correlazione  | -0.92      | -0.67      |
+
+   ESITO: LA STRUTTURA A DUE TEMPI SCALA. Il RITARDO caratteristico (+50 -> +54)
+   e' robusto da 24 a 576 nodi = firma fisica del processo a due stadi. La
+   correlazione negativa tiene. L'ipotesi di coincidenza sqrt2<->massa resta
+   falsificata anche a L2 (ritardo +54, non 0).
+   Quadro Kibble-Zurek RAFFORZATO: sqrt(2) prerequisito -> ~50 step di
+   esplorazione frustrata -> congelamento del difetto (massa). Il tempo di
+   intrappolamento ~50 step e' una proprieta' DI SCALA, non un effetto di L1.
+   Caveat: 4 seed su L2; i valori assoluti crescono col livello (da indagare se
+   scaling fisico o di taglia); il ritardo e' il dato solido.
+   Script: test_soglia_formazione.py --level {1,2} ; figures/soglia_formazione_L{1,2}.png
+
+   PROSSIMO: confermare il ritardo su L3 (con misura foglie) + piu' seed a L2.
 3. **Caratterizzare la cicatrice**: localizzazione (IPR), struttura icosaedrica 5-fold?
 4. **L3** con obiettivo nuovo: spettro di masse dei difetti su larga scala.
 5. **Interazione** tra difetti (energia di legame tra cicatrici).
