@@ -173,15 +173,30 @@ di una configurazione solitonica. Velocity-quench -> KE->0 -> E_psi_anchored res
 
 ### Linea scientifica ATTIVA (massa / difetti topologici)
 
->>> IN CORSO (2026-06-03): L3 terzo punto di scala del ritardo. Run in background
-(test_soglia_formazione.py --level 3 --seeds 2 --pre 40,70,100 --quench-steps 400),
-output bufferizzato su experiments/exp3/soglia_L3.log. Piu' lento del previsto
-(>73 min, i quench L3 a 13824 nodi non convergono entro 400 step). ALLA RIPRESA:
-  - leggere soglia_L3.log (cross_sqrt2, soglia_massa, RITARDO a L3);
-  - confrontare il ritardo L3 con L1 (+50.4) e L2 (+54.2): se ~50 -> legge di
-    scala confermata su 3 punti; se diverge -> il ritardo non e' universale;
-  - se il run non e' finito o e' troppo lento, considerare quench-steps piu' alto
-    (i quench non convergevano) OPPURE meno pre-points / evolve_fast per velocizzare.
+>>> PROSSIMI TASK PER LA SESSIONE DEL 2026-06-04 <<<
+
+TASK A [PRIORITA' MASSIMA — veloce, L2]:
+  TERMODINAMICA DELLE PARETI: sweep chi_mean 58-78 (passo 2), 20 seed/punto,
+  misura n_kink (= frazione di nucleazione) per punto. Fit n ~ |epsilon|^nu.
+  Script da creare: experiments/exp3/test_termodinamica_kink.py
+  Atteso: curva sigmoidale n(chi_mean) con pendenza che determina nu (esponente KZ).
+  Se nu ~ 1 (phi^4 1D): connessione alla fisica universale delle transizioni di fase.
+  Prerequisito per L3 (dice che taglia serve per ospitare kink multipli).
+
+TASK B [PRIORITA' MEDIA — da scrivere, niente codice]:
+  FORMALIZZAZIONE per "Il Muratore di Planck": aggiornare
+  docs/peano/FORMALIZZAZIONE_MASSA_TOPOLOGICA.md con la sezione sul kink phi^4.
+  Contenuto: profilo chi (da +50 a -50, 6 nodi, 1 blocco L1), M_tot come integrale
+  gradiente, struttura a quattro regimi, legge di scala (da completare dopo Task A).
+  Marcatori epistemici [DEF]/[OSS]/[CNG] come nel resto del documento.
+
+TASK C [PRIORITA' BASSA — costoso, da fare dopo A]:
+  L3: verificare se blocchi L1 con kink si attraggono a scala superiore
+  ("molecole di kink"). Richiede quench L3 (13824 nodi, lento).
+  DA NON FARE prima che Task A sia completo.
+
+TASK ABBANDONATO: soglia_L3.log (run del ritardo a L3) — non finito, troppo lento,
+  superato dalla comprensione del kink. Ignorare il log, il task non e' piu' prioritario.
 
 1. [FATTO 2026-06-01] Mappata la soglia di formazione vs attraversamento sqrt(2).
    ESITO: NON coincidono. cross_sqrt2 ~12 step, soglia_massa ~63 step (ritardo +51,
