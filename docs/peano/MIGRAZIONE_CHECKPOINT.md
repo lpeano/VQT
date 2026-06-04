@@ -187,14 +187,46 @@ QUANTIZZAZIONE GERARCHICA L3: TESTATA, FALSIFICATA nel regime denso (cm=68).
 TASK A [IN CORSO 2026-06-04]:
   TERMODINAMICA DELLE PARETI: sweep n(chi_mean) su L2, 20 seed/punto.
   Script: experiments/exp3/test_termodinamica_kink.py [FATTO, committato 8794523]
+  Analisi aggregata: experiments/exp3/analyze_termodinamica.py (idempotente).
   Con ResumeManager (crash-safe): se interrotto, rilanciare stesso comando.
-  SCOPERTA dallo smoke test: cm 58-78 e' tutto SATURO (n=100%) -> chi_c < 58.
-  Sweep corretto: 46,48,50,52,54,56,58,60,62 (cattura la transizione 0->100%).
-  ALLA RIPRESA: leggere output del run (chi_c, nu, cooperativity). Se nu~1 -> phi^4 1D.
-  La cooperativity (var osservata / binomiale) distingue nucleazione indipendente
-  (=1) da cooperativa (>1, segnale topologico).
-  COMANDO: python experiments/exp3/test_termodinamica_kink.py --level 2 --seeds 20 \
-           --chi-means 46,48,50,52,54,56,58,60,62 --quench-steps 500
+  RISULTATI PARZIALI (DOPPIA TRANSIZIONE CONFERMATA):
+  - Soglia ENERGETICA (kink se M_tot>1): cm 46-64 = 0%, cm66=45%, cm68=60%,
+    cm70=93%. chi_c_energetico ~67 (chi_c/chi_stable ~1.34). Sigmoide pulita.
+  - Soglia GEOMETRICA (localizzazione, loc_ratio>5): piu' bassa (~cm56-62),
+    NON ancora mappata con lo stesso protocollo (solo misure laterali).
+  - Estensione 64-78 in corso al momento del salvataggio (plateau 72-78).
+  ALLA RIPRESA: eseguire analyze_termodinamica.py per la curva completa 46-78 +
+  fit nu. Se nu~1 -> phi^4 1D classico.
+
+>>> APPUNTI DA VERIFICARE (registrati 2026-06-04, NON ancora dimostrati) <<<
+
+  [V1] LEGGE GENERALIZZATA / DATA COLLAPSING (priorita' alta dopo Task A):
+    Ipotesi: n_kink = F((chi-chi_c)/chi_c) con F universale su tutti i livelli.
+    Per dimostrarla serve la curva n(chi) ANCHE a L3 (non solo L2). Test:
+    plottare n vs epsilon=(chi-chi_c)/chi_c per L2 e L3; se i punti collassano
+    sulla stessa curva -> legge universale [OSS]; se no -> effetti di scala finita.
+    COSTO: sweep completo L3 ~30-40h. SCORCIATOIA (resume crash-safe, frazionabile):
+    (1) sweep RADO L3 (3-4 punti: 64,68,72) per trovare chi_c_L3;
+    (2) 2-3 punti fitti attorno a chi_c_L3 per nu_L3. ~6-7 punti, ~12-15h spalmabili.
+
+  [V2] "1.34 = COSTANTE DI ACCOPPIAMENTO DEL VUOTO" (da confermare):
+    chi_c/chi_stable ~1.34 e' misurato a UNA scala (L2). E' [OSS] a L2 ma [CNG]
+    come costante universale finche' chi_c_L3/chi_stable non da' ancora ~1.34.
+    Verificare con la curva L3 di [V1].
+
+  [V3] RAPPORTO DI GAP TOPOLOGICO (chi_c_energetico / chi_c_geometrico ~1.34/1.24):
+    Entrambe le soglie vanno mappate con LO STESSO protocollo (sweep+20 seed).
+    Ora la geometrica e' nota solo da misure laterali. Mappare anche quella, poi
+    verificare se il rapporto e' invariante di scala (L2 vs L3).
+
+  [V4] QUANTIZZAZIONE DELLA LARGHEZZA DEL KINK (divisori di 24):
+    Confermato solo il modo fondamentale w=1 a L2 (n_eff_block=1.0). Per affermare
+    che le larghezze permesse sono {1,2,4,8,...} (divisori) e NON valori intermedi,
+    servono kink di larghezza 2 e 4 osservati + assenza di larghezze intermedie.
+    Resta [CNG]. test_quantizzazione_kink diretto aveva dato larghezze non-divisori
+    (8,11,14,17) per problema di metrica/regime.
+
+TASK B [PRIORITA' MEDIA — PARZIALMENTE FATTO]:
 
 TASK B [PRIORITA' MEDIA — PARZIALMENTE FATTO]:
   FORMALIZZAZIONE: docs/peano/FORMALIZZAZIONE_MASSA_TOPOLOGICA.md AGGIORNATO con:
