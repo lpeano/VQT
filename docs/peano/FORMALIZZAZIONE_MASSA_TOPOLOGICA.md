@@ -364,7 +364,64 @@ localizzato: la particella "minima". I kink piu' larghi (stati eccitati) hanno
 piu' estensione spaziale e meno energia: potrebbero corrispondere a stati
 eccitati della materia VQT.
 
-### 4.6 Stato della verifica
+### 4.6 Spettroscopia della frustrazione topologica
+
+#### Interpretazione armonica
+
+Lo spettro $E_{\mathrm{kink}}(w)=E_0/w$ e' la serie armonica della frustrazione:
+$$E_0,\quad \frac{E_0}{2},\quad \frac{E_0}{3},\quad \frac{E_0}{4},\quad \frac{E_0}{6},\quad \ldots$$
+(solo divisori di 24). Questa e' la **serie di risonanza del manifold VQT**: il
+modo fondamentale ($w=1$) e' il "tono fondamentale", i modi superiori sono le
+armoniche. Il fatto che i modi permessi siano solo i divisori di 24 — non tutti i
+numeri interi — rende questa "orchestra" **molto piu' selettiva** di un oscillatore
+armonico continuo.
+
+#### Energia di attivazione tra modi
+
+Per transitare dal modo $w_1$ al modo $w_2 > w_1$ (transizione eccitata) e'
+necessaria un'energia di attivazione:
+$$\Delta E(w_1 \to w_2) = E_0\left(\frac{1}{w_1} - \frac{1}{w_2}\right).$$
+Esempi (con $E_0=30.4$):
+
+| Transizione | $\Delta E$ |
+|---|---|
+| $1\to 2$ (fondamentale $\to$ primo eccitato) | 15.2 |
+| $1\to 3$ | 20.2 |
+| $2\to 4$ | 7.6 |
+| $3\to 6$ | 5.1 |
+
+**[CNG] Predizione:** in un sistema in cui il kink puo' transitare tra modi, si
+dovrebbe osservare un rilascio discreto di energia $\Delta E$ durante il passaggio
+$w\to w'<w$ (transizione verso il basso = emissione). Questo sarebbe l'analogo
+dell'emissione di fotoni in un laser. Non e' stato ancora misurato — richiederebbe
+osservare un kink "wide" che si restringe durante il quench rilasciando $\Delta E$
+in forma di impulso di torsione. [Da misurare]
+
+#### Legame con M_tot e predizione per l'istogramma
+
+**[CNG] Predizione spettrale:** se il kink puo' essere in modo $w\in\mathcal{D}_L$
+con probabilita' $p_w$, allora la distribuzione di $M_{\mathrm{tot}}$ su molti seed
+dovrebbe mostrare picchi localizzati attorno a $E_{\mathrm{kink}}(w)$ per i
+divisori permessi. L'istogramma sarebbe la "spettroscopia" del kink: ogni picco
+e' una riga spettrale del modo $w$.
+
+Questa predizione e' verificabile con 100+ seed a $\chi_{\mathrm{mean}}=68$
+(dove i kink sono nel modo fondamentale $w=1$ con $M_{\mathrm{tot}}\approx E_0\sim30$).
+Se a $\chi_{\mathrm{mean}}$ piu' alto si eccitano modi $w=2,3$, i picchi si
+sposteranno verso valori piu' bassi di $M_{\mathrm{tot}}$.
+
+#### Connessione con il costo informazionale (Landauer)
+
+**[CNG — richiede derivazione]** Il principio di Landauer stabilisce che
+cancellare 1 bit costa $k_B T \ln 2$ di energia. In un sistema a temperatura
+finita, "scegliere" un modo (stabilizzare un kink in $w=1$ vs $w=2$) e'
+equivalente a scrivere 1 bit di informazione geometrica nel manifold. L'energia
+del modo $E_0/w$ potrebbe quindi essere interpretata come il "costo di Landauer"
+per immagazzinare $\log_2(w)$ bit di struttura spaziale. Questa connessione e'
+intuitiva ma non derivata formalmente: richiederebbe identificare esplicitamente
+l'entropia di configurazione associata a ciascun modo. [Da formalizzare]
+
+### 4.7 Stato della verifica
 
 **Verificato [OSS]:**
 - L2, $\chi_{\mathrm{mean}}=68$: $n_{\mathrm{eff,block}} = 1.0\pm0.1$ per i seed
@@ -372,6 +429,7 @@ eccitati della materia VQT.
 
 **In verifica (run overnight 2026-06-03):**
 - L3, $\chi_{\mathrm{mean}}=68$, 10 seed: misura di $n_{\mathrm{eff,block\_L2}}$.
+  Se $n_{\mathrm{eff}}\in\{1,2\}$: conferma $\mathcal{D}_3$ e apre la "spettroscopia".
   Predizione: $n_{\mathrm{eff}}\in\mathcal{D}_3=\{1,2\}$, mai $\ge3$.
   Script: `experiments/exp3/test_quantizzazione_gerarchica.py`
 
