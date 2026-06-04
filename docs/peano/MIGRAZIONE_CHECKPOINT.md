@@ -252,11 +252,28 @@ Ipotesi: la funzione F e' invariante di scala al variare del livello L_n.
 ### 4. Stato dati (aggiornare a ogni progresso)
 | Punto | L2 | L3 | Promosso a [OSS]? |
 |-------|----|----|-------------------|
-| chi_c | ~67 (in misura) | — | no (serve L3) |
-| nu    | in misura | — | no (serve L3) |
-| kappa=chi_c/chi_stable | ~1.34 | — | no |
+| chi_c | 66.92 +- 0.19 [OSS L2] | — | no (serve L3) |
+| kappa=chi_c/chi_stable | 1.338 +- 0.004 [OSS L2] | — | no |
+| larghezza transizione w | 1.35 +- 0.17 (w/chi_st=0.027) [OSS L2] | — | no |
+| cooperativity | 1.00 (indipendente) [OSS L2] | — | no |
+| nu (Kibble-Zurek) | NON misurato (serve sweep su dt) | — | no |
 | V1 data collapse | — | — | no |
-| V4 larghezza w | solo w=1 | — | no |
+| V4 larghezza w kink | solo w=1 | — | no |
+
+### 4b. RISULTATO TASK A (L2) — 2026-06-04 [OSS a L2]
+Curva di nucleazione energetica n(chi_mean), L2, sweep 46-78 (17 punti, 20 seed):
+- transizione NETTA: 0% fino a cm64, 45%(66), 60%(68), 95%(70), 100% da cm72.
+- fit LOGISTICO (modello corretto per probabilita' di nucleazione): R2=0.99,
+  chi_c=66.92, larghezza w=1.35. NON e' una power-law: e' una sigmoide.
+- chi_c/chi_stable = 1.338 = soglia ENERGETICA di condensazione del kink.
+- cooperativity=1.00 ovunque: nucleazione STATISTICAMENTE INDIPENDENTE tra seed
+  (niente effetti cooperativi; coerente coi ~12 kink indipendenti a L3).
+CORREZIONE METODOLOGICA: l'esponente nu di Kibble-Zurek NON si estrae da questa
+curva (e' prob. di nucleazione vs ampiezza, non densita' difetti vs velocita' di
+quench). Per nu-KZ serve sweep su dt a chi fisso. Lo script analyze_termodinamica
+e' stato corretto: fit logistico (chi_c, w) invece di power-law (nu).
+Script: test_termodinamica_kink.py + analyze_termodinamica.py
+Figure: figures/termodinamica_aggregata_L2.png
 
 ---
 

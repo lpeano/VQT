@@ -123,40 +123,51 @@ def main():
     chi_arr = np.array(chi_arr, float)
     frac_arr = np.array(frac_arr)
 
-    # --- chi_c (n=0.5) ---
+    # --- FIT LOGISTICO (modello CORRETTO per una curva di nucleazione) ---
+    # La frazione di nucleazione e' una PROBABILITA' (sigmoide), non una densita'
+    # di difetti. Si fitta con una logistica P = 1/(1+exp(-(chi-chi_c)/w)).
+    # NB: l'esponente nu di Kibble-Zurek NON si estrae da questa curva: KZ riguarda
+    # la densita' di difetti vs VELOCITA' di quench (dt), non la prob. di nucleazione
+    # vs ampiezza iniziale. Per nu-KZ serve uno sweep su dt a chi_mean fisso.
+    from scipy.optimize import curve_fit
+
+    def logistic(x, xc, w):
+        return 1.0 / (1.0 + np.exp(-(x - xc) / w))
+
+    print("\n  " + "=" * 64)
     chi_c = None
+    w = None
+    # interpolazione lineare come guess iniziale
+    chi_c_guess = chi_arr[len(chi_arr)//2]
     for i in range(len(chi_arr) - 1):
         if (frac_arr[i] - 0.5) * (frac_arr[i+1] - 0.5) <= 0 and frac_arr[i] != frac_arr[i+1]:
             t = (0.5 - frac_arr[i]) / (frac_arr[i+1] - frac_arr[i])
-            chi_c = chi_arr[i] + t * (chi_arr[i+1] - chi_arr[i])
+            chi_c_guess = chi_arr[i] + t * (chi_arr[i+1] - chi_arr[i])
             break
 
-    print("\n  " + "=" * 64)
-    if chi_c is not None:
-        print(f"  chi_c (n=0.5): {chi_c:.2f}  (chi_c/chi_stable = {chi_c/CHI_STABLE:.3f})")
+    if np.all(frac_arr < 0.5):
+        print("  chi_c NON raggiunto: tutti i punti < 50% (estendere sweep verso l'alto)")
+    elif np.all(frac_arr > 0.5):
+        print("  chi_c sotto il range (estendere sweep verso il basso)")
     else:
-        if np.all(frac_arr < 0.5):
-            print(f"  chi_c NON raggiunto: tutti i punti < 50% (estendere sweep verso l'alto)")
-        elif np.all(frac_arr > 0.5):
-            print(f"  chi_c sotto il range (estendere sweep verso il basso)")
-
-    # --- fit KZ ---
-    nu = None
-    if chi_c is not None:
-        eps = (chi_arr - chi_c) / CHI_STABLE
-        valid = (frac_arr > 0.05) & (frac_arr < 0.95) & (eps > 0)
-        if np.sum(valid) >= 3:
-            lx, ly = np.log(eps[valid]), np.log(frac_arr[valid])
-            nu, lk = np.polyfit(lx, ly, 1)
-            r2 = 1 - np.sum((ly - (nu*lx+lk))**2) / (np.sum((ly-ly.mean())**2)+1e-30)
-            print(f"  Esponente KZ:  nu = {nu:.3f}  (R2 = {r2:.3f}, {int(np.sum(valid))} punti)")
-            if abs(nu - 1.0) < 0.2:
-                print("  -> nu ~ 1: coerente con phi^4 1D classico (Kibble-Zurek).")
-            else:
-                print(f"  -> nu = {nu:.2f}: deviazione dal phi^4 classico.")
-        else:
-            print(f"  Fit KZ: solo {int(np.sum(valid))} punti nella zona 5%-95% "
-                  f"(servono >=3; rifinire lo sweep attorno a chi_c).")
+        try:
+            popt, pcov = curve_fit(logistic, chi_arr, frac_arr,
+                                   p0=[chi_c_guess, 1.0], maxfev=5000)
+            perr = np.sqrt(np.diag(pcov))
+            chi_c, w = float(popt[0]), float(abs(popt[1]))
+            pred = logistic(chi_arr, *popt)
+            r2 = 1 - np.sum((frac_arr - pred)**2) / (np.sum((frac_arr - frac_arr.mean())**2)+1e-30)
+            print(f"  FIT LOGISTICO (curva di nucleazione):  R2 = {r2:.4f}")
+            print(f"    chi_c = {chi_c:.2f} +- {perr[0]:.2f}   "
+                  f"(chi_c/chi_stable = {chi_c/CHI_STABLE:.3f})")
+            print(f"    larghezza w = {w:.2f} +- {perr[1]:.2f}   "
+                  f"(w/chi_stable = {w/CHI_STABLE:.4f})")
+            print(f"    transizione 10%-90% in ~{w*np.log(81):.1f} unita di chi_mean")
+        except Exception as e:
+            print(f"  Fit logistico fallito: {e}")
+            chi_c = chi_c_guess
+    print("  NB: l'esponente nu di Kibble-Zurek NON si estrae da questa curva")
+    print("      (prob. nucleazione vs ampiezza, non densita' vs velocita' di quench).")
 
     # --- cooperativity ---
     coop_arr = np.array(coop_arr)
@@ -168,30 +179,24 @@ def main():
 
     # --- grafico ---
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
-    ax1.plot(chi_arr, frac_arr, "o-", color="#d62728", ms=8)
+    ax1.plot(chi_arr, frac_arr, "o", color="#d62728", ms=8, label="dati")
     ax1.axhline(0.5, color="gray", ls=":", alpha=0.6)
-    if chi_c is not None:
-        ax1.axvline(chi_c, color="blue", ls="--", label=f"chi_c={chi_c:.1f}")
+    if chi_c is not None and w is not None:
+        xf = np.linspace(chi_arr.min(), chi_arr.max(), 200)
+        ax1.plot(xf, logistic(xf, chi_c, w), "-", color="#1f77b4",
+                 label=f"logistica (chi_c={chi_c:.1f}, w={w:.2f})")
+        ax1.axvline(chi_c, color="blue", ls="--", alpha=0.6)
     ax1.set_xlabel("chi_mean"); ax1.set_ylabel("frazione nucleazione (M_tot>1)")
     ax1.set_title(f"Curva di nucleazione energetica L{args.level}")
     ax1.set_ylim(-0.05, 1.05); ax1.legend(fontsize=8); ax1.grid(alpha=0.3)
 
-    if nu is not None:
-        eps = (chi_arr - chi_c) / CHI_STABLE
-        valid = (frac_arr > 0.05) & (frac_arr < 0.95) & (eps > 0)
-        ax2.loglog(eps[valid], frac_arr[valid], "o", color="#d62728", ms=8, label="dati")
-        ef = np.linspace(eps[valid].min(), eps[valid].max(), 50)
-        ax2.loglog(ef, np.exp(lk)*ef**nu, "--", color="#1f77b4",
-                   label=f"n~eps^{nu:.2f}")
-        ax2.set_xlabel("epsilon=(chi-chi_c)/chi_stable"); ax2.set_ylabel("n")
-        ax2.set_title(f"Fit KZ: nu={nu:.3f}")
-        ax2.legend(fontsize=8); ax2.grid(alpha=0.3, which="both")
-    else:
-        ax2.plot(chi_arr, coop_arr, "s-", color="#2ca02c")
-        ax2.axhline(1.0, color="gray", ls=":")
-        ax2.set_xlabel("chi_mean"); ax2.set_ylabel("cooperativity")
-        ax2.set_title("Cooperativity (1=indip., >1=cooperativa)")
-        ax2.grid(alpha=0.3)
+    # pannello 2: cooperativity (indipendente vs cooperativa)
+    ax2.plot(chi_arr, coop_arr, "s-", color="#2ca02c")
+    ax2.axhline(1.0, color="gray", ls=":", label="indipendente (=1)")
+    ax2.set_xlabel("chi_mean"); ax2.set_ylabel("cooperativity")
+    ax2.set_title("Cooperativity (1=indip., >1=cooperativa)")
+    ax2.set_ylim(0.9, max(1.1, float(np.max(coop_arr))*1.1))
+    ax2.legend(fontsize=8); ax2.grid(alpha=0.3)
 
     fig.suptitle(f"Termodinamica delle pareti L{args.level} (aggregato)",
                  fontweight="bold")
