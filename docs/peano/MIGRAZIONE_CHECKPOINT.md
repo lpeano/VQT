@@ -198,33 +198,67 @@ TASK A [IN CORSO 2026-06-04]:
   ALLA RIPRESA: eseguire analyze_termodinamica.py per la curva completa 46-78 +
   fit nu. Se nu~1 -> phi^4 1D classico.
 
->>> APPUNTI DA VERIFICARE (registrati 2026-06-04, NON ancora dimostrati) <<<
+## >>> ROADMAP UNIVERSALE E LEGGE DI STATO TOPOLOGICA <<<
 
-  [V1] LEGGE GENERALIZZATA / DATA COLLAPSING (priorita' alta dopo Task A):
-    Ipotesi: n_kink = F((chi-chi_c)/chi_c) con F universale su tutti i livelli.
-    Per dimostrarla serve la curva n(chi) ANCHE a L3 (non solo L2). Test:
-    plottare n vs epsilon=(chi-chi_c)/chi_c per L2 e L3; se i punti collassano
-    sulla stessa curva -> legge universale [OSS]; se no -> effetti di scala finita.
-    COSTO: sweep completo L3 ~30-40h. SCORCIATOIA (resume crash-safe, frazionabile):
-    (1) sweep RADO L3 (3-4 punti: 64,68,72) per trovare chi_c_L3;
-    (2) 2-3 punti fitti attorno a chi_c_L3 per nu_L3. ~6-7 punti, ~12-15h spalmabili.
+Obiettivo: dimostrare che la nucleazione di kink massivi obbedisce a una legge
+universale di scala, trasformando il simulatore in una teoria fisica formalizzata.
 
-  [V2] "1.34 = COSTANTE DI ACCOPPIAMENTO DEL VUOTO" (da confermare):
-    chi_c/chi_stable ~1.34 e' misurato a UNA scala (L2). E' [OSS] a L2 ma [CNG]
-    come costante universale finche' chi_c_L3/chi_stable non da' ancora ~1.34.
-    Verificare con la curva L3 di [V1].
+REGOLA DI PROMOZIONE: un punto passa da [CNG] a [OSS] SOLO dopo dati coerenti su
+ALMENO DUE livelli gerarchici (es. L2 e L3). Un solo livello non basta mai.
 
-  [V3] RAPPORTO DI GAP TOPOLOGICO (chi_c_energetico / chi_c_geometrico ~1.34/1.24):
-    Entrambe le soglie vanno mappate con LO STESSO protocollo (sweep+20 seed).
-    Ora la geometrica e' nota solo da misure laterali. Mappare anche quella, poi
-    verificare se il rapporto e' invariante di scala (L2 vs L3).
+### 1. Definizione della legge (ipotesi di lavoro)
+La densita' dei difetti segue una funzione universale:
+    n_kink = F(epsilon, Geometria),   epsilon = (chi - chi_c) / chi_c
+Ipotesi: la funzione F e' invariante di scala al variare del livello L_n.
 
-  [V4] QUANTIZZAZIONE DELLA LARGHEZZA DEL KINK (divisori di 24):
-    Confermato solo il modo fondamentale w=1 a L2 (n_eff_block=1.0). Per affermare
-    che le larghezze permesse sono {1,2,4,8,...} (divisori) e NON valori intermedi,
-    servono kink di larghezza 2 e 4 osservati + assenza di larghezze intermedie.
-    Resta [CNG]. test_quantizzazione_kink diretto aveva dato larghezze non-divisori
-    (8,11,14,17) per problema di metrica/regime.
+### 2. Punti da verificare
+
+  [V1] VALIDAZIONE DI SCALA (DATA COLLAPSING) — [CNG]. La prova regina.
+    Le curve n(epsilon) misurate su L2 e L3 devono SOVRAPPORSI una volta
+    normalizzate rispetto ai rispettivi chi_c. Se collassano -> legge universale;
+    se no -> effetti di scala finita.
+    Stato: curva L2 in misura (Task A). Manca L3.
+
+  [V2] COSTANTE DI ACCOPPIAMENTO — [CNG].
+    Il rapporto kappa = chi_c / chi_stable ~1.34 (misurato a L2) deve risultare
+    invariante anche a L3. Stato: [OSS] a L2 (kappa~1.34), [CNG] come costante.
+
+  [V3] CLASSE DI UNIVERSALITA' — [CNG].
+    L'esponente nu del fit della sigmoide deve mantenere lo stesso valore (o
+    scalare in modo prevedibile) tra i livelli. Stato: nu_L2 in misura (Task A).
+    Manca nu_L3.
+
+  [V4] QUANTIZZAZIONE DELLA LARGHEZZA — [CNG].
+    Dimostrare che i kink nucleano SOLO con larghezza w in {1,2,4,8,...} (divisori
+    di 24), rifiutando stati intermedi. Stato: confermato solo w=1 a L2
+    (n_eff_block=1.0). Servono w=2,4 osservati + assenza di valori intermedi.
+    NB: test_quantizzazione_kink diretto aveva dato larghezze non-divisori
+    (8,11,14,17) per problema di metrica/regime — da rifare con metrica corretta.
+
+  [V5] RAPPORTO DI GAP TOPOLOGICO — [CNG]. (test aggiuntivo)
+    chi_c_energetico / chi_c_geometrico ~ 1.34 / 1.24. Entrambe le soglie vanno
+    mappate con LO STESSO protocollo (sweep + 20 seed). Ora la geometrica e' nota
+    solo da misure laterali (loc_ratio>5). Mappare anche quella, poi verificare se
+    il rapporto e' invariante di scala (L2 vs L3).
+
+### 3. Metodologia operativa
+- NON cercare il numero di kink assoluto (dipende dall'energia): cercare la
+  DENSITA' di nucleazione normalizzata n(epsilon).
+- Campionamento intelligente per L3 (bypassa il costo ~30-40h dello sweep pieno):
+  (1) sweep RADO L3 (3-4 punti: es. 64,68,72) per trovare chi_c_L3;
+  (2) rifinimento locale (2-3 punti fitti attorno a chi_c_L3) per nu_L3.
+  ~6-7 punti, ~12-15h spalmabili su piu' sessioni (ResumeManager crash-safe).
+
+### 4. Stato dati (aggiornare a ogni progresso)
+| Punto | L2 | L3 | Promosso a [OSS]? |
+|-------|----|----|-------------------|
+| chi_c | ~67 (in misura) | — | no (serve L3) |
+| nu    | in misura | — | no (serve L3) |
+| kappa=chi_c/chi_stable | ~1.34 | — | no |
+| V1 data collapse | — | — | no |
+| V4 larghezza w | solo w=1 | — | no |
+
+---
 
 TASK B [PRIORITA' MEDIA — PARZIALMENTE FATTO]:
 
