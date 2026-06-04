@@ -427,9 +427,21 @@ l'entropia di configurazione associata a ciascun modo. [Da formalizzare]
 - L2, $\chi_{\mathrm{mean}}=68$: $n_{\mathrm{eff,block}} = 1.0\pm0.1$ per i seed
   con difetto reale ($M_{\mathrm{tot}}>10$). Consistente con $\mathcal{D}_2=\{1\}$.
 
-**In verifica (run overnight 2026-06-03):**
-- L3, $\chi_{\mathrm{mean}}=68$, 10 seed: misura di $n_{\mathrm{eff,block\_L2}}$.
-  Se $n_{\mathrm{eff}}\in\{1,2\}$: conferma $\mathcal{D}_3$ e apre la "spettroscopia".
+**[OSS] L3 — verdetto (2026-06-04):**
+- L3, $\chi_{\mathrm{mean}}=68$, 10 seed: $n_{\mathrm{eff,block\_L2}} = 12.1\pm2.9$
+  (range 7-18). Predizione $\{1,2\}$ FALSIFICATA nel regime $\chi_{\mathrm{mean}}=68$.
+
+  **Motivo fisico**: a $\chi_{\mathrm{mean}}=68$ ciascuno dei 24 blocchi L2
+  del sistema L3 nucleata un kink con probabilita' $\approx50\%$ (dalla misura
+  di riproducibilita' a L2: 6/15 seed con $M_{\mathrm{tot}}>1$). Il risultato e'
+  $24\times0.5\approx12$ kink indipendenti distribuiti nei blocchi L2 — non un
+  super-kink coerente di L3. L'ipotesi descrive il **regime diluito** (1 solo
+  kink per sistema), non il regime denso (kink multipli e indipendenti).
+
+  **Come testare a L3 nel regime corretto**: usare $\chi_{\mathrm{mean}}\ll68$
+  tale che la probabilita' di nucleazione per blocco L2 sia $\ll50\%$, in modo
+  da osservare $0$ o $1$ kink sull'intero sistema L3. In quel regime la predizione
+  $\mathcal{D}_3=\{1,2\}$ sarebbe ancora verificabile. [Da fare]
   Predizione: $n_{\mathrm{eff}}\in\mathcal{D}_3=\{1,2\}$, mai $\ge3$.
   Script: `experiments/exp3/test_quantizzazione_gerarchica.py`
 
