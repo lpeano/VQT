@@ -68,3 +68,4 @@ experiments/notify_completion.py
 
 # Artefatti di profiling (rigenerabili)
 profile_out.txt
+experiments/exp3/resume/
