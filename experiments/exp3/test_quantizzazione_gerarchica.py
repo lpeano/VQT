@@ -24,6 +24,13 @@ Metodo: per ogni blocco L2 (24 in totale in un sistema L3), somma la rho_tors
 di tutte le sue foglie -> vettore di 24 "masse per blocco L2" -> IPR.
 n_eff_block_L2 = 1 / IPR * 24.
 
+PERSISTENZA E RECOVERY:
+  I risultati vengono salvati su disco dopo ogni seed completato.
+  In caso di crash o interruzione, rilanciare lo stesso comando: i seed gia'
+  completati vengono saltati automaticamente, il run riprende dal punto di
+  interruzione. File di ripresa: experiments/exp3/resume/quantizzazione_L*.json
+  (3 copie ruotanti: main / .tmp / .bak per recovery da crash durante la scrittura).
+
 ESECUZIONE:
   cd VQT_repo
   python experiments/exp3/test_quantizzazione_gerarchica.py          # default 5 seed L3
@@ -50,11 +57,26 @@ from wqt_oop.segmento_quantistico import SegmentoQuantistico
 from wqt_oop.solitone_composito import SolitoneComposito
 from wqt_oop.energy_metrics import freeze_and_measure_mass, compute_hierarchical_mass
 from test_soglia_formazione import make
+from resume_manager import ResumeManager
 
 CHI_STABLE = 50.0
 FIGDIR = os.path.join(ROOT, "experiments", "exp3", "figures")
 os.makedirs(FIGDIR, exist_ok=True)
 DIVISORS_24 = {1, 2, 3, 4, 6, 8, 12, 24}
+
+
+def _collect_chi_profile(root):
+    """Raccoglie il valore chi di ogni foglia in ordine deterministico (BFS)."""
+    vals = []
+    def _walk(node):
+        if node.children and isinstance(node.children[0], SegmentoQuantistico):
+            vals.extend(float(c.chi) for c in node.children)
+        else:
+            for c in node.children:
+                if isinstance(c, SolitoneComposito):
+                    _walk(c)
+    _walk(root)
+    return vals  # lista di float, serializzabile direttamente in JSON
 
 
 def rho_per_L1_block(root, hot_pct=None):
@@ -164,6 +186,9 @@ def main():
     ap.add_argument("--quench-steps", type=int, default=500)
     ap.add_argument("--hot-pct", type=float, default=99.0,
                     help="percentile per nodi hot (default 99 = top 1%%)")
+    ap.add_argument("--save-chi", action="store_true", default=False,
+                    help="salva il profilo chi di ogni foglia nel resume file "
+                         "(consente il riuso dei congelati L3 per costruire L4)")
     args = ap.parse_args()
 
     seeds = list(range(1, args.seeds + 1))
@@ -182,11 +207,34 @@ def main():
 
     print(f"\n  Avvio raccolta dati ({len(seeds)} seed × 1 quench L{args.level})...")
 
+    # --- persistenza robusta ---
+    resume_dir = os.path.join(ROOT, "experiments", "exp3", "resume")
+    resume_file = os.path.join(resume_dir,
+        f"quantizzazione_L{args.level}_cm{args.chi_mean:.0f}.json")
+    rm = ResumeManager(resume_file)
+    if rm.n_completed > 0:
+        print(f"  {rm.n_completed} seed gia' completati — vengono saltati.")
+
     # per ogni seed: n_eff a ogni profondita'
     all_neff = []  # lista di dict {depth: n_eff}
     all_mtot = []
 
     for seed in seeds:
+        # --- resume: salta se gia' fatto ---
+        if rm.has(seed):
+            cached = rm.get(seed)
+            # ricostruisce neff_dict dal formato JSON (chiavi stringa -> int)
+            neff_cached = {int(d): v for d, v in cached["neff_dict"].items()}
+            all_neff.append(neff_cached)
+            all_mtot.append(cached["mtot"])
+            depths_c = sorted(neff_cached.keys())
+            summary_c = "  ".join(
+                f"L{d}:{neff_cached[d]['n_eff']:.1f}/{neff_cached[d]['n_blocks']}"
+                for d in depths_c)
+            print(f"  seed {seed:>2} [resume]  "
+                  f"M_tot={cached['mtot']:.2e}  [{summary_c}]")
+            continue
+
         print(f"  seed {seed}/{len(seeds)}...", end=" ", flush=True)
         sol = make(seed, chi_mean=args.chi_mean, level=args.level)
         for _ in range(args.pre):
@@ -198,10 +246,24 @@ def main():
         neff_dict = hierarchical_neff(frozen, hot_pct=args.hot_pct)
         all_neff.append(neff_dict)
         all_mtot.append(h["M_tot"])
+
+        # --- salva subito dopo il calcolo (crash-safe) ---
+        # --save-chi: salva anche il profilo chi per foglia nel resume file,
+        # permettendo la ricostruzione del congelato L3 come input per L4.
+        # Il profilo e' un array di N float (es. 13824 per L3) serializzato
+        # come lista JSON. Dimensione: ~110 KB per L3, trascurabile.
+        chi_profile = None
+        if args.save_chi:
+            chi_profile = _collect_chi_profile(frozen)
+        rm.save(seed, mtot=h["M_tot"], neff_dict=neff_dict,
+                chi_profile=chi_profile)
+
         depths = sorted(neff_dict.keys())
         summary = "  ".join(f"L{d}:{neff_dict[d]['n_eff']:.1f}/{neff_dict[d]['n_blocks']}"
                             for d in depths)
         print(f"M_tot={h['M_tot']:.2e}  [{summary}]")
+
+    rm.archive()  # sposta il file di ripresa in archivio datato
 
     # --- analisi ---
     print("\n  " + "=" * 78)
