@@ -44,6 +44,7 @@ import json
 import shutil
 import datetime
 import math
+import numpy as np
 
 
 class ResumeManager:
@@ -95,18 +96,37 @@ class ResumeManager:
                 if isinstance(v, dict)
             },
         }
+        # Il profilo chi NON va nel JSON (troppo voluminoso a L3+).
+        # Viene salvato come file numpy float32 separato: ~54 KB per L3
+        # (vs ~250 KB nel JSON in float64). Percorso: resume/<stem>_chi_<seed>.npy
         if chi_profile is not None:
-            entry["chi_profile"] = [float(x) for x in chi_profile]
+            chi_path = self._chi_path(seed)
+            arr = np.array(chi_profile, dtype=np.float32)
+            np.save(chi_path + ".tmp", arr)
+            if os.path.exists(chi_path):
+                shutil.copy2(chi_path, chi_path + ".bak")
+            os.replace(chi_path + ".tmp", chi_path)
+            entry["has_chi"] = True  # flag nel JSON: "il .npy esiste"
         self.data[str(seed)] = entry
         self._atomic_write()
 
-    def has_chi_profile(self, seed: int) -> bool:
-        """True se l'entry del seed contiene anche il profilo chi."""
-        return self.has(seed) and "chi_profile" in self.data[str(seed)]
+    def _chi_path(self, seed: int) -> str:
+        """Percorso del file .npy del profilo chi per il seed dato."""
+        stem = os.path.splitext(self.path)[0]
+        return f"{stem}_chi_{seed}.npy"
 
-    def get_chi_profile(self, seed: int) -> list:
-        """Ritorna il profilo chi del seed (lista di float)."""
-        return self.data[str(seed)]["chi_profile"]
+    def has_chi_profile(self, seed: int) -> bool:
+        """True se il profilo chi e' disponibile su disco per questo seed."""
+        return (self.has(seed)
+                and self.data[str(seed)].get("has_chi", False)
+                and os.path.exists(self._chi_path(seed)))
+
+    def get_chi_profile(self, seed: int) -> np.ndarray:
+        """Carica e ritorna il profilo chi dal file .npy (float32)."""
+        path = self._chi_path(seed)
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Profilo chi non trovato: {path}")
+        return np.load(path)  # float32, shape (N_leaves,)
 
     def archive(self) -> str:
         """Archivia il file di ripresa con timestamp (chiamare a fine run)."""
