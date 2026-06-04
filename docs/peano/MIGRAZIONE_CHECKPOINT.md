@@ -173,17 +173,38 @@ di una configurazione solitonica. Velocity-quench -> KE->0 -> E_psi_anchored res
 
 ### Linea scientifica ATTIVA (massa / difetti topologici)
 
->>> PROSSIMI TASK PER LA SESSIONE DEL 2026-06-04 <<<
+>>> STATO SESSIONE 2026-06-04 <<<
 
-TASK A [PRIORITA' MASSIMA — veloce, L2]:
-  TERMODINAMICA DELLE PARETI: sweep chi_mean 58-78 (passo 2), 20 seed/punto,
-  misura n_kink (= frazione di nucleazione) per punto. Fit n ~ |epsilon|^nu.
-  Script da creare: experiments/exp3/test_termodinamica_kink.py
-  Atteso: curva sigmoidale n(chi_mean) con pendenza che determina nu (esponente KZ).
-  Se nu ~ 1 (phi^4 1D): connessione alla fisica universale delle transizioni di fase.
-  Prerequisito per L3 (dice che taglia serve per ospitare kink multipli).
+QUANTIZZAZIONE GERARCHICA L3: TESTATA, FALSIFICATA nel regime denso (cm=68).
+  n_eff_block_L2 = 12.1 +- 2.9 (predetto {1,2}). Motivo: a cm=68 ogni blocco L2
+  nucleata con prob~50%, dando ~24*0.5=12 kink indipendenti (NON un super-kink L3).
+  La "12 = divisore di 24" e' coincidenza statistica (24*p con p=0.5), NON segnale
+  topologico: i valori per-seed si distribuiscono ~normalmente (sigma~2.4 = binomiale).
+  L'ipotesi Z_24 vale nel regime DILUITO (1 kink). Per testarla a L3 serve cm molto
+  piu' basso (prob nucleazione per blocco << 50%).
+  Script: test_quantizzazione_gerarchica.py ; figure: quantizzazione_gerarchica_L3.png
 
-TASK B [PRIORITA' MEDIA — da scrivere, niente codice]:
+TASK A [IN CORSO 2026-06-04]:
+  TERMODINAMICA DELLE PARETI: sweep n(chi_mean) su L2, 20 seed/punto.
+  Script: experiments/exp3/test_termodinamica_kink.py [FATTO, committato 8794523]
+  Con ResumeManager (crash-safe): se interrotto, rilanciare stesso comando.
+  SCOPERTA dallo smoke test: cm 58-78 e' tutto SATURO (n=100%) -> chi_c < 58.
+  Sweep corretto: 46,48,50,52,54,56,58,60,62 (cattura la transizione 0->100%).
+  ALLA RIPRESA: leggere output del run (chi_c, nu, cooperativity). Se nu~1 -> phi^4 1D.
+  La cooperativity (var osservata / binomiale) distingue nucleazione indipendente
+  (=1) da cooperativa (>1, segnale topologico).
+  COMANDO: python experiments/exp3/test_termodinamica_kink.py --level 2 --seeds 20 \
+           --chi-means 46,48,50,52,54,56,58,60,62 --quench-steps 500
+
+TASK B [PRIORITA' MEDIA — PARZIALMENTE FATTO]:
+  FORMALIZZAZIONE: docs/peano/FORMALIZZAZIONE_MASSA_TOPOLOGICA.md AGGIORNATO con:
+  - Sezione 4: ipotesi quantizzazione gerarchica Z_24 (divisori come livelli)
+  - Sezione 4.4: spettro E_kink ~ 1/w vs Rydberg 1/n^2
+  - Sezione 4.6: Spettroscopia della Frustrazione Topologica (serie armonica, Landauer)
+  - Verdetto L3 aggiornato (falsificato nel regime denso)
+  DA COMPLETARE: legge di scala KZ (nu) dopo Task A.
+
+TASK B-bis [PRIORITA' MEDIA — da scrivere, niente codice]:
   FORMALIZZAZIONE per "Il Muratore di Planck": aggiornare
   docs/peano/FORMALIZZAZIONE_MASSA_TOPOLOGICA.md con la sezione sul kink phi^4.
   Contenuto: profilo chi (da +50 a -50, 6 nodi, 1 blocco L1), M_tot come integrale
