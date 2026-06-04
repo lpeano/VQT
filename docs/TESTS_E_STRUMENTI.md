@@ -35,6 +35,7 @@ lanciarlo con tutti i parametri, e cosa aspettarsi in output.
 | | `test_biopsia_difetto_v2.py` | ~15-30 min | geometria kink |
 | | `test_soc_distribuzione.py` | ~20 min | SOC (falsificata) |
 | | `test_quantizzazione_gerarchica.py` | ~4 ore (L3) | ipotesi Z_24 |
+| | `test_termodinamica_kink.py` | ~50 min (L2) | legge KZ, chi_c, nu |
 
 ---
 
@@ -538,6 +539,55 @@ python experiments/exp3/test_quantizzazione_gerarchica.py \
 **Output**: n_eff_block per ogni profondita' gerarchica, frazione seed nella
 predizione, verdetto. Figure: `figures/quantizzazione_gerarchica_L{n}.png`.
 Resume: `resume/quantizzazione_L{n}_cm{cm}.json` + `.bak` + `.tmp`.
+
+---
+
+### 5.11 `experiments/exp3/test_termodinamica_kink.py`
+
+**Cosa fa e perche'** (Task A): mappa la curva di nucleazione n(chi_mean) e
+stima l'esponente critico di Kibble-Zurek nu. Per ogni chi_mean dello sweep,
+esegue N_seed quench indipendenti e conta la frazione che nuclea un kink
+(M_tot > 1). La curva n(chi_mean) sale da 0 (sotto-critico) a 1 (saturo),
+attraversando una transizione. Da questa:
+- chi_c = chi_mean dove n = 0.5 (punto critico, interpolato)
+- nu = pendenza di log(n) vs log(epsilon), con epsilon = (chi_mean - chi_c)/chi_stable
+- cooperativity = varianza osservata / varianza binomiale indipendente
+  (1 = nucleazione stocastica indipendente; > 1 = cooperativa/topologica)
+
+**Perche' serve**: trasforma il modello da fenomenologico a PREDITTIVO. Se
+nu ~ 1, il sistema e' nella classe di universalita' del phi^4 1D classico.
+Inoltre, chi_c determina il "punto di rugiada" per testare la quantizzazione
+gerarchica nel regime diluito (1 solo kink) anziche' denso.
+
+> **NOTA sullo sweep**: i valori chi_mean 58-78 sono tutti nel regime SATURO
+> (nucleazione 100%) a L2 — la transizione e' piu' in basso. Usare uno sweep
+> che parte da ~46 per catturare la salita 0->100%.
+
+**Supporta resume da interruzione** (ResumeManager): se il run si interrompe,
+rilanciare lo stesso comando — i (chi_mean, seed) gia' completati vengono saltati.
+
+```bash
+# Sweep per catturare la transizione di nucleazione (L2, ~50 min)
+python experiments/exp3/test_termodinamica_kink.py \
+  --level 2 --seeds 20 --chi-means 46,48,50,52,54,56,58,60,62
+
+# Resume dopo interruzione: stessa riga
+python experiments/exp3/test_termodinamica_kink.py \
+  --level 2 --seeds 20 --chi-means 46,48,50,52,54,56,58,60,62
+```
+
+| Parametro | Default | Descrizione |
+|---|---|---|
+| `--level` | 2 | Livello gerarchico (L2 = N=576, ~50 min; L3 ~15-20 ore) |
+| `--seeds` | 20 | Seed per punto dello sweep |
+| `--chi-means` | `58,...,78` | Sweep di chi_mean (CSV). **Spostare in basso (~46-62) per la transizione** |
+| `--pre` | 40 | Step di pre-evoluzione |
+| `--quench-steps` | 500 | Step massimi del quench |
+
+**Output**: per chi_mean → frazione nucleazione, cooperativity, M_tot medio.
+Poi: chi_c stimato, esponente nu (fit KZ), R2.
+Figure: `figures/termodinamica_kink_L{n}.png`.
+Resume: `resume/termodinamica_L{n}_cm{cm}.json`.
 
 ---
 
