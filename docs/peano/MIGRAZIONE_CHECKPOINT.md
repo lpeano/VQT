@@ -1,8 +1,22 @@
 # Checkpoint VQT - Ultimo Aggiornamento: 2026-06-04
 
 ## >>> RIPRESA PROSSIMA SESSIONE <<<
-TASK A (L2) CHIUSO: chi_c/chi_stable=1.338, cooperativity=1 (vedi sez. ROADMAP 4b).
-PROSSIMO PASSO: V1/V2/V3 = stessa curva di nucleazione a L3 per il data collapsing.
+
+IN CORSO INTERROTTO (2026-06-04): SOGLIA GEOMETRICA L2 [V5 gap topologico].
+  Run interrotto manualmente, stato salvato (ResumeManager). Fatto: cm42 (15/15),
+  cm46 (3/15). Da fare: cm46(resto),50,54,58,62.
+  RIPRENDERE con lo STESSO comando (salta i seed gia' fatti):
+    python experiments/exp3/test_soglia_geometrica.py --seeds 15 \
+      --chi-means 42,46,50,54,58,62 --quench-steps 500
+  OBIETTIVO: chi_c_geometrico (loc_ratio>5) vs chi_c_energetico (1.338) = gap [V5].
+  Smoke test: cm54->67%, cm62->100% -> chi_c_geom probabile ~48-52 (< energetico 67).
+  CAVEAT prima di interpretare il gap come "due fasi": escludere che sia solo
+  "un difetto continuo tagliato da due metriche" (loc_ratio relativo vs M_tot
+  assoluto). Test discriminante: guardare DENTRO i difetti tra le due soglie
+  (cm 50-62) - sono oggetti stabili con struttura propria o difetti deboli che
+  diventano massivi salendo in chi? Se continuum -> una sola transizione.
+
+DOPO V5: V1/V2/V3 = stessa curva di nucleazione a L3 per il data collapsing.
   - Strategia: sweep RADO L3 (campionamento intelligente) attorno al chi_c atteso.
     Stima ingenua chi_c_L3 ~ stesso rapporto 1.338*chi_stable, MA va misurato.
   - Comando base (frazionabile, ResumeManager crash-safe):
