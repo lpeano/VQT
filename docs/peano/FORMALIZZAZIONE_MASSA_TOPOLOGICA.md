@@ -298,7 +298,15 @@ La differenza chiave: nell'atomo la simmetria e' $O(3)$ continua, qui e' $Z_{24}
 discreta. Conseguenza: non tutti i valori interi $1,2,\ldots,L-1$ sono permessi,
 solo quelli che dividono 24.
 
-### 4.4 Livelli energetici del kink
+**Nota sulle rappresentazioni irriducibili.** Per $O(3)$ continuo, ogni livello $n$
+ha $n^2$ stati (degenerazione da $-\ell$ a $+\ell$ per ogni $\ell=0,\ldots,n-1$).
+Per $Z_{24}$ discreto il conteggio e' diverso: ogni livello $L$ aggiunge 1 nuovo
+modo (il divisore piu' grande in $\mathcal{D}_L\setminus\mathcal{D}_{L-1}$, se esiste),
+non $2L-1$ modi. Lo spettro e' molto piu' **parsimonioso** di quello atomico: a $L=24$
+ci sono al piu' 7 modi, dove l'atomo di idrogeno avrebbe $24^2=576$ stati. Questa
+parsimonia e' una firma della struttura discreta vs continua, non un limite della teoria.
+
+### 4.4 Livelli energetici del kink e confronto con la serie di Rydberg
 
 Per un kink di larghezza $w$ su un ring di 24 nodi con coupling nearest-neighbour
 $W_{nn}$, il campo passa linearmente da $+\chi_0$ a $-\chi_0$ in $w$ nodi. La
@@ -319,6 +327,20 @@ $$E_{\mathrm{kink}}(w) \approx \frac{1}{2}\,\alpha_K\cdot w \cdot W_{nn}
 | 6 | $m=4$ | 5.1 |
 | 8 | $m=3$ | 3.8 |
 | 12 | $m=2$ | 2.5 |
+
+**Differenza fondamentale rispetto alla serie di Rydberg/Balmer.**
+La serie di Rydberg per l'atomo di idrogeno ha $E_n = -E_R/n^2$ (esponente 2 al
+denominatore), che origina dal potenziale coulombiano $V\sim 1/r$ in 3 dimensioni.
+Il nostro kink VQT ha $E_{\mathrm{kink}}(w)\sim 1/w$ (esponente 1): e' una
+**serie armonica**, non una serie di Rydberg. La differenza viene dalla geometria:
+il kink vive su un ring 1D, dove l'energia del gradiente scala come
+$(2\chi_0/w)^2 \times w \propto w^{-1}$, non come $w^{-2}$.
+
+Per ottenere $E\sim 1/w^2$ sarebbe necessario un termine di curvatura aggiuntivo
+nell'Hamiltoniana del kink (analogo del termine centrifugo $\ell(\ell+1)/r^2$ in
+meccanica quantistica 3D). Cio' potrebbe emergere a livelli gerarchici alti, dove
+la struttura del reticolo acquista carattere 2D/3D effettivo, ma non e' nel modello
+corrente e non puo' essere affermato senza derivazione esplicita. [CNG]
 
 **[OSS] Dato osservato a L2** ($\chi_{\mathrm{mean}}=68$, massima localizzazione):
 il kink occupa $n_{\mathrm{eff,block}} = 1.0\text{--}1.1$ blocchi L1 — consistente
