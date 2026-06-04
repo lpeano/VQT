@@ -242,8 +242,13 @@ Ipotesi: la funzione F e' invariante di scala al variare del livello L_n.
 
   [V4] QUANTIZZAZIONE DELLA LARGHEZZA — [CNG].
     Dimostrare che i kink nucleano SOLO con larghezza w in {1,2,4,8,...} (divisori
-    di 24), rifiutando stati intermedi. Stato: confermato solo w=1 a L2
-    (n_eff_block=1.0). Servono w=2,4 osservati + assenza di valori intermedi.
+    di 24), rifiutando stati intermedi.
+    STATO PRECISO (non confondere "non risolto" con "un solo modo"):
+    - A L2 il kink HA larghezza risolta: ~6 nodi in 1 blocco L1 (biopsia v2),
+      n_eff_block=1.0. NON e' puntiforme: la struttura interna esiste.
+    - MA e' osservato UN SOLO modo (il fondamentale w=1). La quantizzazione sui
+      divisori richiede di vedere modi DIVERSI (w=2,4,...) + assenza di intermedi.
+    - Vie probabili: L3 (piu' risoluzione) o interazione tra kink (1+1, 1+2...).
     NB: test_quantizzazione_kink diretto aveva dato larghezze non-divisori
     (8,11,14,17) per problema di metrica/regime — da rifare con metrica corretta.
 
