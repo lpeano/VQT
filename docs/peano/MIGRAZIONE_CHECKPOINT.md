@@ -1,4 +1,16 @@
-# Checkpoint VQT - Ultimo Aggiornamento: 2026-06-03
+# Checkpoint VQT - Ultimo Aggiornamento: 2026-06-04
+
+## >>> RIPRESA PROSSIMA SESSIONE <<<
+TASK A (L2) CHIUSO: chi_c/chi_stable=1.338, cooperativity=1 (vedi sez. ROADMAP 4b).
+PROSSIMO PASSO: V1/V2/V3 = stessa curva di nucleazione a L3 per il data collapsing.
+  - Strategia: sweep RADO L3 (campionamento intelligente) attorno al chi_c atteso.
+    Stima ingenua chi_c_L3 ~ stesso rapporto 1.338*chi_stable, MA va misurato.
+  - Comando base (frazionabile, ResumeManager crash-safe):
+    python experiments/exp3/test_termodinamica_kink.py --level 3 --seeds 10 \
+      --chi-means 64,68,72,76 --quench-steps 500   (sweep rado per trovare chi_c_L3)
+    poi analyze: python experiments/exp3/analyze_termodinamica.py --level 3
+  - COSTO: ~14 min/punto a L2 -> a L3 (24x nodi) ~stima ore/punto. Spalmare su sessioni.
+  - Promuovere a [OSS] SOLO con chi_c coerente su L2 E L3 (regola dei 2 livelli).
 
 ## >>> STATO ATTUALE (riorganizzato 2026-06-01, aggiornato 2026-06-03) <<<
 
