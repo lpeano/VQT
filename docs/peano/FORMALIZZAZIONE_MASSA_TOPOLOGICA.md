@@ -234,7 +234,132 @@ $$
 
 ---
 
-## 4. Sintesi e limiti
+## 4. Ipotesi di quantizzazione gerarchica — divisori di $Z_{24}$ come livelli energetici
+
+> **Status epistemico**: [CNG] — congettura motivata da dati preliminari a L2.
+> Run di verifica a L3 in corso al momento della stesura (2026-06-03).
+
+### 4.1 Motivazione fisica
+
+Il blocco L1 e' un **ring discreto di 24 nodi** con matrice di accoppiamento
+circolante $W$. Ogni matrice circolante su $\mathbb{Z}_{24}$ ha come autovettori
+le armoniche di Fourier discrete:
+$$\mathbf{v}_m = \bigl(1,\,\omega^m,\,\omega^{2m},\ldots,\omega^{23m}\bigr),
+\qquad \omega = e^{2\pi i/24},\quad m=0,1,\ldots,23,$$
+con autovalori
+$$\lambda_m = \sum_{j=0}^{23} W_{0j}\,\omega^{mj}.$$
+Il sistema ha quindi la **simmetria discreta** $Z_{24}$: le rotazioni di $k\cdot
+(2\pi/24)$ sul ring lasciano $W$ invariata.
+
+Un kink $\phi^4$ che si estende su $w$ nodi consecutivi del ring e' una
+**configurazione coerente** del campo solo se l'onda "entra" nel ring senza
+sfasamento residuo — ovvero solo se la larghezza $w$ divide il perimetro $N=24$.
+Questa e' la condizione di **commensurabilita'**:
+$$w \;\Big|\; 24 \quad\Longleftrightarrow\quad w\in\{1,2,3,4,6,8,12,24\}\,.$$
+Larghezze non-divisori generano un termine di mismatch nel potenziale effettivo
+e sono dinamicamente instabili: il kink si collassa al divisore piu' vicino.
+
+### 4.2 Generalizzazione gerarchica
+
+**[CNG] Ipotesi Peano–VQT (2026-06-03):** a ogni livello $L$ della gerarchia, il
+numero di sotto-blocchi del livello $L-1$ che il kink occupa appartiene all'insieme
+$$\mathcal{D}_L \;=\; \{d\in\mathrm{Div}(24)\;:\; d < L\},$$
+dove $\mathrm{Div}(24) = \{1,2,3,4,6,8,12,24\}$.
+
+| Livello | $\mathcal{D}_L$ | Modi accessibili |
+|---|---|---|
+| $L=2$ | $\{1\}$ | 1 solo blocco L1 |
+| $L=3$ | $\{1, 2\}$ | 1 o 2 blocchi L2 |
+| $L=4$ | $\{1, 2, 3\}$ | 1, 2 o 3 blocchi L3 |
+| $L=6$ | $\{1, 2, 3, 4\}$ | aggiunge il modo $d=4$ |
+| $L=8$ | $\{1, 2, 3, 4, 6\}$ | aggiunge $d=6$ |
+| $L=12$ | $\{1,2,3,4,6,8\}$ | aggiunge $d=8$ |
+| $L=24$ | $\{1,2,3,4,6,8,12\}$ | tutti tranne $d=24$ (kink sistema-scala) |
+
+**Perche' $d < L$ e non $d \le L$?** Un kink che occupa esattamente $L$
+sotto-blocchi avrebbe dimensione uguale all'intero livello corrente: non e' piu'
+un difetto localizzato ma un'eccitazione sistema-scala (analogo di un modo globale
+vs un modo locale). Il vincolo $d < L$ garantisce che il kink resti *sub-esteso*.
+
+### 4.3 Analogia con gli orbitali atomici
+
+La struttura e' isomorfa alla quantizzazione degli orbitali idrogeno-simili:
+
+| Atomo | VQT gerarchica |
+|---|---|
+| Numero quantico principale $n$ | Livello $L$ |
+| Numero quantico angolare $\ell=0,\ldots,n-1$ | Larghezza $d\in\mathcal{D}_L$ |
+| Vincolo $\ell < n$ | Vincolo $d < L$ |
+| Aggiunta di un nuovo $\ell$ a ogni $n$ | Sblocco di un divisore a ogni $L$ |
+| Orbitale $s$ (stato fondamentale) | Kink di larghezza 1 (piu' localizzato) |
+| Orbitali $p, d, f, \ldots$ (stati eccitati) | Kink piu' larghi |
+
+La differenza chiave: nell'atomo la simmetria e' $O(3)$ continua, qui e' $Z_{24}$
+discreta. Conseguenza: non tutti i valori interi $1,2,\ldots,L-1$ sono permessi,
+solo quelli che dividono 24.
+
+### 4.4 Livelli energetici del kink
+
+Per un kink di larghezza $w$ su un ring di 24 nodi con coupling nearest-neighbour
+$W_{nn}$, il campo passa linearmente da $+\chi_0$ a $-\chi_0$ in $w$ nodi. La
+densita' di torsione per nodo nel core del kink e':
+$$\rho_{\mathrm{tors}}^{(\mathrm{core})} \approx W_{nn}\left(\frac{2\chi_0}{w}\right)^2,$$
+quindi l'energia totale del kink vale:
+$$E_{\mathrm{kink}}(w) \approx \frac{1}{2}\,\alpha_K\cdot w \cdot W_{nn}
+\cdot \frac{4\chi_0^2}{w^2} = \frac{2\,\alpha_K\,W_{nn}\,\chi_0^2}{w}\,.$$
+
+**[CNG] Spettro previsto** (con $\alpha_K=0.042$, $W_{nn}=0.145$, $\chi_0=50$):
+
+| $w$ | Modo $m=24/w$ | $E_{\mathrm{kink}}(w)$ (unita' sim.) |
+|---|---|---|
+| 1 | $m=24$ | 30.4 (stato fondamentale) |
+| 2 | $m=12$ | 15.2 |
+| 3 | $m=8$ | 10.1 |
+| 4 | $m=6$ | 7.6 |
+| 6 | $m=4$ | 5.1 |
+| 8 | $m=3$ | 3.8 |
+| 12 | $m=2$ | 2.5 |
+
+**[OSS] Dato osservato a L2** ($\chi_{\mathrm{mean}}=68$, massima localizzazione):
+il kink occupa $n_{\mathrm{eff,block}} = 1.0\text{--}1.1$ blocchi L1 — consistente
+con la predizione per il modo fondamentale $w=1$ di $\mathcal{D}_2=\{1\}$.
+$M_{\mathrm{tot}}^{\mathrm{oss}} = 30\text{--}475$ (banda larga; lo spettro
+osservato non e' ancora abbastanza raffinato da distinguere i livelli di $w$
+intra-blocco).
+
+### 4.5 Interpretazione verbale
+
+Il "Muratore di Planck" non sceglie una larghezza arbitraria per i suoi difetti:
+la geometria discreta del reticolo $Z_{24}$ gli impone un menu ristretto di
+configurazioni coerenti. E' lo stesso principio che governa gli orbitali atomici —
+non tutte le orbite sono permesse, solo quelle che "stanno" coerentemente nella
+simmetria del sistema. A ogni livello della gerarchia si sblocca un nuovo modo
+(un nuovo divisore), esattamente come a ogni shell atomica ($n=1,2,3,\ldots$)
+si aggiungono nuovi tipi di orbitale ($s$, poi $p$, poi $d$, ...).
+
+Il kink di larghezza 1 (stato fondamentale) e' il piu' energetico e il piu'
+localizzato: la particella "minima". I kink piu' larghi (stati eccitati) hanno
+piu' estensione spaziale e meno energia: potrebbero corrispondere a stati
+eccitati della materia VQT.
+
+### 4.6 Stato della verifica
+
+**Verificato [OSS]:**
+- L2, $\chi_{\mathrm{mean}}=68$: $n_{\mathrm{eff,block}} = 1.0\pm0.1$ per i seed
+  con difetto reale ($M_{\mathrm{tot}}>10$). Consistente con $\mathcal{D}_2=\{1\}$.
+
+**In verifica (run overnight 2026-06-03):**
+- L3, $\chi_{\mathrm{mean}}=68$, 10 seed: misura di $n_{\mathrm{eff,block\_L2}}$.
+  Predizione: $n_{\mathrm{eff}}\in\mathcal{D}_3=\{1,2\}$, mai $\ge3$.
+  Script: `experiments/exp3/test_quantizzazione_gerarchica.py`
+
+**Da fare (Task domani):**
+- Termodinamica delle pareti (legge KZ: $n_{\mathrm{kink}}\sim|\varepsilon|^\nu$).
+- Verifica a L4 e L5 per testare lo sblocco progressivo dei modi.
+
+---
+
+## 5. Sintesi e limiti
 
 **Risultati [OSS] solidi (L1–L2):**
 1. Soglia geometrica $\sqrt2$ e massa $E_{\Psi}^{\mathrm{anc}}$ sono osservabili
@@ -248,6 +373,8 @@ $$
 - Legge di scala dei valori assoluti ($t_{\mathrm{cross}},t_{\mathrm{freeze}}$) con $L$.
 - Verifica quantitativa della legge KZ ($n_{\mathrm{def}}$ vs tasso di attraversamento).
 - Quantizzazione del valore di massa nel ramo massivo (ora banda larga, CV $\approx0.3$).
+- Ipotesi di quantizzazione gerarchica (§4): $n_{\mathrm{eff,block}}\in\mathcal{D}_L$,
+  verificata a L2, da verificare a L3 (run in corso) e livelli superiori.
 
 **Strumenti di riferimento (codice):**
 `compute_geometric_E_psi`, `freeze_and_measure_mass` in `wqt_oop/energy_metrics.py`;
