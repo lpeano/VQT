@@ -236,8 +236,14 @@ $$
 
 ## 4. Ipotesi di quantizzazione gerarchica — divisori di $Z_{24}$ come livelli energetici
 
-> **Status epistemico**: [CNG] — congettura motivata da dati preliminari a L2.
-> Run di verifica a L3 in corso al momento della stesura (2026-06-03).
+> **Status epistemico aggiornato 2026-06-04**: [CNG, in gran parte SUPERATA].
+> La misura diretta del profilo $\chi$ (sez. 5.2) ha mostrato che il difetto e'
+> PUNTUALE (un singolo nodo), non un kink esteso. Quindi NON esiste una "larghezza"
+> da quantizzare sui divisori: l'ipotesi e' mal posta nel dominio della larghezza.
+> Sopravvive SOLO come $n_{\mathrm{eff,block}}=1$ (il difetto sta in 1 blocco su 24),
+> che e' localizzazione gerarchica, non quantizzazione di modi. La sezione sotto e'
+> conservata come record del ragionamento; leggere prima la sez. 5.
+> [La stesura originale 2026-06-03 ipotizzava un kink esteso, poi falsificato.]
 
 ### 4.1 Motivazione fisica
 
@@ -451,7 +457,85 @@ l'entropia di configurazione associata a ciascun modo. [Da formalizzare]
 
 ---
 
-## 5. Sintesi e limiti
+## 5. Risultati 2026-06-04: scala finita, difetto puntuale, densita' di difetti
+
+Sessione di verifica rigorosa. Tre risultati solidi e diverse falsificazioni.
+
+### 5.1 Scaling della soglia critica con N (effetto di scala finita) — [OSS, 2 livelli]
+
+La soglia di nucleazione della materia (frazione di sistemi che congelano un
+difetto con $M_{\mathrm{tot}}>1$) e' una curva sigmoide in $\chi_{\mathrm{mean}}$.
+Fit logistico $P=\bigl(1+e^{-(\chi-\chi_c)/w}\bigr)^{-1}$:
+$$\frac{\chi_c^{L2}}{\chi_0}=1.338\pm0.004,\qquad \frac{\chi_c^{L3}}{\chi_0}=1.240\pm0.008.$$
+La soglia **scende del 7.4%** da L2 (576 nodi) a L3 (13824 nodi): differenza
+$\sim10\times$ le barre d'errore. **$\chi_c$ NON e' invariante di scala**: il sistema
+piu' grande nuclea a soglia piu' bassa (piu' modi disponibili per il difetto). E'
+un effetto di scala finita standard, senza contenuto esotico.
+La FORMA (larghezza normalizzata $w/\chi_c$) e' COMPATIBILE tra L2 e L3
+($0.0202\pm0.0025$ vs $0.0176\pm0.0063$) ma con incertezza alta: l'universalita'
+di forma e' [CNG], non certificata (servono $\sim$50 seed/punto).
+
+### 5.2 Il difetto e' PUNTUALE (single-site) — [OSS]
+
+Misura diretta del profilo $\chi$ sui blocchi congelati ($\chi_{\mathrm{mean}}=68$,
+max localizzazione, L2, 20 seed): in ogni kink **un solo nodo** (mediana 1, range
+0–1 su 576) si e' deviato dal pozzo dominante; gli altri restano a $+\chi_0$.
+Profili tipici: $[+\chi_0\times23,\ \text{un nodo a }-48]$ oppure
+$[\text{un nodo depresso},\ +\chi_0\times23]$.
+
+**La materia VQT alla soglia di nucleazione e' un singolo voxel** ribaltato (nel
+pozzo opposto) o depresso (sulla barriera) — la perturbazione minima del reticolo.
+
+**Correzione** dell'interpretazione "kink $\phi^4$ esteso" (biopsia 2026-06-03):
+i "$\sim$6 nodi" non erano la larghezza del difetto ma la ZONA DI TORSIONE
+($\rho_{\mathrm{tors}}$ alto sui $\sim$5 vicini del nodo deviato, per il salto
+$-48\to+50$). $\langle\chi\rangle_{\mathrm{hot}}\approx34$ era la media
+[nodo deviato + vicini a $+\chi_0$]. Il difetto vero e' 1 nodo, non 6.
+Conseguenza: la quantizzazione della larghezza sui divisori (sez. 4) e' mal posta
+— non c'e' larghezza ne' pacchetto di modi (1 nodo $\Rightarrow$ spettro piatto).
+
+### 5.3 La materia come densita' di difetti puntuali — [OSS forma, CNG esponente]
+
+Conteggio $n_{\mathrm{def}}(\chi_{\mathrm{mean}})$ = nodi deviati dal pozzo
+($|\chi-\chi_{\mathrm{pozzo}}|>0.6\,\chi_0$), L2, 10 seed/punto:
+$$n_{\mathrm{def}}:\ 0\ (\chi/\chi_0<1.34)\ \to\ 0.4\ \to\ 2.4\ \to\ 9.2\ \to\ 33\ \to\ 80\ \to\ 131\ \to\ 175\ (\chi=90).$$
+Crescita **super-lineare** dal vuoto al plasma ($175/576\approx30\%$ dei nodi).
+Tre regimi: vuoto $\to$ nucleazione diluita di difetti puntuali $\to$ crescita
+verso plasma.
+
+**Esponente NON determinato** [CNG]. Il fit $n_{\mathrm{def}}\sim(\chi-\chi_c)^p$
+e' degenere: $p$ e $\chi_c$ anti-correlati ($\mathrm{corr}=-0.94$). Con $\chi_c$
+fisso a 66.92: $p=2.23$; con $\chi_c$ libero: $\chi_c=71.68,\ p=1.46$. Escludendo
+i punti plasma (che saturano per taglia finita) e fissando $\chi_c$ dalla nucleazione
+binaria, $p$ scende verso $\sim1.6$–$1.7$ ma con soli 3 punti critici. La legge di
+potenza critica vale solo per $\varepsilon\to0$ (vicino soglia); i punti plasma
+gonfiano la pendenza. Per misurare $p$ serve sweep fitto solo-critico + $\sim$30-50
+seed (in corso al momento della stesura).
+
+**NB: nessuna "doppia soglia"** — il $\chi_c\approx72$ del fit libero e' non-fisico
+(predirebbe 0 difetti dove ce ne sono gia'). Una sola soglia ($\sim67$), poi crescita.
+
+### 5.4 Falsificazioni della sessione (risultati negativi di valore)
+
+- **SOC** (criticalita' auto-organizzata): la "legge di potenza" di $\rho_{\mathrm{tors}}$
+  era un artefatto di pooling di seed eterogenei. Falsificata.
+- **Doppia transizione geometrica/energetica** (V5): la "soglia geometrica" e' un
+  fondo di fluttuazioni fredde ($M_{\mathrm{tot}}\sim10^{-7}$). Una sola transizione.
+- **Quantizzazione della larghezza** (V4): il difetto e' puntuale, no larghezza.
+- **Esponente di densita' $\sim2.2$**: artefatto del $\chi_c$ fissato; degenere.
+
+### 5.5 Nota metodologica: non-determinismo del motore
+
+Il motore usa `np.random` globale non seedato in `_transfer_heat_to_children`
+(riscaldamento gerarchico) $\Rightarrow$ il sistema e' stocastico run-to-run.
+Le conclusioni aggregate (medie d'ensemble) restano valide — il rumore termico e'
+parte del modello — ma il singolo seed non identifica una realizzazione e le barre
+d'errore sono leggermente piu' larghe del nominale. Fix: seeding deterministico
+per-task (rende i run riproducibili e il parallelo identico al seriale, GATE PASS).
+
+---
+
+## 6. Sintesi e limiti
 
 **Risultati [OSS] solidi (L1–L2):**
 1. Soglia geometrica $\sqrt2$ e massa $E_{\Psi}^{\mathrm{anc}}$ sono osservabili
