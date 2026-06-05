@@ -36,6 +36,24 @@ non riproducibili al bit. Coerenti con L3 seedato perche' stesso ensemble.
   [V5] nella ROADMAP va marcato FALSIFICATO (non e' un gap fisico).
   Script: test_soglia_geometrica.py ; figure: soglia_geometrica_L2.png
 
+[DENSITA' DIFETTI 2026-06-04] La materia VQT come densita' di difetti puntuali.
+  Dopo V4 (difetto = 1 voxel), misurata n_def(chi_mean) = numero di nodi deviati
+  dal pozzo dominante (|chi-pozzo|>30), L2, 10 seed/punto, parallelo (23 min).
+  Curva (su 576 nodi):
+    cm60-66: ~0 (vuoto)     cm68: 0.4     cm70: 2.4     cm74: 9.2
+    cm78: 33     cm82: 80     cm86: 131     cm90: 175 (=30% dei nodi, plasma denso)
+  FIT: n_def ~ epsilon^2.23 (R2=0.987, eps=(chi-chi_c)/chi_c, chi_c=66.92 da L2).
+    Crescita SUPER-LINEARE (potenza ~2.2, batte il lineare R2=0.95).
+  TRE REGIMI:
+    - chi/stable < 1.34: vuoto (0 difetti)
+    - 1.36-1.48 (cm68-74): nucleazione diluita, difetti puntuali contabili (0.4->9)
+    - 1.56-1.80 (cm78-90): crescita a potenza verso il plasma (33->175)
+  => La materia non cresce gradualmente: appena sopra chi_c accelera come potenza
+     dell'energia in eccesso. Quadro termodinamico SOLIDO (statistica, no esotismo).
+  CAVEAT: l'esponente 2.23 dipende da chi_c (preso da L2). NON chiamarlo "esponente
+     critico universale" senza verifica di sensibilita' + secondo livello.
+  Script: test_densita_difetti.py ; figure: densita_difetti_L2.png
+
 [V1/V2 FATTO 2026-06-04] CURVA NUCLEAZIONE L3 (rado + rifinimento, parallelo).
   Curva completa L3 (M_tot>1, 5 seed/punto):
     cm58=0% cm59=0% cm60=40% cm61=20% cm62=40% cm64=100% cm70=100% cm76=100%
