@@ -54,6 +54,28 @@ non riproducibili al bit. Coerenti con L3 seedato perche' stesso ensemble.
 
 ## >>> RIPRESA PROSSIMA SESSIONE <<<
 
+[P1 IN CORSO 2026-06-05] experiments/exp3/test_osservabili_rg.py SCRITTO (primo
+  passo del piano RG, METODO_SCALING_RG.md). Strumento multi-osservabile parallelo:
+  per ogni quench (chi_mean, seed) misura M_tot, rho_M, Psi_L=M_tot/N_dof,
+  localization_ratio, E_RX, E_psi_anchored, frustration, closure_err_norm,
+  detorsion_quality, n_def, t_quench_s. Aggrega per livello -> chi_c (logistico) +
+  summary JSON in experiments/exp3/rg_summary/ (lo leggeranno P2/P3 per il fit RG).
+  STATO: codice COMPILA (py_compile OK). Persistenza: NON usa ResumeManager (e'
+  specializzato per mtot+conteggi); ha la sua persistenza JSON minimale crash-safe
+  (.tmp+os.replace, .bak). Worker riusa freeze_and_measure_mass +
+  compute_hierarchical_mass + compute_geometric_E_psi (motore INTATTO, additivo).
+  DA FARE alla ripresa:
+    1. Smoke test L2: python experiments/exp3/test_osservabili_rg.py --level 2
+       --seeds 2 --chi-means 64,68,72 --workers 4  (verificare che gira e i numeri
+       siano sensati: rho_M ~2.9, chi_c/stable ~1.338).
+    2. Documentare in docs/TESTS_E_STRUMENTI.md (pattern obbligatorio).
+    3. Campagna L2/L3, poi UN quench L4 (--level 4 --seeds 1) per il t_quench_s
+       REALE -> decide se serve la vettorizzazione Strategia B per L4.
+    4. Commit (branch perf/evolve-vectorized).
+  NB osservabili-chiave: rho_M e Psi_L per CNG A/B; t_quench_s a L4 = numero che
+  decide la vettorizzazione (vedi discussione "ci servono ancora le ottimizzazioni").
+
+
 [METODO SCALING/RG 2026-06-05] NUOVO DOCUMENTO: docs/peano/METODO_SCALING_RG.md
   Risponde a "come capire il comportamento multi-livello SENZA simulare L>7?".
   TESI: la gerarchia VQT E' GIA' una trasformazione RG di Kadanoff (24 figli ->
