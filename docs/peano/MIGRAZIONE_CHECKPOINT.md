@@ -36,16 +36,29 @@ non riproducibili al bit. Coerenti con L3 seedato perche' stesso ensemble.
   [V5] nella ROADMAP va marcato FALSIFICATO (non e' un gap fisico).
   Script: test_soglia_geometrica.py ; figure: soglia_geometrica_L2.png
 
-PROSSIMO PASSO: V1/V2/V3 = stessa curva di nucleazione (energetica, M_tot>1) a L3
-per il data collapsing.
-  - Strategia: sweep RADO L3 (campionamento intelligente) attorno al chi_c atteso.
-    Stima ingenua chi_c_L3 ~ stesso rapporto 1.338*chi_stable, MA va misurato.
-  - Comando base (frazionabile, ResumeManager crash-safe):
-    python experiments/exp3/test_termodinamica_kink.py --level 3 --seeds 10 \
-      --chi-means 64,68,72,76 --quench-steps 500   (sweep rado per trovare chi_c_L3)
-    poi analyze: python experiments/exp3/analyze_termodinamica.py --level 3
-  - COSTO: ~14 min/punto a L2 -> a L3 (24x nodi) ~stima ore/punto. Spalmare su sessioni.
-  - Promuovere a [OSS] SOLO con chi_c coerente su L2 E L3 (regola dei 2 livelli).
+[V1/V2 PARZIALE 2026-06-04] SWEEP RADO L3 FATTO (parallelo, 6 worker, 98 min).
+  Curva L3 (M_tot>1): cm58=0%, cm64=100%, cm70=100%, cm76=100%.
+  RISULTATO GREZZO: chi_c_L3 in (58,64) -> chi_c/chi_stable in (1.16, 1.28).
+  Confronto: chi_c/chi_stable L2 = 1.338 (ben misurato) vs L3 in (1.16,1.28).
+  => SEGNALE: chi_c SCENDE con la scala (effetto di scala finita). L'intervallo L3
+     e' interamente SOTTO il valore L2, anche all'estremo alto (1.28 < 1.338).
+  CAVEAT: il fit logistico ha dato w=0 +-inf = MAL DETERMINATO (sweep troppo rado,
+     transizione in un solo intervallo 58-64). chi_c_L3 NON e' un numero preciso,
+     solo un intervallo. La larghezza w_L3 (per il test di FORMA) e' ignota.
+  TEMPO REALE MISURATO: ~5 min/quench effettivi (6 worker) = ~29 min seriale/quench L3.
+  Script: test_termodinamica_kink_par.py (parallelo, GATE equivalenza PASS).
+  Figure: termodinamica_par_L3.png
+
+PROSSIMO PASSO per chiudere V1/V2/V3:
+  RIFINIRE chi_c_L3: sweep fitto tra 58 e 64 (es. 59,60,61,62) per risolvere la
+  transizione e ottenere chi_c_L3 e w_L3 precisi. ~4 punti x 5 seed = ~90 min parallelo.
+    python experiments/exp3/test_termodinamica_kink_par.py --level 3 --seeds 5 \
+      --chi-means 59,60,61,62 --workers 6 --quench-steps 500
+  POI: data collapsing - normalizzare ogni curva su epsilon=(chi-chi_c(L))/chi_c(L)
+    e confrontare la FORMA (w). Se w_L2 ~ w_L3 in unita' di epsilon -> universalita'
+    della forma con soglia scala-dipendente. Se no -> regimi diversi.
+  Promuovere a [OSS] SOLO con dati coerenti su L2 E L3 (regola dei 2 livelli).
+  COSTO L4 (se servisse 3o punto): ~8h/quench, sweep ~27h con 6 worker, RAM ~3GB OK.
 
 ## >>> STATO ATTUALE (riorganizzato 2026-06-01, aggiornato 2026-06-03) <<<
 
