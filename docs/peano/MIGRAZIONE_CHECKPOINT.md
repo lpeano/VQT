@@ -190,7 +190,10 @@ RIFONDATO il concetto di massa. In ordine:
      ("SOC CONFERMATO" via R2) E' INGANNATO dal pooling: non fidarsi.
   Script: experiments/exp3/test_soc_distribuzione.py (infrastruttura, verdetto da
   rivedere) ; figure: figures/soc_distribuzione_L2.png
-- **[2026-06-03] BIOPSIA DEL DIFETTO: kink phi^4 Kibble-Zurek CONFERMATO.**
+- **[CORRETTO 2026-06-04 - leggere V4]** L'interpretazione "kink phi^4 esteso ~6
+  nodi" qui sotto e' STATA CORRETTA: il difetto e' PUNTUALE (1 nodo deviato, non 6).
+  I "6 nodi" erano la zona di torsione attorno al nodo, non la larghezza. Vedi [V4].
+- **[2026-06-03] BIOPSIA DEL DIFETTO: kink phi^4 Kibble-Zurek (interpretazione poi corretta).**
   Biopsia in due versioni (v1 cm=74, v2 cm=68 = max localizzazione):
   v2 (15 seed, top-1% rho_tors = ~6 foglie su 576):
   - SUPER-LOCALIZZATO: n_eff_block = 1.4 (difetto in 1 blocco L1 su 24).
@@ -308,17 +311,26 @@ Ipotesi: la funzione F e' invariante di scala al variare del livello L_n.
     scalare in modo prevedibile) tra i livelli. Stato: nu_L2 in misura (Task A).
     Manca nu_L3.
 
-  [V4] QUANTIZZAZIONE DELLA LARGHEZZA — [CNG].
-    Dimostrare che i kink nucleano SOLO con larghezza w in {1,2,4,8,...} (divisori
-    di 24), rifiutando stati intermedi.
-    STATO PRECISO (non confondere "non risolto" con "un solo modo"):
-    - A L2 il kink HA larghezza risolta: ~6 nodi in 1 blocco L1 (biopsia v2),
-      n_eff_block=1.0. NON e' puntiforme: la struttura interna esiste.
-    - MA e' osservato UN SOLO modo (il fondamentale w=1). La quantizzazione sui
-      divisori richiede di vedere modi DIVERSI (w=2,4,...) + assenza di intermedi.
-    - Vie probabili: L3 (piu' risoluzione) o interazione tra kink (1+1, 1+2...).
-    NB: test_quantizzazione_kink diretto aveva dato larghezze non-divisori
-    (8,11,14,17) per problema di metrica/regime — da rifare con metrica corretta.
+  [V4] QUANTIZZAZIONE DELLA LARGHEZZA — MAL POSTA / CHIUSA (2026-06-04).
+    ESITO: il difetto NON ha larghezza estesa da quantizzare. E' PUNTUALE.
+    Misura diretta del profilo chi dei blocchi (cm=68, L2, 20 seed): in OGNI kink
+    e' UN SOLO nodo (0-1, mediana 1) a essersi deviato dal pozzo dominante; gli
+    altri 23 nodi del blocco restano a +chi_stable. Profili tipici:
+      [+50 x23, UN nodo a -48]  oppure  [UN nodo a -11/+23, +50 x23]
+    => Il difetto e' un SINGOLO VOXEL ribaltato (nel pozzo opposto) o depresso
+       (sulla barriera). E' la perturbazione minima possibile: 1 sito su 576.
+    => "Larghezza w da quantizzare sui divisori" e' MAL POSTA: non c'e' larghezza,
+       non c'e' pacchetto di modi di Fourier (1 nodo = spettro piatto). L'ipotesi
+       cade non per falsificazione di un fit, ma perche' l'OGGETTO non ha la
+       proprieta'. Anche l'ipotesi divisori/canali (non-divisori = scambio
+       inter-scala) perde l'aggancio: senza larghezza non c'e' commensurabilita'.
+    CORREZIONE alla biopsia v2 (2026-06-03): i "~6 nodi" del kink phi^4 NON erano
+    la larghezza del difetto, ma la ZONA DI TORSIONE (rho_tors alto sui ~5 vicini
+    del nodo deviato, per il salto chi enorme -48->+50). chi_hot mean=34 = media
+    [nodo deviato + vicini a +50]. Il difetto vero e' 1 nodo, non 6.
+    NB: vale alla SOGLIA di nucleazione (cm=68 = max localizzazione). A energie
+    piu' alte potrebbero formarsi PIU' difetti puntuali (da verificare).
+    Script: test esplorativo inline (tasks berq7zy9t, bnoq84mai).
 
   [V5] RAPPORTO DI GAP TOPOLOGICO — FALSIFICATO (2026-06-04).
     Mappata la soglia geometrica L2 con lo stesso protocollo. ESITO: NON e' un gap
