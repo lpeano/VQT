@@ -1,5 +1,39 @@
 # Checkpoint VQT - Ultimo Aggiornamento: 2026-06-04
 
+## >>> SEI SUL BRANCH perf/evolve-vectorized <<<
+SCOPO: vettorizzare l'integrazione del motore per 20-50x (eliminare il loop Python
+su 576 foglie). Parte da perf/scalar-clip-fastmath (che ha gia' il quick win 2.3x
+delle operazioni scalari). Branch-genealogia: research-backup -> scalar-clip-fastmath
+-> evolve-vectorized. Tutto il contesto del progetto (checkpoint, formalizzazione,
+script, docs) e' presente ed ereditato.
+
+STATO: branch appena creato, NESSUN codice di vettorizzazione ancora scritto.
+
+PIANO (additivo, NON toccare evolve() legacy):
+  1. Profilare dove va il tempo DOPO il quick win (il loop Python su SegmentoQuantistico
+     e' il residuo: 115k chiamate evolve + 775k damping_kick per quench L2).
+  2. Scrivere un percorso VETTORIALE: trattare le 576 foglie di un blocco L1 come
+     array numpy [chi, vel] e fare Verlet + damping + clip in operazioni su array
+     (np.clip torna veloce su array). evolve_vectorized() additivo, flag opt-in.
+  3. GATE STATISTICO (non bit-per-bit!): l'ordine delle somme float cambia ->
+     traiettorie diverse (sistema caotico). MA la DISTRIBUZIONE e' invariata
+     (il sistema e' gia' stocastico). Confrontare frazione nucleazione + chi_c + p
+     su ~30 seed: loop vs vettoriale. Se coincidono entro le barre -> equivalenza
+     fisica garantita. La fisica e' la DISTRIBUZIONE, non la singola traiettoria.
+  4. Solo se il GATE statistico PASSA: usare il percorso vettoriale.
+
+PERCHE' GATE STATISTICO e non bit-per-bit: vedi gotcha non-determinismo in CLAUDE.md.
+Il sistema e' gia' stocastico (np.random nel riscaldamento) + caotico, quindi
+nessuna conclusione dipende da una traiettoria; tutte da statistiche d'ensemble.
+
+QUICK WIN GIA' FATTO (in questo branch, commit 220b0ab):
+  np.clip/exp/sqrt scalari -> _clip/math (bit-identici, 2.3x, GATE err 2e-11).
+
+RISULTATI SCIENTIFICI CONSOLIDATI (vedi sotto): chi_c scala FSS (1.338->1.240),
+difetto puntuale (1 voxel), densita' difetti ~(chi-chi_c)^1.79. Tutto su
+research-backup fino a f25d15f.
+
+
 ## >>> SCOPERTA TECNICA 2026-06-04: NON-DETERMINISMO DEL MOTORE <<<
 GOTCHA IMPORTANTE (vale per TUTTA la ricerca): il motore usa np.random GLOBALE
 (non seedato) in `SolitoneComposito._transfer_heat_to_children` (riga ~1098,
