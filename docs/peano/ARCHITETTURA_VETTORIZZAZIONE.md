@@ -216,6 +216,42 @@ sovrapponibili entro sem. (vedi gotcha non-determinismo in CLAUDE.md per il razi
 
 ---
 
+## 9b. Limiti di scala (L4-L10): la vettorizzazione NON basta, serve estrapolazione
+
+Domanda (2026-06-04): la vettorizzazione vale fino a L10? Due risposte distinte.
+
+**Correttezza fisica**: l'architettura AoS->SoA e la decisione sub-stepping sono
+valide a ogni livello (il GATE statistico le valida ovunque). NB: il 79% di
+sub-stepping e' misurato a L2; a L4+ la frazione puo' cambiare, ma la scelta
+conservativa (n_steps globale) resta sempre CORRETTA (mai meno precisa).
+
+**Fattibilita'**: e' il limite vero. Scala 24^n:
+
+| Livello | nodi | RAM (SoA ~60B) | tempo/quench (vett, L2~1s) |
+|---|---|---|---|
+| L2 | 576 | <1 MB | ~1 s |
+| L3 | 13.824 | 1 MB | ~24 s |
+| L4 | 331.776 | 20 MB | ~10 min |
+| L5 | 7.96M | 478 MB | ~4 h |
+| L6 | 191M | 11.5 GB | ~4 giorni (limite desktop) |
+| L7 | 4.6G | 275 GB | ~3 mesi (RAM oltre singola macchina) |
+| L8 | 110G | 6.6 TB | ~6 anni (impossibile) |
+| L10 | 63.000 miliardi | 3.8 PB | ~3500 anni (impossibile) |
+
+=> La vettorizzazione rende fattibili **L4-L5** (comodi) e **L6** (al limite).
+   **L7-L10 sono fuori portata di QUALSIASI simulazione diretta** (RAM TB-PB,
+   tempo anni-millenni), indipendentemente da ottimizzazione/GPU/cluster.
+
+**La via per L_n grandi NON e' simulare, e' ESTRAPOLARE.** Le leggi di scala
+finita (FSS) misurate su pochi livelli permettono di predire l'asintoto:
+  - chi_c(L): misurato L2=1.338, L3=1.240; con L4-L5 si fissa la legge
+    chi_c(L) = chi_inf + a/N^omega e si estrae chi_inf (= L-> infinito).
+  - l'esponente di densita' p e la forma di nucleazione, idem.
+La vettorizzazione serve a rendere fattibili L4-L5 (i punti che mancano per
+fissare la legge); da li' la FISICA (rinormalizzazione, esponenti) porta
+all'infinito, non la forza bruta. Questo e' lo scopo stesso dell'analisi FSS
+iniziata 2026-06-04.
+
 ## 10. Sintesi
 
 - Il bottleneck residuo (dopo il quick win 2.3x) e' il **loop Python per-foglia**.
