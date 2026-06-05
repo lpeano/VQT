@@ -2,21 +2,24 @@
 
 ## >>> RIPRESA PROSSIMA SESSIONE <<<
 
-IN CORSO INTERROTTO (2026-06-04): SOGLIA GEOMETRICA L2 [V5 gap topologico].
-  Run interrotto manualmente, stato salvato (ResumeManager). Fatto: cm42 (15/15),
-  cm46 (3/15). Da fare: cm46(resto),50,54,58,62.
-  RIPRENDERE con lo STESSO comando (salta i seed gia' fatti):
-    python experiments/exp3/test_soglia_geometrica.py --seeds 15 \
-      --chi-means 42,46,50,54,58,62 --quench-steps 500
-  OBIETTIVO: chi_c_geometrico (loc_ratio>5) vs chi_c_energetico (1.338) = gap [V5].
-  Smoke test: cm54->67%, cm62->100% -> chi_c_geom probabile ~48-52 (< energetico 67).
-  CAVEAT prima di interpretare il gap come "due fasi": escludere che sia solo
-  "un difetto continuo tagliato da due metriche" (loc_ratio relativo vs M_tot
-  assoluto). Test discriminante: guardare DENTRO i difetti tra le due soglie
-  (cm 50-62) - sono oggetti stabili con struttura propria o difetti deboli che
-  diventano massivi salendo in chi? Se continuum -> una sola transizione.
+[V5 CHIUSO 2026-06-04] DOPPIA TRANSIZIONE = ARTEFATTO METRICO, NON DUE FASI.
+  Mappata la soglia geometrica L2 (loc_ratio>5, sweep 42-62, 15 seed). ESITO:
+  - curva geometrica NON parte da zero: fondo ~27-33% gia' a cm42 (pre-materia
+    profondo, chi_max/stable~0.84). Transizione morbida (w=7.93 vs energetica 1.35).
+  - PROVA DIRETTA: i "localizzati" sotto soglia hanno M_tot ridicolo: cm42 ~4.3e-7,
+    cm54 ~1.2e-5, contro kink reali (cm66+) M_tot ~100-10000. Distacco 8-9 ordini.
+  => loc_ratio>5 conta come "localizzate" anche le FLUTTUAZIONI FREDDE del vuoto
+     (concentrazione relativa, energia ~0). Il fondo 30% sono FANTASMI.
+  => NON esistono due transizioni di fase: ce n'e' UNA sola, energetica
+     (M_tot>1, chi_c/chi_stable=1.338). La "soglia geometrica" e' artefatto della
+     metrica relativa. Il "rapporto di gap topologico 1.249" NON e' fisico.
+  => Metrica combinata (loc>5 AND M_tot>0.1) collassa sulla curva energetica:
+     la massa e' l'unico osservabile reale, la geometria e' il suo eco + rumore.
+  [V5] nella ROADMAP va marcato FALSIFICATO (non e' un gap fisico).
+  Script: test_soglia_geometrica.py ; figure: soglia_geometrica_L2.png
 
-DOPO V5: V1/V2/V3 = stessa curva di nucleazione a L3 per il data collapsing.
+PROSSIMO PASSO: V1/V2/V3 = stessa curva di nucleazione (energetica, M_tot>1) a L3
+per il data collapsing.
   - Strategia: sweep RADO L3 (campionamento intelligente) attorno al chi_c atteso.
     Stima ingenua chi_c_L3 ~ stesso rapporto 1.338*chi_stable, MA va misurato.
   - Comando base (frazionabile, ResumeManager crash-safe):
@@ -266,11 +269,13 @@ Ipotesi: la funzione F e' invariante di scala al variare del livello L_n.
     NB: test_quantizzazione_kink diretto aveva dato larghezze non-divisori
     (8,11,14,17) per problema di metrica/regime — da rifare con metrica corretta.
 
-  [V5] RAPPORTO DI GAP TOPOLOGICO — [CNG]. (test aggiuntivo)
-    chi_c_energetico / chi_c_geometrico ~ 1.34 / 1.24. Entrambe le soglie vanno
-    mappate con LO STESSO protocollo (sweep + 20 seed). Ora la geometrica e' nota
-    solo da misure laterali (loc_ratio>5). Mappare anche quella, poi verificare se
-    il rapporto e' invariante di scala (L2 vs L3).
+  [V5] RAPPORTO DI GAP TOPOLOGICO — FALSIFICATO (2026-06-04).
+    Mappata la soglia geometrica L2 con lo stesso protocollo. ESITO: NON e' un gap
+    fisico. La curva geometrica (loc_ratio>5) ha un fondo del ~30% di FANTASMI
+    (fluttuazioni fredde, M_tot~1e-7) gia' nel pre-materia profondo (cm42). La
+    "soglia geometrica" e' un artefatto della metrica relativa, non una fase.
+    C'e' UNA sola transizione (energetica, chi_c/chi_stable=1.338). Vedi sezione
+    RIPRESA in testa. Niente "doppia transizione", niente rapporto di gap.
 
 ### 3. Metodologia operativa
 - NON cercare il numero di kink assoluto (dipende dall'energia): cercare la
