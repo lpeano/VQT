@@ -171,3 +171,25 @@ Sintesi al 2026-06-01:
   chi_mean=50 NON scatta (chi_max ~55-60). Serve run lungo o inherit ad alto chi.
 - get_total_E_psi() aggrega E_Psi da tutti i livelli: il drain scatta a L1, ma il
   root L3/L4 vede solo medie (~50). Senza aggregazione E_Psi sembra sempre 0.
+- **NON-DETERMINISMO DEL MOTORE (scoperto 2026-06-04)**: `SolitoneComposito.`
+  `_transfer_heat_to_children` (riscaldamento gerarchico, riga ~1098) usa
+  `np.random.rand()` GLOBALE non seedato. Quindi il sistema e' STOCASTICO
+  run-to-run: lo stesso seed da' risultati diversi. Le STATISTICHE aggregate
+  (medie/frazioni d'ensemble) restano valide (rumore termico = parte del modello),
+  ma il singolo seed NON identifica una realizzazione e i risultati non sono
+  riproducibili. FIX: `np.random.seed(seed + k*cm)` all'inizio del quench
+  (vedi test_termodinamica_kink_par.py::_quench_one). Sempre seedare per run
+  riproducibili o confronti seriale-vs-parallelo.
+- **PARALLELISMO (2026-06-04)**: i seed sono indipendenti -> parallelizzabili con
+  multiprocessing (test_termodinamica_kink_par.py, --workers). Pattern: spawn,
+  OMP_NUM_THREADS=1 nei worker (no oversubscription), seeding deterministico,
+  ResumeManager per crash-safety. SEMPRE verificare con il GATE
+  test_equivalenza_parallelo.py (deve dare err=0 bit-per-bit) prima di fidarsi.
+  Speedup ~5x con 6 worker. Tempo quench: L2 ~42s, L3 ~25min, L4 ~8h (stima).
+- **DISTINZIONE DI DOMINIO**: "legge dei divisori di 24" ha senso SOLO su conteggi
+  (n_eff_block). NON su grandezze continue (M_tot energia estensiva ~N, chi_c
+  ampiezza). Cercare "multipli di 24" su energie/ampiezze e' numerologia.
+- **FIT CRITICI**: vicino a una soglia, l'esponente p e chi_c sono DEGENERI
+  (anti-correlati). Fissare chi_c da fonte indipendente (es. nucleazione binaria)
+  prima di fittare p. Escludere i punti di saturazione (plasma, taglia finita)
+  che gonfiano la pendenza. La legge di potenza critica vale solo per eps->0.
