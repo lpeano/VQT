@@ -51,8 +51,16 @@ non riproducibili al bit. Coerenti con L3 seedato perche' stesso ensemble.
     => "p=2.2 universale" NON e' rispondibile con questa statistica. L3 con lo
        stesso schema (10 seed) avrebbe la STESSA degenerazione: NON farlo cosi'.
     => Per misurare p: ~30-50 seed + punti fitti zona 68-75 (vincolare chi_c indip.).
-    NOTA interessante: la soglia "primo difetto" (curva binaria, chi_c~67) e la
-    soglia "crescita densita'" (fit libero, chi_c~72) sembrano DIVERSE - da indagare.
+    NO DOPPIA SOGLIA (verificato 2026-06-04): il chi_c~72 del fit libero e'
+    NON-FISICO (predirebbe 0 difetti a cm68/70 che invece ne hanno gia'). C'e' UNA
+    sola soglia (~67). Il "ballo" di p NON e' una seconda soglia: e' l'esponente
+    che dipende da quali punti includi, perche' i punti PLASMA (cm82-90, n_def fino
+    a 30% dei 576 nodi) SATURANO (taglia finita) e gonfiano la pendenza apparente.
+    Fit di p con chi_c=66.92 fisso, escludendo il plasma:
+      cm68-90: p=2.04 | cm68-82: 1.96 | cm68-78: 1.84 | cm68-74: 1.67 (solo critici)
+    => esponente critico vero (vicino soglia) ~1.6-1.7, MA 3 punti = non certificato.
+    PROTOCOLLO per misurarlo (se mai servisse): chi_c da nucleazione binaria (fisso),
+    sweep FITTO solo critico (cm67-75, NO plasma), 30-50 seed, fit p + sensibilita'.
   TRE REGIMI:
     - chi/stable < 1.34: vuoto (0 difetti)
     - 1.36-1.48 (cm68-74): nucleazione diluita, difetti puntuali contabili (0.4->9)
