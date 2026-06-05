@@ -374,8 +374,13 @@ Ipotesi: la funzione F e' invariante di scala al variare del livello L_n.
     del nodo deviato, per il salto chi enorme -48->+50). chi_hot mean=34 = media
     [nodo deviato + vicini a +50]. Il difetto vero e' 1 nodo, non 6.
     NB: vale alla SOGLIA di nucleazione (cm=68 = max localizzazione). A energie
-    piu' alte potrebbero formarsi PIU' difetti puntuali (da verificare).
-    Script: test esplorativo inline (tasks berq7zy9t, bnoq84mai).
+    piu' alte si formano PIU' difetti puntuali (vedi densita': cm90->175 difetti).
+    L3 (2026-06-04, cm=66, eps~0.048): n_def=[6,2,4,6,7] su 13824 = 0.04% (a L2
+    era 0.17%). La materia resta LOCALIZZATA su due livelli. MA a cm=66 (piu'
+    sovra-critico di cm=68 a L2) ci sono 2-7 nodi: NON e' regime 1-difetto pulito.
+    La natura puntuale a L3 (nodi singoli sparsi vs blob adiacente) NON e'
+    confermata - servirebbe cm appena sopra chi_c_L3 + analisi di adiacenza.
+    Script: test esplorativo inline (tasks berq7zy9t, bnoq84mai, bstofv12x).
 
   [V5] RAPPORTO DI GAP TOPOLOGICO — FALSIFICATO (2026-06-04).
     Mappata la soglia geometrica L2 con lo stesso protocollo. ESITO: NON e' un gap
