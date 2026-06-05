@@ -68,11 +68,21 @@ CHI_STABLE = 50.0
 # (necessario per il pickling di multiprocessing su Windows/spawn).
 # ---------------------------------------------------------------------------
 def _quench_one(task):
-    """task = (cm, seed, level, pre, quench_steps, dt). Ritorna (cm, seed, M_tot)."""
+    """task = (cm, seed, level, pre, quench_steps, dt). Ritorna (cm, seed, M_tot).
+
+    DETERMINISMO: il motore usa np.random GLOBALE in _transfer_heat_to_children
+    (riscaldamento gerarchico durante evolve). Senza seeding, ogni esecuzione e'
+    stocastica (run-to-run) e seriale != parallelo. Seedando np.random per-task
+    (seed + cm) il risultato e' RIPRODUCIBILE e seriale == parallelo bit-per-bit.
+    Il seed di make() (default_rng) e' un RNG separato per le condizioni iniziali;
+    qui seediamo il RNG legacy np.random usato dal riscaldamento.
+    """
     cm, seed, level, pre, quench_steps, dt = task
     # import dentro il worker (spawn ricarica il modulo da zero)
     sys.path.insert(0, ROOT)
     sys.path.insert(0, os.path.join(ROOT, "experiments", "exp3"))
+    import numpy as _np
+    _np.random.seed(int(seed) + 100003 * int(round(cm)))  # determinismo per-task
     from wqt_oop.energy_metrics import freeze_and_measure_mass, compute_hierarchical_mass
     from test_soglia_formazione import make
     sol = make(seed, chi_mean=cm, level=level)

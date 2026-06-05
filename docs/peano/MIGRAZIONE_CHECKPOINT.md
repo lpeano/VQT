@@ -1,5 +1,23 @@
 # Checkpoint VQT - Ultimo Aggiornamento: 2026-06-04
 
+## >>> SCOPERTA TECNICA 2026-06-04: NON-DETERMINISMO DEL MOTORE <<<
+GOTCHA IMPORTANTE (vale per TUTTA la ricerca): il motore usa np.random GLOBALE
+(non seedato) in `SolitoneComposito._transfer_heat_to_children` (riga ~1098,
+solitone_composito.py): `direction = 1 if np.random.rand()>0.5 else -1`.
+Chiamato da evolve() quando c'e' radiazione (E_rad_step>0, heat_fraction>0).
+CONSEGUENZE:
+- Il sistema e' STOCASTICO run-to-run: lo STESSO seed da' risultati DIVERSI a ogni
+  esecuzione (np.random globale avanza). Parte della "varianza seed-a-seed"
+  osservata e' in realta' varianza RUN-A-RUN (rumore termico del riscaldamento).
+- I risultati NON sono riproducibili senza seedare np.random.
+- La STATISTICA aggregata resta valida (e' un sistema termico aperto, il rumore
+  e' parte del modello; frazione di nucleazione, cooperativity, chi_c = stime
+  d'ensemble corrette). Ma il singolo "seed" non identifica una realizzazione.
+FIX nei nuovi script: np.random.seed(seed + k*cm) all'inizio del quench rende
+tutto RIPRODUCIBILE (vedi test_termodinamica_kink_par.py::_quench_one).
+NB: i run L2 precedenti (Task A) NON erano seedati -> statisticamente validi ma
+non riproducibili al bit. Coerenti con L3 seedato perche' stesso ensemble.
+
 ## >>> RIPRESA PROSSIMA SESSIONE <<<
 
 [V5 CHIUSO 2026-06-04] DOPPIA TRANSIZIONE = ARTEFATTO METRICO, NON DUE FASI.
