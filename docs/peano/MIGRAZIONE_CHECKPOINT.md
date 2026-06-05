@@ -42,8 +42,17 @@ non riproducibili al bit. Coerenti con L3 seedato perche' stesso ensemble.
   Curva (su 576 nodi):
     cm60-66: ~0 (vuoto)     cm68: 0.4     cm70: 2.4     cm74: 9.2
     cm78: 33     cm82: 80     cm86: 131     cm90: 175 (=30% dei nodi, plasma denso)
-  FIT: n_def ~ epsilon^2.23 (R2=0.987, eps=(chi-chi_c)/chi_c, chi_c=66.92 da L2).
-    Crescita SUPER-LINEARE (potenza ~2.2, batte il lineare R2=0.95).
+  FIT: crescita SUPER-LINEARE a potenza n_def ~ (chi-chi_c)^p, ma ESPONENTE NON
+    DETERMINATO (test di robustezza 2026-06-04):
+    - chi_c FISSATO=66.92 (da Task A): p=2.23 (R2=0.987)
+    - chi_c LIBERO (fit 3 parametri A,chi_c,p): chi_c=71.68, p=1.46 (R2=0.997)
+    - corr(p, chi_c) = -0.94: p e chi_c DEGENERI (anti-correlati), non separabili
+      con 10 punti/10 seed. L'esponente oscilla 1.5-2.2 a seconda di chi_c.
+    => "p=2.2 universale" NON e' rispondibile con questa statistica. L3 con lo
+       stesso schema (10 seed) avrebbe la STESSA degenerazione: NON farlo cosi'.
+    => Per misurare p: ~30-50 seed + punti fitti zona 68-75 (vincolare chi_c indip.).
+    NOTA interessante: la soglia "primo difetto" (curva binaria, chi_c~67) e la
+    soglia "crescita densita'" (fit libero, chi_c~72) sembrano DIVERSE - da indagare.
   TRE REGIMI:
     - chi/stable < 1.34: vuoto (0 difetti)
     - 1.36-1.48 (cm68-74): nucleazione diluita, difetti puntuali contabili (0.4->9)
