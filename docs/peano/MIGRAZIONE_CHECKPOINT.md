@@ -51,6 +51,16 @@ non riproducibili al bit. Coerenti con L3 seedato perche' stesso ensemble.
     => "p=2.2 universale" NON e' rispondibile con questa statistica. L3 con lo
        stesso schema (10 seed) avrebbe la STESSA degenerazione: NON farlo cosi'.
     => Per misurare p: ~30-50 seed + punti fitti zona 68-75 (vincolare chi_c indip.).
+    [ESPONENTE MISURATO 2026-06-04] sweep fitto critico cm64-74, 30 seed, parallelo.
+    Protocollo: chi_c da FRAZIONE BINARIA (indipendente) = 67.25+-0.21; poi fit
+    potenza n_def con chi_c fisso, solo sopra soglia; propagazione incertezza vera.
+    RISULTATO: p = 1.79 +- 0.13 (R2=0.986, 6 punti). DETERMINATO a L2.
+    La degenerazione e' ROTTA dalla determinazione indipendente di chi_c + 30 seed.
+    (Confronto: chi_c fisso 66.92 dava 2.23 gonfiato; chi_c libero 1.46 degenere.)
+    Per "esponente critico universale" serve confronto con L3 (~6h, 30 seed L3).
+    Script: test_densita_difetti.py (--seeds 30) + analyze_esponente.py
+    Figure: esponente_critico_L2.png
+
     NO DOPPIA SOGLIA (verificato 2026-06-04): il chi_c~72 del fit libero e'
     NON-FISICO (predirebbe 0 difetti a cm68/70 che invece ne hanno gia'). C'e' UNA
     sola soglia (~67). Il "ballo" di p NON e' una seconda soglia: e' l'esponente

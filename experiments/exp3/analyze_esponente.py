@@ -129,22 +129,30 @@ def main():
         print("      fit fallito (pochi punti sopra soglia)")
         p = None
 
-    # --- 3. TEST DI SENSIBILITA': varia chi_c entro +-2 ---
-    print(f"\n  [3] Sensibilita' di p a chi_c (il vero limite):")
+    # --- 3. SENSIBILITA' + PROPAGAZIONE dell'incertezza VERA di chi_c ---
+    # NON usare un range arbitrario +-2: usare l'incertezza REALE di chi_c
+    # (chi_c_err dal fit binario). La barra vera su p = quadratura di
+    # (errore del fit) e (|dp/dchi_c| * chi_c_err).
+    print(f"\n  [3] Propagazione incertezza (chi_c = {chi_c:.2f} +- {chi_c_err:.2f}):")
     ps = []
-    for dxc in [-2, -1, -0.5, 0, 0.5, 1, 2]:
+    for dxc in [-2, -1, 0, 1, 2]:
         r = fit_p(chi_c+dxc)
         if r:
             ps.append((chi_c+dxc, r[0]))
-            print(f"      chi_c={chi_c+dxc:>5.1f} -> p={r[0]:.2f}  (R2={r[3]:.3f})")
-    if len(ps) >= 2:
-        pvals = [p for _, p in ps]
-        print(f"\n  VERDETTO: p oscilla in [{min(pvals):.2f}, {max(pvals):.2f}] al variare di")
-        print(f"    chi_c entro +-2. Range = {max(pvals)-min(pvals):.2f}.")
-        if max(pvals)-min(pvals) < 0.4:
-            print(f"    -> p STABILE: esponente ~{np.median(pvals):.2f} robusto. [verso OSS]")
+    if len(ps) >= 2 and p is not None:
+        xcv = np.array([a for a, _ in ps]); pv = np.array([b for _, b in ps])
+        # pendenza dp/dchi_c attorno a chi_c
+        slope = np.polyfit(xcv, pv, 1)[0]
+        sig_from_xc = abs(slope) * chi_c_err
+        sig_tot = np.sqrt(p_fiterr**2 + sig_from_xc**2)
+        print(f"      dp/dchi_c ~ {slope:.2f}/unita -> contributo chi_c: +-{sig_from_xc:.2f}")
+        print(f"      contributo fit: +-{p_fiterr:.2f}")
+        print(f"\n  ESPONENTE:  p = {p:.2f} +- {sig_tot:.2f}  (L{args.level}, chi_c indipendente)")
+        if sig_tot < 0.25:
+            print(f"    -> p DETERMINATO a L{args.level}. Per universalita': confronto con L3.")
         else:
-            print(f"    -> p ANCORA SENSIBILE a chi_c: serve chi_c piu' preciso o piu' punti.")
+            print(f"    -> p con barra ancora larga: piu' seed o punti fitti.")
+        print(f"    NB: e' UN livello. 'Esponente critico universale' richiede L3.")
 
     # --- grafico ---
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
