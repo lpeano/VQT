@@ -36,29 +36,49 @@ non riproducibili al bit. Coerenti con L3 seedato perche' stesso ensemble.
   [V5] nella ROADMAP va marcato FALSIFICATO (non e' un gap fisico).
   Script: test_soglia_geometrica.py ; figure: soglia_geometrica_L2.png
 
-[V1/V2 PARZIALE 2026-06-04] SWEEP RADO L3 FATTO (parallelo, 6 worker, 98 min).
-  Curva L3 (M_tot>1): cm58=0%, cm64=100%, cm70=100%, cm76=100%.
-  RISULTATO GREZZO: chi_c_L3 in (58,64) -> chi_c/chi_stable in (1.16, 1.28).
-  Confronto: chi_c/chi_stable L2 = 1.338 (ben misurato) vs L3 in (1.16,1.28).
-  => SEGNALE: chi_c SCENDE con la scala (effetto di scala finita). L'intervallo L3
-     e' interamente SOTTO il valore L2, anche all'estremo alto (1.28 < 1.338).
-  CAVEAT: il fit logistico ha dato w=0 +-inf = MAL DETERMINATO (sweep troppo rado,
-     transizione in un solo intervallo 58-64). chi_c_L3 NON e' un numero preciso,
-     solo un intervallo. La larghezza w_L3 (per il test di FORMA) e' ignota.
-  TEMPO REALE MISURATO: ~5 min/quench effettivi (6 worker) = ~29 min seriale/quench L3.
-  Script: test_termodinamica_kink_par.py (parallelo, GATE equivalenza PASS).
-  Figure: termodinamica_par_L3.png
+[V1/V2 FATTO 2026-06-04] CURVA NUCLEAZIONE L3 (rado + rifinimento, parallelo).
+  Curva completa L3 (M_tot>1, 5 seed/punto):
+    cm58=0% cm59=0% cm60=40% cm61=20% cm62=40% cm64=100% cm70=100% cm76=100%
+  Fit logistico aggregato (R2=0.92): chi_c_L3=61.99+-0.42 (chi_c/chi_stable=1.240),
+    w_L3=1.09+-0.39 (w/chi_stable=0.022).
+  Confronto con L2 (Task A): chi_c/chi_stable L2=1.338+-0.004, w_L2/chi_st=0.027.
 
-PROSSIMO PASSO per chiudere V1/V2/V3:
-  RIFINIRE chi_c_L3: sweep fitto tra 58 e 64 (es. 59,60,61,62) per risolvere la
-  transizione e ottenere chi_c_L3 e w_L3 precisi. ~4 punti x 5 seed = ~90 min parallelo.
-    python experiments/exp3/test_termodinamica_kink_par.py --level 3 --seeds 5 \
-      --chi-means 59,60,61,62 --workers 6 --quench-steps 500
-  POI: data collapsing - normalizzare ogni curva su epsilon=(chi-chi_c(L))/chi_c(L)
-    e confrontare la FORMA (w). Se w_L2 ~ w_L3 in unita' di epsilon -> universalita'
-    della forma con soglia scala-dipendente. Se no -> regimi diversi.
-  Promuovere a [OSS] SOLO con dati coerenti su L2 E L3 (regola dei 2 livelli).
-  COSTO L4 (se servisse 3o punto): ~8h/quench, sweep ~27h con 6 worker, RAM ~3GB OK.
+  RISULTATO 1 [ROBUSTO]: chi_c SCALA con N (effetto di scala finita).
+    L2=1.338 -> L3=1.240, scende del 7.4%. Differenza (4.93 in chi) ~10x le barre.
+    chi_c NON e' scala-invariante: il sistema piu' grande nuclea a soglia piu' bassa.
+
+  RISULTATO 2 [DEBOLE, resta CNG]: FORMA compatibile con universalita'.
+    w in unita' di epsilon=(chi-chi_c)/chi_c: w_eps_L2=0.0202+-0.0025,
+    w_eps_L3=0.0176+-0.0063. |diff|=0.0026 < errore combinato 0.0068 -> COMPATIBILI.
+    MA: w_L3 ha incertezza ~36% (zona transizione 60-62 RUMOROSA e non-monotona a
+    5 seed: 40%,20%,40% = rumore binomiale). "Compatibile" != "certificato".
+    Per certificare V1/V2 a [OSS]: ~20 seed nella zona 60-64 (run piu' lungo).
+
+  TEMPO: ~5 min/quench effettivi (6 worker). Rifinimento (zona critica) ~93 min/20q
+    (piu' lento del rado: i quench attorno a chi_c nucleano kink che non convergono
+    entro 500 step -> vanno al cap).
+  Script: test_termodinamica_kink_par.py + analyze_termodinamica.py --level 3
+  Figure: termodinamica_aggregata_L3.png, termodinamica_par_L3.png
+
+DISTINZIONE DI DOMINIO (fissata 2026-06-04, NON mescolare):
+  - DOMINIO DISCRETO (conteggi): la "legge dei divisori di 24" ha senso SOLO su
+    grandezze contabili (n_eff_block = larghezza difetto in blocchi). [V4, CNG]
+  - DOMINIO CONTINUO (ampiezze/energie): M_tot (energia, ~unita' arbitrarie,
+    estensivo ~N) e chi_c (ampiezza di campo). Cercare "multipli di 24" qui e'
+    numerologia, non fisica. chi_c che scala = FSS standard, niente di mistico.
+
+VALUTAZIONE GPU/M1 (fatta 2026-06-04, no azione): la GPU dell'M1 aiuterebbe SOLO
+  a L4+ e SOLO con rewrite tensoriale (PyTorch MPS / MLX) + GATE precisione
+  (float32 su sistema caotico = rischio divergenza). A L2/L3 non conviene (array
+  troppo piccoli, overhead > guadagno). Leva prioritaria = FastEvolver (CPU, ~6x,
+  gia' verificato su L2), NON la GPU. M1 Air fanless: throttla sui run lunghi.
+
+PROSSIMI PASSI POSSIBILI (decidere alla ripresa):
+  (a) Certificare V1/V2: ~20 seed zona 60-64 a L3 (run lungo) per w_L3 preciso.
+  (b) L4 come terzo punto FSS: ~8h/quench, sweep ~27h con 6 worker (solo se serve
+      la legge chi_c(L) funzionale; per il segnale "scala" bastano L2+L3 gia' fatti).
+  (c) V4 quantizzazione larghezza: osservare kink w=2,4 (dominio discreto).
+  (d) FastEvolver nel quench (~6x) per rendere fattibili run lunghi/L4.
 
 ## >>> STATO ATTUALE (riorganizzato 2026-06-01, aggiornato 2026-06-03) <<<
 
