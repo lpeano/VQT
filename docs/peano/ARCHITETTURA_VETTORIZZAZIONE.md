@@ -242,15 +242,32 @@ conservativa (n_steps globale) resta sempre CORRETTA (mai meno precisa).
    **L7-L10 sono fuori portata di QUALSIASI simulazione diretta** (RAM TB-PB,
    tempo anni-millenni), indipendentemente da ottimizzazione/GPU/cluster.
 
-**La via per L_n grandi NON e' simulare, e' ESTRAPOLARE.** Le leggi di scala
-finita (FSS) misurate su pochi livelli permettono di predire l'asintoto:
-  - chi_c(L): misurato L2=1.338, L3=1.240; con L4-L5 si fissa la legge
-    chi_c(L) = chi_inf + a/N^omega e si estrae chi_inf (= L-> infinito).
-  - l'esponente di densita' p e la forma di nucleazione, idem.
-La vettorizzazione serve a rendere fattibili L4-L5 (i punti che mancano per
-fissare la legge); da li' la FISICA (rinormalizzazione, esponenti) porta
-all'infinito, non la forza bruta. Questo e' lo scopo stesso dell'analisi FSS
-iniziata 2026-06-04.
+**ATTENZIONE (correzione 2026-06-04): l'estrapolazione NON e' garantita.**
+L'idea ingenua sarebbe: misurare L2-L5, fittare chi_c(L)=chi_inf+a/N^omega,
+estrapolare a L->inf. MA questo ASSUME una sola classe di universalita' (stessa
+fisica a ogni scala, solo riscalata). Nei sistemi gerarchici complessi questa
+assunzione spesso FALLISCE ("more is different", Anderson): a scale maggiori
+emergono proprieta' collettive NON deducibili da quelle piccole (crossover, nuove
+fasi, interazioni assenti a piccola scala, esponenti che variano con L).
+
+EVIDENZA che il sistema GIA' cambia con la scala (quindi l'estrapolazione cieca
+e' pericolosa):
+  - chi_c NON e' invariante (1.338 -> 1.240): la soglia si muove con N.
+  - A L2 il difetto e' 1 voxel; a L3 si osservano ~12 difetti coesistenti
+    (regime denso). Emerge una POPOLAZIONE di difetti -> possibili interazioni,
+    correlazioni, strutture che a L2 NON possono esistere. E' emergenza, gia'
+    visibile al primo salto di scala.
+
+SCOPO CORRETTO della vettorizzazione (non estrapolare alla cieca, ma TESTARE):
+  - rendere fattibili L4-L5 per VERIFICARE se la fisica e' scale-invariante o
+    se emerge complessita'. Se i punti L2-L5 cadono sulla stessa legge ->
+    EVIDENZA (non prova) di universalita'. Se DEVIANO -> abbiamo SCOPERTO un
+    crossover/emergenza = risultato di prima grandezza.
+  - Onesta' epistemica: il comportamento a L10 potrebbe essere GENUINAMENTE
+    INCONOSCIBILE - ne' simulabile (impossibile) ne' estrapolabile (non garantito).
+    E' un limite reale dei sistemi complessi, da accettare, non da aggirare con
+    un'assunzione. La vettorizzazione amplia la finestra osservabile (fino a L5-L6),
+    non la rende infinita.
 
 ## 10. Sintesi
 
