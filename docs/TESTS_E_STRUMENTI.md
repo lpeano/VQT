@@ -589,6 +589,111 @@ Poi: chi_c stimato, esponente nu (fit KZ), R2.
 Figure: `figures/termodinamica_kink_L{n}.png`.
 Resume: `resume/termodinamica_L{n}_cm{cm}.json`.
 
+> NOTA: il "fit KZ / esponente nu" e' stato poi RIMOSSO in favore del fit logistico
+> (la curva e' una probabilita' di nucleazione, non una densita' di difetti vs
+> velocita' di quench). Vedi analyze_termodinamica.py (6.4).
+
+---
+
+### 5.12 `experiments/exp3/test_termodinamica_kink_par.py` (PARALLELO)
+
+**Cosa fa e perche'**: versione PARALLELA di 5.11 (multiprocessing sui seed).
+I seed sono fisicamente indipendenti -> parallelo == seriale (verificato dal GATE
+5.13). Riduce lo sweep L3 da ~8h a ~2h. Codice ADDITIVO (motore intatto).
+Determinismo: seeda `np.random` per-task (il motore usa np.random globale nel
+riscaldamento gerarchico -> senza seeding il sistema e' stocastico run-to-run).
+
+```bash
+python experiments/exp3/test_termodinamica_kink_par.py \
+  --level 3 --seeds 5 --chi-means 60,66,72,78 --workers 6 --quench-steps 500
+# Ripresa dopo interruzione: stesso comando (resume crash-safe)
+```
+
+| Parametro | Default | Descrizione |
+|---|---|---|
+| `--level` | 3 | Livello gerarchico |
+| `--seeds` | 5 | Seed per punto |
+| `--chi-means` | `60,66,72,78` | Sweep chi_mean (CSV) |
+| `--workers` | 0 (auto) | Processi paralleli (0 = core fisici - 1) |
+| `--pre` | 40 | Step pre-evoluzione |
+| `--quench-steps` | 500 | Step quench |
+
+**Output**: ogni seed loggato appena pronto (ETA live), poi fit logistico + confronto
+di scala chi_c L vs L2. Figure: `figures/termodinamica_par_L{n}.png`.
+
+---
+
+### 5.13 `experiments/exp3/test_equivalenza_parallelo.py` (GATE)
+
+**Cosa fa e perche'**: GATE di equivalenza seriale-vs-parallelo. Calcola gli stessi
+seed in seriale e via pool, confronta M_tot bit-per-bit. Con il seeding
+deterministico DEVE dare errore 0 (i seed sono deterministici). Se PASS, il
+parallelo e' fisicamente equivalente e usabile su L3/L4.
+
+```bash
+python experiments/exp3/test_equivalenza_parallelo.py --level 2 --seeds 4 --chi-mean 68
+```
+
+| Parametro | Default | Descrizione |
+|---|---|---|
+| `--level` | 2 | Livello |
+| `--seeds` | 4 | Seed da confrontare |
+| `--chi-mean` | 68.0 | chi_mean del test |
+| `--workers` | 4 | Worker paralleli |
+| `--tol` | 1e-9 | Tolleranza relativa max |
+
+**Output**: tabella seriale vs parallelo per seed, errore max, GATE PASS/FAIL.
+
+---
+
+### 5.14 `experiments/exp3/test_soglia_geometrica.py`
+
+**Cosa fa e perche'**: mappa la soglia GEOMETRICA (difetto localizzato se
+loc_ratio>5) per confrontarla con quella energetica (M_tot>1). ESITO: la soglia
+geometrica e' un artefatto (fondo di fluttuazioni fredde ~30%); NON esiste una
+"doppia transizione" (V5 falsificato). Lo script resta come record/infrastruttura.
+
+```bash
+python experiments/exp3/test_soglia_geometrica.py --seeds 15 --chi-means 42,46,50,54,58,62
+```
+
+| Parametro | Default | Descrizione |
+|---|---|---|
+| `--level` | 2 | Livello |
+| `--seeds` | 15 | Seed per punto |
+| `--chi-means` | `50,54,58,62,66` | Sweep chi_mean |
+| `--quench-steps` | 500 | Step quench |
+
+**Output**: curva n_loc(chi_mean), fit, rapporto di gap (falsificato). ResumeManager.
+
+---
+
+### 5.15 `experiments/exp3/test_densita_difetti.py` (PARALLELO)
+
+**Cosa fa e perche'**: dopo aver scoperto che il difetto e' PUNTUALE, conta
+n_def = numero di nodi deviati dal pozzo dominante (|chi-pozzo|>30) vs chi_mean.
+Mappa la crescita da "1 difetto" (soglia) a "plasma" (sovra-saturazione).
+Statistica termodinamica pura. Parallelo + seeding + resume.
+
+```bash
+python experiments/exp3/test_densita_difetti.py --level 2 --seeds 10 \
+  --chi-means 60,64,68,72,76,80,85,90 --workers 6
+```
+
+| Parametro | Default | Descrizione |
+|---|---|---|
+| `--level` | 2 | Livello |
+| `--seeds` | 10 | Seed per punto |
+| `--chi-means` | `60,...,90` | Sweep chi_mean |
+| `--workers` | 0 (auto) | Worker paralleli |
+| `--quench-steps` | 500 | Step quench |
+
+**Output**: n_def medio +- std per chi_mean, fit crescita. Figure:
+`figures/densita_difetti_L{n}.png`. Il worker calcola anche M_tot (nel resume),
+quindi un run da' SIA densita' SIA frazione di nucleazione binaria.
+> NOTA: l'esponente della crescita e' DEGENERE con chi_c (corr -0.94). Per misurarlo
+> servono sweep fitto solo-critico (no plasma) + chi_c indipendente + ~30-50 seed.
+
 ---
 
 ## Sezione 6 — Strumenti di analisi e generazione dati
@@ -602,6 +707,31 @@ chi_max nel tempo).
 ```bash
 python experiments/exp3/analyze_exp3.py
 ```
+
+---
+
+### 6.1b `experiments/exp3/analyze_termodinamica.py`
+
+**Cosa fa**: analisi IDEMPOTENTE separata dalla raccolta dati. Legge tutti gli
+archivi resume `termodinamica_L{n}_cm*_done_*.json`, aggrega la curva di
+nucleazione, fa il fit LOGISTICO (chi_c, larghezza w — il modello corretto per
+una probabilita' di nucleazione, NON una power-law/KZ), calcola la cooperativity.
+Rieseguibile in ~1s senza ricalcolare i quench. Pattern: separare raccolta
+(costosa, test_termodinamica*) da analisi (veloce, idempotente).
+
+```bash
+python experiments/exp3/analyze_termodinamica.py --level 2
+python experiments/exp3/analyze_termodinamica.py --level 3 --mtot-min 1.0
+```
+
+| Parametro | Default | Descrizione |
+|---|---|---|
+| `--level` | 2 | Livello da analizzare |
+| `--mtot-min` | 1.0 | Soglia M_tot per classificare un kink |
+| `--exclude-before` | `20260604_1400` | Ignora archivi prima di questo timestamp (scarta smoke test) |
+
+**Output**: tabella frazione/cooperativity per chi_mean, chi_c e w (fit logistico),
+figura `figures/termodinamica_aggregata_L{n}.png`.
 
 ---
 
