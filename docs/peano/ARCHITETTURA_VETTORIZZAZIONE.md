@@ -102,15 +102,21 @@ re-include senza penalita' e senza alcun `if`.
 
 ## 5. Le sfide (e come affrontarle)
 
-### 5.1 Adaptive sub-stepping (CFL) — la piu' delicata
-`SegmentoQuantistico.evolve` fa sub-stepping se `|F - F_prev| > threshold` per una
-foglia. E' una decisione PER-FOGLIA. In vettoriale ci sono 3 opzioni:
-  (a) applicare sub-stepping a TUTTE le foglie quando ANCHE UNA supera la soglia
-      (conservativo, leggermente piu' lento ma fisicamente sicuro);
-  (b) maschera: sub-steppa solo le foglie sopra soglia (np.where) — piu' veloce,
-      piu' complesso;
-  (c) verificare empiricamente quanto e' attivo: se nei quench reali il sub-stepping
-      scatta raramente, (a) costa poco. **DA PROFILARE prima di decidere.**
+### 5.1 Adaptive sub-stepping (CFL) — RISOLTO (profiling 2026-06-04)
+`SegmentoQuantistico.evolve` fa sub-stepping se `|F - F_prev| > threshold` (=100)
+per una foglia: n_steps = 4 (o 8 se drift>10%), altrimenti 1.
+
+**MISURA (quench L2 reale, conteggio diretto _apply_damping_kick / evolve):**
+  n_steps medio = 3.37  ->  ~79% delle foglie-step attivano il sub-stepping.
+Il sub-stepping e' QUASI SEMPRE attivo. Conseguenze:
+  - DECISIONE: in vettoriale usare n_steps GLOBALE per blocco (la strategia
+    conservativa 5.1a): n_steps = 4 se max(|dF|) del blocco supera la soglia.
+    Dato che basta 1 foglia su 24 e il 79% gia' le supera, il blocco usera' 4
+    quasi sempre. Costo extra ~nullo, ZERO if per-foglia. Niente maschere.
+  - NOTA: il sub-stepping rende il quench 3.37x piu' costoso. Non si tocca
+    (cambierebbe la precisione dell'integrazione = potenzialmente la fisica), ma
+    spiega perche' i quench sono lenti. La vettorizzazione replica i 4 sub-step,
+    molto piu' veloce del loop Python.
 
 ### 5.2 compute_hamiltonian chiamato 2x/step
 Serve per E_rad (riscaldamento gerarchico). E' ricorsivo. Va vettorizzato anch'esso
@@ -166,8 +172,8 @@ riscrivere negli oggetti SOLO alla fine. Gli oggetti sono congelati durante il q
 
 ## 7. Roadmap incrementale raccomandata
 
-1. **Profilare il sub-stepping** (5.1): quanto scatta nei quench reali? Decide se
-   serve gestirlo (maschera) o se basta l'approccio conservativo.
+1. **[FATTO 2026-06-04] Profilare il sub-stepping** (5.1): n_steps medio 3.37,
+   ~79% attivo -> strategia conservativa (n_steps globale per blocco). DECISO.
 2. **Strategia B** su un blocco L1 (24 foglie): `evolve_block_vectorized`. GATE
    statistico su L1. Se PASS, ho la base e un primo speedup (~10x sul costo-foglia).
 3. **Strategia C** per il quench: full-array su tutto il sistema (L1/L2/L3), coupling
