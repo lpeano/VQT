@@ -269,6 +269,53 @@ SCOPO CORRETTO della vettorizzazione (non estrapolare alla cieca, ma TESTARE):
     un'assunzione. La vettorizzazione amplia la finestra osservabile (fino a L5-L6),
     non la rende infinita.
 
+## 9c. Streaming gerarchico: alza l'asticella da L5-L6 a L6-L7
+
+Domanda (2026-06-04): lo streaming aiuta ad arrivare a L7? SI, di un livello pieno.
+
+**Perche' funziona ED E' ESATTO nel VQT**: il coupling tra blocchi dipende SOLO
+dalle MEDIE dei blocchi (verificato: `_get_child_chi` di un blocco L1 = media
+delle sue foglie). Quindi lo streaming gerarchico NON e' un'approssimazione:
+tieni in RAM le medie (compatte) + un blocco alla volta, evolvi blocco per blocco.
+La struttura gerarchica del VQT FAVORISCE lo streaming.
+
+**Bilancio RAM / spazio disco / I/O / tempo (streaming + vettorizzazione):**
+
+| Livello | RAM (medie L1) | SPAZIO disco (stato) | TRAFFICO I/O per quench | tempo I/O (2GB/s) | calcolo per quench |
+|---|---|---|---|---|---|
+| L6 | 64 MB | 11.5 GB | 39 TB | ~5 h | ~1 giorno |
+| L7 | 1.5 GB | 275 GB | 936 TB | ~5 giorni | ~1 mese |
+
+ATTENZIONE alla distinzione SPAZIO vs TRAFFICO:
+  - SPAZIO disco = quanto deve essere grande il disco = solo lo STATO salvato una
+    volta (11.5 GB a L6, 275 GB a L7). Gestibile.
+  - TRAFFICO I/O (39 TB / 936 TB) = letture+scritture CUMULATIVE lungo tutto il
+    quench = stato x n_step x 2. Sono gli STESSI settori sovrascritti migliaia di
+    volte, NON spazio accumulato. Vincola il TEMPO (traffico / velocita' disco),
+    non lo spazio.
+
+Lo streaming RISOLVE la RAM (a L7: 1.5 GB invece di 275 GB). Il nuovo collo e' il
+TEMPO DI CALCOLO, non piu' la memoria. Lo spazio disco non e' un problema.
+
+CAVEAT usura SSD: 936 TB di scritture a L7 sono vicine al limite di durata (TBW)
+di un SSD consumer (~300-600 TBW): un singolo quench L7 consumerebbe una fetta
+seria della vita del disco. A L6 (39 TB) trascurabile.
+
+**Conseguenze pratiche:**
+  - L6: fattibile (~1 giorno/quench) -> quarto punto di scala per misure mirate.
+  - L7: possibile ma eroico (~1 mese per UN quench).
+  - SWEEP statistici (chi_c, p: ~100 quench): limite pratico L5-L6.
+  - QUENCH singoli mirati (es. difetto puntuale a L7?): L7 raggiungibile (run lungo).
+
+**Valore**: 4 punti di scala (L2-L5/L6) invece di 2 cambiano radicalmente la
+capacita' di rispondere a "scale-invariante o emergenza?" (sez. 9b). Ma lo
+streaming compra UN livello in piu', NON l'infinito: L8-L10 restano fuori portata
+(mesi-anni/quench) e l'estrapolazione resta non garantita.
+
+**Costo implementativo**: lo streaming gerarchico e' un refactoring serio (gestione
+disco, medie per livello, sincronizzazione coupling ogni step). Da affrontare DOPO
+la vettorizzazione (strategia C), e solo se L6-L7 diventano obiettivo concreto.
+
 ## 10. Sintesi
 
 - Il bottleneck residuo (dopo il quick win 2.3x) e' il **loop Python per-foglia**.

@@ -54,6 +54,53 @@ non riproducibili al bit. Coerenti con L3 seedato perche' stesso ensemble.
 
 ## >>> RIPRESA PROSSIMA SESSIONE <<<
 
+[METODO SCALING/RG 2026-06-05] NUOVO DOCUMENTO: docs/peano/METODO_SCALING_RG.md
+  Risponde a "come capire il comportamento multi-livello SENZA simulare L>7?".
+  TESI: la gerarchia VQT E' GIA' una trasformazione RG di Kadanoff (24 figli ->
+  media = genitore). Non serve L grande: si cattura la mappa T:(L_n -> L_{n+1}) su
+  L2-L3-L4 e la si itera. chi_c gia' fluisce (L2=1.338, L3=1.240, L4=da misurare).
+  Test di consistenza T(L2->L3) vs T(L3->L4): coincidono -> regime di scala ->
+  estrapolabile; divergono -> emergenza MISURATA (deriva da estrapolare). Vantaggio:
+  i coupling sono gia' analitici (alpha_K~1/24^L, kappa~1/24^(L/2)) -> confronto
+  predetto vs misurato.
+  ANALISI TEOREMA PEANO-VQT (triade E_chi+E_RX+E_Psi, Legge III): la "conservazione"
+  e' vera PER COSTRUZIONE (drain definito per conservarla) -> bilancio, non legge
+  scoperta; la monotonia di E_Psi e' irreversibilita' INSERITA (sink aperto), non
+  derivata. Status: principio di bilancio + leggi fenomenologiche (tipo Keplero),
+  NON teorema dimostrato. MA AIUTA il programma RG: (a) E_Psi~N^a e' un osservabile
+  che fluisce gia' caratterizzato; (b) la triade, SE RG-covariante, e' un invariante
+  strutturale che ancora il flusso; (c) E_Psi monotona -> candidata c-function di
+  scala (alla Zamolodchikov) per controllare L->infinito. Da RI-TESTARE, non assumere.
+  DA FARE (piano P1-P5 nel doc): prerequisito = misurare a L4 (3 punti -> primo fit
+  di flusso). P1 strumento multi-osservabile; P2 fit FSS; P3 mappa RG + consistenza;
+  P4 predetto vs misurato; P5 RG-covarianza triade + c-function.
+
+[TEOREMA RIFATTORIZZATO 2026-06-05] basimatematiche/teorema_peano_vqt.md riscritto.
+  L'originale (2026-05-28) aveva 3 Q.E.D. NON guadagnati: induzione circolare (il
+  "Meccanismo di Reset" assume la tesi), chiusura tautologica (assume isolamento),
+  limite lim U_L=0 mal posto (U_L mai definita), + incoerenza tau in R vs mod 2pi.
+  RIFATTORIZZAZIONE: 5 teoremi dimostrati, 3 congetture falsificabili, 0 Q.E.D. abusivi.
+  - TEO 1: coupling = forza interna, Sum F_cpl=0 (da 1^T L_graph=0). 2 righe.
+  - TEO 2: chiusura della media di blocco = fondamento rigoroso dell'RG. ISOLA il
+    luogo dell'emergenza: il termine non-lineare Delta_B ~ Var_B(chi) (feedback
+    fluttuazioni intra-blocco), candidato a c-function di scala. Il coupling si chiude
+    esatto, il potenziale on-site NO -> li' vive "more is different".
+  - TEO 3: flusso torsione nullo per ANTISIMMETRIA (non per "cosmo isolato"): onesto.
+  - TEO 4: bilancio triade + monotonia E_Psi, ma inquadrato come LEMMA sullo schema
+    (sistema aperto, irreversibilita' INPUT non scoperta).
+  - TEO 5: volume di fase (Liouville) dal simplettico.
+  Congetture (agganciate a P1-P5): CNG A = invarianza Gamma = punto fisso RG;
+  CNG B = stabilita' chiusura Psi_L->0, SOSTITUISCE la finta induzione con la
+  disuguaglianza di capacita' esplicita abs_L >= gen_L (misurabile); CNG C = limite
+  asintotico (U_L ora definita) + phase-flip come speculazione esplicita.
+  Originale conservato integralmente in Appendice A. Tabella riconciliazione in sez.6.
+  PROSSIMO: P1 (strumento multi-osservabile L2/L3/L4) rende CNG A e CNG B misurabili.
+  CONTESTO SCALA (sessione 2026-06-05): L5-L7 ~ 1e-32..1e-33 m; protone a L~43
+  (coincidenza "42" NON robusta: range 39-47 con la dim. frattale; il protone vero
+  e' L~43, non 42). Streaming + mmap: risolvono RAM a L6, neutri a L7 (vedi
+  ARCHITETTURA_VETTORIZZAZIONE.md sez. 9c). Conclusione: il ponte verso la realta'
+  umana NON e' computazionale (35 ordini di grandezza), e' TEORICO (RG).
+
 [V5 CHIUSO 2026-06-04] DOPPIA TRANSIZIONE = ARTEFATTO METRICO, NON DUE FASI.
   Mappata la soglia geometrica L2 (loc_ratio>5, sweep 42-62, 15 seed). ESITO:
   - curva geometrica NON parte da zero: fondo ~27-33% gia' a cm42 (pre-materia
