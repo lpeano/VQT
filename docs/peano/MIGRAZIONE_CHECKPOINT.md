@@ -1,4 +1,62 @@
-# Checkpoint VQT - Ultimo Aggiornamento: 2026-06-04
+# Checkpoint VQT - Ultimo Aggiornamento: 2026-06-08
+
+## >>> SVOLTA FOUNDATIONAL 2026-06-08: il "flusso di chi_c" e' una PARAMETRIZZAZIONE <<<
+
+CONTESTO: stavamo misurando il flusso RG di chi_c (L2=1.353, L3=1.237) per decidere
+"punto fisso vs emergenza". L4 lanciata (cm 54-66). SORPRESA + INDAGINE hanno
+ribaltato il quadro. L4 FERMATA (vedi sotto).
+
+SCOPERTE (in ordine):
+1. [L4 SORPRESA] cm54,57 (i piu' bassi dello sweep) nucleano AL 100% con M_tot~1e6,
+   ~5000 difetti (plasma). A L2/L3 erano vuoto. -> chi_c(L4) < 1.08 (sweep tutto
+   sopra-soglia). Il flusso NON si appiattisce a 1.23: chi_c continua a scendere.
+2. [ARTEFATTO? indagine "verifica prima di interpretare"]
+   - Temperatura per-foglia CRESCE ~15%/livello (L1=625, L2=744, L3=832 KE/foglia
+     a cm54). ROBUSTA: invariata con serbatoio OFF (hierarchical_heat_fraction=0) e
+     con lambda_exchange azzerato. CAUSA NON PINNATA (2 ipotesi sbagliate: serbatoio,
+     lambda). E' MITE e probabilmente SEPARATA dal grosso calo di chi_c.
+   - Confound dell'osservabile: chi_c via P(M_tot>1) = P(>=1 difetto OVUNQUE) scala
+     con N per STATISTICA DEI VALORI ESTREMI, non criticita' intrinseca. -> usare
+     DENSITA' n_def/N (intensiva), non il binario.
+3. [CAUSA VERA del flusso: COUPLING SCALE-DIPENDENTI POSTULATI/LEGACY] verificato in
+   physics_context.for_level + RG_FLOW_TOPOLOGICAL_SCREENING.md:
+   - alpha_K ~ 1/24^L: FIX post-hoc per instabilita' ("derivazione" nel doc ha ???
+     letterali, auto-contraddittoria). Calibrato su 1 dato empirico (K_L2/K_L1=0.185).
+   - kappa ~ 1/24^(L/2): da quell'unico rapporto empirico.
+   - lambda_exchange ~ 24^(2L): SCALING LEGACY "ESPLOSIVO", riconosciuto dal progetto
+     stesso come "instabilita' catastrofica" per alpha_K, MAI sistemato per lambda
+     ("mantiene scaling old per backward compatibility", riga 208 physics_context).
+   - gamma_damping ~ (24^L)^0.2: esponente "conservativo" scelto.
+   -> Le leggi di scala sono POSTULATE/CALIBRATE/LEGACY, NON derivate. TODO_VALIDATION
+      flaggato nel codice ma "PASS" nel doc (documentare-prima-di-verificare).
+   VERDETTO: il "flusso di chi_c" riflette questa parametrizzazione, non una legge
+   derivata ne' un'emergenza pura. Il motore E' fisico nel nucleo (simplettico
+   verificato), ma le leggi di corsa dei coupling sono un fit/rattoppo.
+4. [CLUSTERING P10] 6 campi L4 plasma (~5000 difetti): Fano~1.0 a tutte le scale ->
+   POISSON/uniforme, NO rete cosmica nel regime denso. Diluito non testato.
+
+DECISIONE: L4 FERMATA (2026-06-08). Misurava un chi_c confuso (sweep mis-centrato +
+osservabile extreme-value + coupling postulati). Preservati: resume cm54,57 + 6 campi
+in fields/. Per riprendere lo stesso comando ri-fa i mancanti.
+
+PUNTI CONCETTUALI UTENTE (da incorporare):
+- Il modello e' lo SPAZIOTEMPO INTERO (campo chi ovunque), non solo i kink/materia.
+- "Quando aumenta la materia lo spazio deve aumentare" -> il modello e' a RETICOLO
+  FISSO (24^L): manca l'accoppiamento MATERIA<->SPAZIO (espansione). lambda_exchange
+  ~24^(2L) potrebbe essere un surrogato non-principiato di questo.
+- Generazione della materia a ogni livello: dipende dai coupling -> se postulati, la
+  generazione e' parametrizzata, non predetta.
+
+PROSSIMI PASSI (riorientati):
+  (B, RACCOMANDATO) FOUNDATIONAL: le leggi di corsa dei coupling sono DERIVABILI
+    (geometria di Leech / vero calcolo RG / accoppiamento materia-spazio) o restano
+    parametrizzazione? Bersaglio n.1 = lambda_exchange legacy ~24^(2L). Qui sta la
+    differenza tra teoria predittiva e fit.
+  - Ridefinire l'osservabile RG: DENSITA' n_def/N (intensiva), non P(M_tot>1).
+  (A, opzionale) Bisezione sistematica della causa della temperatura (~15%/livello):
+    coupling scale-invarianti vs attuali -> isola struttura vs valori. Side-quest minore.
+  - Pipeline P1-P10 resta valida e committata (vedi sotto). I tool funzionano; cambia
+    cosa misuriamo e come interpretiamo.
 
 ## >>> SEI SUL BRANCH perf/evolve-vectorized <<<
 SCOPO: vettorizzare l'integrazione del motore per 20-50x (eliminare il loop Python
