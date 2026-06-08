@@ -868,6 +868,28 @@ cross-corr=+0.35 (ACCOPPIATI -> il difetto IRRAGGIA fase); spettro di fase SPALM
 
 ---
 
+### 6.6 `experiments/exp3/analyze_spettro_ensemble.py` — P8 ensemble spettro
+
+**Cosa fa e perche'**: risolve il limite di P7 (un campo solo, xcorr non significativa).
+Legge TUTTI i campi `.npz` salvati da P1 (`--save-field`) in `experiments/exp3/fields/`,
+per ognuno ricostruisce i blocchi L1 (`reshape(-1,24)`, ordine DFS), trova il ring
+LOCALE del difetto, fa la DFT a due canali (ampiezza=massa, fase=tau) e la
+cross-correlazione radiale-fase; poi AGGREGA per livello (media +- sem + t=mean/sem).
+Solo cosi' si distingue accoppiamento FISICO (|t|>2) da rumore. Lo spettro |DFT|^2 e'
+invariante per traslazione -> no allineamento dei core. np.fft, MAI integratore spettrale.
+
+```bash
+python experiments/exp3/analyze_spettro_ensemble.py
+```
+
+**Output**: tabella per livello (n_campi, <xcorr>, sem, t, verdetto) + spettro di fase
+medio (IPR, modi dominanti = divisori di 24). **[OSS] su 1 campo L2**: xcorr=0.524
+(identico a P7 --local: check di consistenza OK), "no stat" (1 campo).
+> Da girare sui ~campi L4 salvati (kink) per il verdetto vero sull'accoppiamento
+> massa<->fase. |t|<2 => compatibile con canali ortogonali.
+
+---
+
 ## Sezione 7 — Librerie di supporto (non eseguibili)
 
 | File | Descrizione |

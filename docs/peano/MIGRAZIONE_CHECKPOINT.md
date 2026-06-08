@@ -105,10 +105,13 @@ non riproducibili al bit. Coerenti con L3 seedato perche' stesso ensemble.
     1. RIGENERARE summary L2 se servisse (gotcha sotto), poi analyze_rg_scaling.py
        con 3 punti -> fit FSS completo + CURVATURA: punto fisso ~1.23 (teoria chiude)
        o continua a scendere (emergenza, "more is different"). E' LA risposta.
-    2. ENSEMBLE SPETTRO (P8 da scrivere): leggere i campi .npz salvati, per ogni
-       campo prendere il RING LOCALE del difetto (P7 --local logic), DFT a due canali,
-       MEDIARE xcorr radiale-fase su tutti i seed/livelli. Solo cosi' si distingue
-       accoppiamento fisico da rumore (xcorr singolo ~1.5-2.5sigma, non conclusivo).
+    2. ENSEMBLE SPETTRO: P8 GIA' SCRITTO (analyze_spettro_ensemble.py, TESTS 6.6).
+       Legge i campi .npz, ring locale del difetto (reshape(-1,24)), DFT a due canali,
+       AGGREGA xcorr radiale-fase per livello (media+-sem, t=mean/sem). Validato su 1
+       campo L2 (xcorr 0.524 = identico a P7 --local: consistenza OK). DA FARE:
+       girarlo sui campi L4 salvati (kink) -> verdetto vero sull'accoppiamento
+       (|t|>2 = fisico; |t|<2 = compat. ortogonalita'/rumore). Comando:
+       python experiments/exp3/analyze_spettro_ensemble.py
     3. Decisione vettorizzazione (Strategia B) col t_quench L4 reale dal log.
     GOTCHA: P1 sovrascrive il summary del livello ad ogni run -> per rigenerare il
     summary completo di un livello, rilanciare con TUTTI i suoi chi_means (cached
