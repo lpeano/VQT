@@ -89,13 +89,27 @@ non riproducibili al bit. Coerenti con L3 seedato perche' stesso ensemble.
         vicino soglia; invariante candidato = massa del singolo difetto.
     [x] P1 --save-field (opt-in): salva chi+tau (.npz compresso) solo kink, per
         winding/spettro. L2 ~3.9KB/campo, L4 stimato <1MB. fields/ in gitignore.
-  DA FARE alla ripresa (PROSSIMO = L4, il terzo punto):
-    1. Quench L4 (background, t_quench ~5h stimato = 24x L3 789s; RAM L4 da
-       verificare): python experiments/exp3/test_osservabili_rg.py --level 4
-       --seeds 1 --chi-means 60,62,64 --workers 3 --save-field
-       (pochi seed: serve il 3o punto + il timing reale + un campo per winding/spettro).
-    2. analyze_rg_scaling.py con 3 punti -> fit FSS completo + CURVATURA (punto
-       fisso ~1.23? o continua a scendere = emergenza). Decide anche vettorizzazione.
+    [x] make(level=4) ESTESO (commit b8d8beb): 331776 foglie, build 4.9s, RAM
+        strutture ~0.3 GB. RAM L4 verificata: 6 worker = 2.6 GB python (picco ~5-6),
+        ~12 GB liberi su 32 -> SAFE.
+    [x] P7 --local AGGIUNTO: analizza il ring L1 del difetto (24 segmenti, difetto
+        1 su 24 NON diluito) invece del top-ring globale. Verificato L2 cm74:
+        std(m_B) 0.018 (globale) -> 0.303 (locale): il probe locale VEDE il difetto.
+        xcorr +0.524 (~2.5sigma, 1 campo). [Il globale a L3 era lavato dalla diluizione.]
+  IN CORSO (LANCIATO 2026-06-08): CAMPAGNA L4 overnight (background ID bze8bd1n2):
+    --level 4 --seeds 3 --chi-means 54,57,60,63,66 --workers 6 --save-field.
+    15 quench x ~5h / 6 worker ~ 16h. Log: rg_summary/_run_L4.log; summary ->
+    osservabili_L4.json; campi (kink) -> experiments/exp3/fields/ (gitignore).
+    Sweep bracketta punto-fisso (cm~61.6) vs emergenza (cm~56).
+  DA FARE alla ripresa (a L4 finita):
+    1. RIGENERARE summary L2 se servisse (gotcha sotto), poi analyze_rg_scaling.py
+       con 3 punti -> fit FSS completo + CURVATURA: punto fisso ~1.23 (teoria chiude)
+       o continua a scendere (emergenza, "more is different"). E' LA risposta.
+    2. ENSEMBLE SPETTRO (P8 da scrivere): leggere i campi .npz salvati, per ogni
+       campo prendere il RING LOCALE del difetto (P7 --local logic), DFT a due canali,
+       MEDIARE xcorr radiale-fase su tutti i seed/livelli. Solo cosi' si distingue
+       accoppiamento fisico da rumore (xcorr singolo ~1.5-2.5sigma, non conclusivo).
+    3. Decisione vettorizzazione (Strategia B) col t_quench L4 reale dal log.
     GOTCHA: P1 sovrascrive il summary del livello ad ogni run -> per rigenerare il
     summary completo di un livello, rilanciare con TUTTI i suoi chi_means (cached
     = istantaneo). (Successo coi smoke test cm74 che avevano azzerato il summary L2.)

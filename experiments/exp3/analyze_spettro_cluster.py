@@ -145,6 +145,35 @@ def parte_B_campo(root):
     return m_B, phi_B, pow_amp, pow_pha
 
 
+def _find_defect_block(root, chi0):
+    """Trova il blocco L1 (figli = segmenti) che contiene la foglia piu' deviata dal
+    pozzo dominante. Probe LOCALE: il difetto e' 1 su 24, NON diluito come nel top-ring.
+    Ritorna (block, dev_max)."""
+    from wqt_oop.segmento_quantistico import SegmentoQuantistico
+    allchi = []
+    def gather(n):
+        if isinstance(n, SegmentoQuantistico):
+            allchi.append(n.chi)
+        else:
+            for c in n.children:
+                gather(c)
+    gather(root)
+    pozzo = chi0 * (1.0 if np.mean(allchi) >= 0 else -1.0)
+    best, best_dev = None, -1.0
+    def scan(n):
+        nonlocal best, best_dev
+        if n.children and isinstance(n.children[0], SegmentoQuantistico):
+            dev = max(abs(c.chi - pozzo) for c in n.children)
+            if dev > best_dev:
+                best_dev, best = dev, n
+        else:
+            for c in n.children:
+                if not isinstance(c, SegmentoQuantistico):
+                    scan(c)
+    scan(root)
+    return best, best_dev
+
+
 def main():
     import argparse
     ap = argparse.ArgumentParser(description="P7 - spettro a due canali sui cluster Z_24")
@@ -153,6 +182,9 @@ def main():
     ap.add_argument("--chi-mean", type=float, default=72.0)
     ap.add_argument("--quench", action="store_true",
                     help="genera un campo congelato e fa la Parte B (altrimenti solo A)")
+    ap.add_argument("--local", action="store_true",
+                    help="analizza il RING LOCALE (24 segmenti del blocco L1 che contiene "
+                         "il difetto) invece del top-ring globale: probe non diluito")
     ap.add_argument("--pre", type=int, default=40)
     ap.add_argument("--quench-steps", type=int, default=500)
     args = ap.parse_args()
@@ -178,7 +210,16 @@ def main():
         M_tot = compute_hierarchical_mass(frozen)["M_tot"]
         print(f"\n  Campo congelato: M_tot = {M_tot:.3e} "
               f"({'KINK (difetto presente)' if M_tot > 1 else 'vuoto'})")
-        m_B, phi_B, pow_amp, pow_pha = parte_B_campo(frozen)
+        if args.local:
+            chi0 = getattr(frozen.physics, "chi_stable", CHI_STABLE)
+            target, dev = _find_defect_block(frozen, chi0)
+            print(f"  PROBE LOCALE: ring L1 del difetto (deviazione max {dev:.1f} dal "
+                  f"pozzo). I 24 SEGMENTI di quel blocco, non i cluster globali.")
+        else:
+            target = frozen
+            print(f"  PROBE GLOBALE: top-ring (24 cluster diretti del root). "
+                  f"NB a L>=3 il difetto e' diluito qui (usa --local).")
+        m_B, phi_B, pow_amp, pow_pha = parte_B_campo(target)
 
         # grafico
         fig, axes = plt.subplots(2, 2, figsize=(12, 8))
@@ -196,7 +237,9 @@ def main():
         fig.suptitle(f"Spettro a due canali L{args.level} chi_mean={args.chi_mean:.0f} "
                      f"(M_tot={M_tot:.1e})", fontweight="bold")
         fig.tight_layout()
-        out = os.path.join(FIGDIR, f"spettro_cluster_L{args.level}_cm{args.chi_mean:.0f}.png")
+        tag = "local" if args.local else "global"
+        out = os.path.join(FIGDIR,
+                           f"spettro_cluster_L{args.level}_cm{args.chi_mean:.0f}_{tag}.png")
         fig.savefig(out, dpi=120); plt.close(fig)
         print(f"\n  Grafico salvato: {out}")
     else:
