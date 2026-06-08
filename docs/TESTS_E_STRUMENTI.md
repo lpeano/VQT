@@ -812,6 +812,28 @@ python wqt_oop/analyze_rg_flow.py
 
 ---
 
+### 6.4 `experiments/exp3/analyze_rg_scaling.py` — P2 fit di flusso RG
+
+**Cosa fa e perche'**: secondo passo del programma RG (METODO_SCALING_RG.md). Legge
+i summary di P1 (`rg_summary/osservabili_L*.json`) e: [A] fit FSS di chi_c/stable =
+c_inf + a*24^(-lambda*L) -> valore asintotico L->inf (con >=3 livelli; con 2 stima
+lineare in 1/N); [B] confronta rho_M e Psi_L A EPSILON RIDOTTO UGUALE
+(eps=(chi-chi_c)/chi_c, interpolazione) tra livelli = confronto RG corretto, NON la
+media globale; [C] test di consistenza del flusso (g_L geometrico? punto fisso?).
+Solo analisi (nessun motore), idempotente, ~1s.
+
+```bash
+python experiments/exp3/analyze_rg_scaling.py            # eps0 default 0.05
+python experiments/exp3/analyze_rg_scaling.py --eps0 0.08
+```
+
+**Output**: tabella chi_c/stable per livello + estrapolazione, rho_M(eps0)/Psi_L(eps0)
+per livello (CV<0.1 -> CNG A invariante favorita), figura `figures/rg_flow_chi_c.png`.
+**[OSS] con solo L2 (2026-06-05)**: chi_c/stable=1.353, rho_M(eps0=0.05)=2.07,
+Psi_L(eps0)=1.03. Servono L3,L4 (con lo STESSO P1) per il fit FSS e il test di flusso.
+
+---
+
 ## Sezione 7 — Librerie di supporto (non eseguibili)
 
 | File | Descrizione |
