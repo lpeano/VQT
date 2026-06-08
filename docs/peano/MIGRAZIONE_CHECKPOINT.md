@@ -90,6 +90,12 @@ non riproducibili al bit. Coerenti con L3 seedato perche' stesso ensemble.
        (stima ~8h, background) -> 3o punto + decide vettorizzazione Strategia B.
     3. Con L4: analyze_rg_scaling completo (fit FSS 3 parametri + test flusso).
     4. P3 mappa RG T:(L_n->L_{n+1}) + test consistenza (METODO_SCALING_RG.md).
+    5. [DOPO L4 - TEST FONDAMENTALE] P6 winding del parametro d'ordine psi:
+       cluster = campo complesso GL psi_B=m_B*exp(i*phi_B); testare se la massa e'
+       un difetto topologico (winding intero della fase + dip |psi| nel core).
+       Protocollo in FORMALIZZAZIONE_MASSA_TOPOLOGICA.md sez. 7.3. Se winding intero
+       -> massa = carica topologica quantizzata (dominio giusto per "divisori di 24":
+       un conteggio, non le energie). Origine: domanda "voxel = qubit?" 2026-06-05.
   NB: rho_M e Psi_L per CNG A/B; t_quench_s a L4 = numero che decide vettorizzazione.
 
 

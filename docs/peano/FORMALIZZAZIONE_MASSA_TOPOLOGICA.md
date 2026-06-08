@@ -556,3 +556,90 @@ per-task (rende i run riproducibili e il parallelo identico al seriale, GATE PAS
 `compute_geometric_E_psi`, `freeze_and_measure_mass` in `wqt_oop/energy_metrics.py`;
 esperimenti in `experiments/exp3/test_quench_mass.py`,
 `test_soglia_formazione.py`.
+
+---
+
+## 7. [CNG] Parametro d'ordine complesso a livello di cluster — la massa come difetto topologico di psi
+
+> **Status**: congettura strutturale, TEST FONDAMENTALE DA ESEGUIRE *DOPO* L4
+> (serve il flusso RG calibrato su L2/L3/L4 e i campi congelati con difetti reali).
+> Origine: discussione 2026-06-05 "il voxel e' un qubit alpha|0>+beta|1>?".
+
+### 7.1 Dal voxel al cluster: cosa cambia
+
+**[OSS/DEF] Singolo voxel = pseudo-spin classica REALE.** Lo stato del voxel L0 e'
+$(\chi, v)\in\mathbb{R}^2$ (classico: niente spazio di Hilbert, niente sovrapposizione,
+niente unitarieta'). I due pozzi $\pm\chi_0$ danno una struttura a due livelli con
+ampiezza $s=\tanh(\chi/\chi_0)\in[-1,+1]$ (gia' nel coupling del motore). NON e' un
+qubit quantistico; $\alpha,\beta$ complessi NON sono nel modello. E $\beta/\alpha$ NON
+e' "la pendenza del kink": la pendenza e' una grandezza INTER-voxel (la torsione sugli
+spigoli $\rho^{\mathrm{tors}}_i=\sum_j W_{ij}(\chi_i-\chi_j)^2$), non intra-voxel.
+Confermato dal difetto PUNTUALE misurato (sez. 5.2): dentro un voxel non c'e' pendenza
+da codificare.
+
+**[CNG] Cluster = parametro d'ordine COMPLESSO (Ginzburg-Landau).** A livello di
+blocco la visione a due livelli regge MEGLIO, ma si trasforma. L'oggetto fedele e':
+$$\psi_B = m_B\,e^{i\phi_B},\qquad
+  m_B=\langle\tanh(\chi/\chi_0)\rangle_{\text{blocco}},\quad
+  \phi_B=\text{fase del modo collettivo }(f_{\mathrm{dom}}).$$
+E' un campo CLASSICO complesso (il potenziale del motore E' Landau-Ginzburg,
+$V=\beta(\chi^2-\chi_0^2)^2$), NON un qubit: $\alpha,\beta$ come ampiezza d'ORDINE, non
+di probabilita'. Il modo collettivo coerente $m_B$ coincide con la media di blocco
+$\bar\chi_B$ = la variabile RG del block-spin (TEO 2 in
+`basimatematiche/teorema_peano_vqt.md`).
+
+### 7.2 Perche' la massa NON sta nella macro-spin (di nuovo il TEO 2)
+
+La macro-spin $\bar\chi_B$ cattura il modo collettivo "quale pozzo" e BUTTA VIA la
+struttura interna. Ma la massa vive proprio nella struttura interna (il voxel girato,
+la torsione). E' il contenuto del TEO 2: $\bar\chi_B$ si chiude sotto il coupling, ma
+il termine non lineare $\Delta_B\sim\mathrm{Var}_B(\chi)$ (le fluttuazioni interne =
+i difetti) NON si chiude. Quindi:
+
+> La visione a due livelli sul cluster regge per la parte SENZA massa (modo collettivo
+> coerente) e fallisce per la parte CON massa (i difetti interni).
+
+Il linguaggio GL recupera la massa nel modo giusto: in un parametro d'ordine complesso
+i difetti sono DIFETTI TOPOLOGICI di $\psi$ — un avvolgimento della fase (winding
+number) e un crollo del modulo $|\psi|$ nel core, dove si concentra l'energia. Cioe'
+la massa riappare come difetto topologico del campo d'ordine = la tesi centrale di
+questo documento ("massa come difetto topologico congelato"). Il difetto puntuale
+misurato (sez. 5.2) sarebbe il core di questo difetto.
+
+### 7.3 IL TEST FONDAMENTALE (da eseguire DOPO L4)
+
+**Ipotesi falsificabile**: attorno a un difetto, la fase $\phi_B$ del parametro
+d'ordine fa un avvolgimento INTERO $2\pi n$ (winding number $n$ quantizzato), e il
+modulo $|\psi|$ crolla nel core.
+
+**Protocollo** (sul campo CONGELATO di un quench con difetto reale, $M_{\mathrm{tot}}>1$):
+1. Costruire $\psi_B$ per ogni blocco L1: $m_B=\langle\tanh(\chi/\chi_0)\rangle$, e
+   $\phi_B$ dalla fase del modo collettivo. NB: la definizione operativa di $\phi_B$
+   (fase dell'oscillazione dominante, o angolo in $(\bar\chi,\dot{\bar\chi})$, o
+   componente spettrale $f_{\mathrm{dom}}$) e' essa stessa da fissare e verificare —
+   e' il primo sotto-task.
+2. Calcolare il winding di $\phi_B$ lungo un cammino chiuso attorno al blocco
+   difettoso: $n=\frac{1}{2\pi}\oint \Delta\phi_B$.
+3. Verificare: $|\psi|$ crolla nel core? $n$ e' intero e stabile su piu' seed?
+
+**Predizioni e conseguenze**:
+- Se $n$ e' intero quantizzato $\to$ la massa e' una CARICA TOPOLOGICA quantizzata.
+  Qui SI' che la "legge dei divisori di 24" potrebbe avere senso, ma nel DOMINIO
+  GIUSTO: un CONTEGGIO (il winding / il numero di difetti), non sulle energie (che
+  sono continue ed estensive $\sim N$: cercarci i divisori e' numerologia, vedi gotcha
+  in CLAUDE.md).
+- Se non c'e' winding (solo dip di $|\psi|$ senza avvolgimento di fase) $\to$ il
+  difetto e' uno "scalare" (vacancy/instanton), non un vortice. Anche questo e' un
+  risultato.
+
+**Cosa abbiamo gia' e cosa manca**:
+- [OSS] Misurato: difetti PUNTUALI e torsione sugli spigoli (sez. 5).
+- [manca] Mai misurato un winding di fase. "Difetto = vortice di $\psi$" e'
+  interpretazione, NON fatto. Questo test lo decide.
+
+**Perche' DOPO L4**: (a) serve la mappa RG calibrata (L2/L3/L4 con P1) per sapere se la
+struttura del cluster e' scale-stabile prima di attribuirle una carica topologica;
+(b) servono campi congelati a L3/L4 con difetti ben localizzati per avere un "loop"
+attorno al core con abbastanza blocchi. Si aggancia al punto P5 di
+`METODO_SCALING_RG.md` (RG-covarianza della triade + c-function): il winding sarebbe un
+invariante topologico candidato a sopravvivere al coarse-graining.
