@@ -70,19 +70,27 @@ non riproducibili al bit. Coerenti con L3 seedato perche' stesso ensemble.
         (vicino all'1.338 noto; barra inf perche' 3 punti/2 seed = scalino).
         t_quench L2 ~30s.
     [x] Documentato in TESTS_E_STRUMENTI.md sez. 5.16. Commit fdc45ee.
-  IN CORSO: campagna L2 vera (10 seed, cm 60,63,65,66,67,68,70,73, 6 worker) per
-    chi_c con barre vere = primo punto RG solido. Log: rg_summary/_run_L2.log;
-    summary -> rg_summary/osservabili_L2.json.
+  FATTO (cont. 2026-06-05):
+    [x] CAMPAGNA L2 (P1): chi_c = 67.65 +- 0.42 -> chi_c/stable = 1.353 +- 0.008.
+        rho_M(eps0=0.05)=2.07, Psi_L(eps0)=1.03. Commit a857819. PRIMO punto RG.
+        NB: il vecchio 1.338 (Task A) era ALTRO protocollo -> per la mappa RG TUTTI
+        i livelli vanno con P1 (non mescolare con il vecchio L3=1.240).
+    [x] P2 SCRITTO: experiments/exp3/analyze_rg_scaling.py (commit a6fac57).
+        Legge rg_summary/osservabili_L*.json. Fa: FSS chi_c (asintoto L->inf),
+        confronto rho_M/Psi_L a EPSILON RIDOTTO UGUALE (non media globale!),
+        test consistenza flusso. Verificato su L2. Doc: TESTS 6.4.
+  IN CORSO: CAMPAGNA L3 (P1) in background (10 seed, cm 56,58,60,62,64,66, 6 worker).
+    Log: rg_summary/_run_L3.log; summary -> osservabili_L3.json. t_quench L3 LENTO
+    (~10-25min/quench) -> ore. Resume crash-safe: se si interrompe, rilanciare lo
+    STESSO comando.
   DA FARE alla ripresa:
-    1. Verificare summary L2 (atteso chi_c/stable ~1.338; annotare rho_M, Psi_L).
-    2. Campagna L3 (background/overnight, t_quench L3 ~25min stima -> resume):
-       python experiments/exp3/test_osservabili_rg.py --level 3 --seeds 10
-       --chi-means 56,58,60,62,64,66 --workers 6
-    3. UN quench L4 (--level 4 --seeds 1 --chi-means 62) per t_quench_s REALE
-       (stima ~8h) -> decide vettorizzazione Strategia B.
-    4. P2 (fit FSS chi_c/rho_M su L2/L3/L4) + P3 (mappa RG + test consistenza).
-  NB osservabili-chiave: rho_M e Psi_L per CNG A/B; t_quench_s a L4 = numero che
-  decide la vettorizzazione. Summary JSON in rg_summary/ = ponte verso P2/P3.
+    1. A L3 finita: python experiments/exp3/analyze_rg_scaling.py (2 punti ->
+       trend chi_c, stima lineare 1/N; verificare rho_M(eps0) L2 vs L3 per CNG A).
+    2. UN quench L4 (--level 4 --seeds 1 --chi-means 62) per t_quench_s REALE
+       (stima ~8h, background) -> 3o punto + decide vettorizzazione Strategia B.
+    3. Con L4: analyze_rg_scaling completo (fit FSS 3 parametri + test flusso).
+    4. P3 mappa RG T:(L_n->L_{n+1}) + test consistenza (METODO_SCALING_RG.md).
+  NB: rho_M e Psi_L per CNG A/B; t_quench_s a L4 = numero che decide vettorizzazione.
 
 
 [METODO SCALING/RG 2026-06-05] NUOVO DOCUMENTO: docs/peano/METODO_SCALING_RG.md
