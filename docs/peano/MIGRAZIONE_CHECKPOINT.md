@@ -112,6 +112,16 @@ non riproducibili al bit. Coerenti con L3 seedato perche' stesso ensemble.
        girarlo sui campi L4 salvati (kink) -> verdetto vero sull'accoppiamento
        (|t|>2 = fisico; |t|<2 = compat. ortogonalita'/rumore). Comando:
        python experiments/exp3/analyze_spettro_ensemble.py
+    2b. [NUOVO 2026-06-08] P9 RIGIDITA'->LINEWIDTH: analyze_rigidita_linewidth.py +
+       FORMALIZZAZIONE sez.9. Ipotesi (utente): i divisori Z_24 sono le portanti, la
+       larghezza con cui un difetto le spalma e' fissata da alpha_K(L)~1/24^L.
+       Predizione ANALITICA: concentr. spettrale C_L~24^(-L/2), rapporto consecutivo
+       =sqrt(24)~4.9. Smoke L2 (1 campo): C_amp=0 (single-site satura l'ampiezza ->
+       test vive in FASE+torsione), C_fase=0.966, n_eff_tors=3.68. SERVE fields a >=2
+       livelli: L2 c'e' (1), L4 in arrivo (--save-field), L3 MANCA (campagna pre-flag).
+       Per L3: python test_osservabili_rg.py --level 3 --seeds 3 --chi-means 66
+       --workers 3 --save-field (da fare quando i core si liberano, NON ora che L4 gira).
+       Primo rapporto gia' da L2+L4 (predetto sqrt(576)=24).
     3. Decisione vettorizzazione (Strategia B) col t_quench L4 reale dal log.
     GOTCHA: P1 sovrascrive il summary del livello ad ogni run -> per rigenerare il
     summary completo di un livello, rilanciare con TUTTI i suoi chi_means (cached

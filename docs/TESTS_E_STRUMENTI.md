@@ -890,6 +890,29 @@ medio (IPR, modi dominanti = divisori di 24). **[OSS] su 1 campo L2**: xcorr=0.5
 
 ---
 
+### 6.7 `experiments/exp3/analyze_rigidita_linewidth.py` — P9 linewidth vs rigidita'
+
+**Cosa fa e perche'**: test di FORMALIZZAZIONE sez. 9. Ipotesi: la larghezza di riga
+con cui un difetto spalma l'energia sui modi Z_24 e' fissata dalla RIGIDITA' di scala
+`alpha_K(L)~1/24^L`. Predizione analitica: concentrazione spettrale `C_L ~ xi_L ~
+24^(-L/2)` -> rapporto consecutivo `C_L/C_(L+1) = sqrt(24)~4.9`. Dai campi salvati
+(`--save-field`), per ogni campo prende il ring locale del difetto, misura C dei canali
+ampiezza e fase + n_eff torsione, aggrega per livello, confronta i rapporti col predetto.
+
+```bash
+python experiments/exp3/analyze_rigidita_linewidth.py
+```
+
+**Output**: tabella per livello (alpha_K, C_amp, C_fase, n_eff_tors) + confronto
+rapporti misurati vs `sqrt(alpha_K(L)/alpha_K(L+1))`. **[OSS] L2 (1 campo)**:
+C_amp=0.000 (ampiezza PIATTA: difetto single-site satura il canale -> il test vive
+nei canali FASE e torsione, non ampiezza); C_fase=0.966; n_eff_tors=3.68 (~zona di
+torsione geometrica).
+> SERVE fields a >=2 livelli. L3 manca (campagna L3 girata prima di --save-field);
+> L4 in arrivo. Primo rapporto calcolabile da L2+L4 (2 livelli, predetto sqrt(576)=24).
+
+---
+
 ## Sezione 7 — Librerie di supporto (non eseguibili)
 
 | File | Descrizione |

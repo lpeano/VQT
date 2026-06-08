@@ -713,3 +713,78 @@ l'integratore spettrale (bug deriva 38%).
 **[caveat]** Modi normali CLASSICI (fononi), non quantistici: Higgs/Goldstone come
 analogia strutturale, non campi quantizzati. L'orticolarita' dei due canali e' IPOTESI
 da misurare; il loro ACCOPPIAMENTO (difetto che irraggia fase) sarebbe la fisica vera.
+
+---
+
+## 9. [CNG] Legge di risonanza generalizzata: linewidth fissata dalla rigidita' di scala
+
+> **Status**: congettura con PREDIZIONE ANALITICA, test eseguibile sui campi salvati.
+> Origine: domanda 2026-06-08 "la legge di risonanza discreta viene spalmata in modo
+> proporzionale alla rigidita' locale di L?". Riscatta l'idea dei divisori (sez. 8)
+> nella forma corretta.
+
+### 9.1 L'idea: i divisori sono le PORTANTI, la rigidita' ne fissa la larghezza
+
+La sez. 8 ha (giustamente) falsificato "l'energia si concentra sui modi-divisore":
+un difetto puntuale SPALMA l'energia su tutti i 24 modi. La riformulazione fisica:
+> I modi-divisore $Z_{24}$ sono le **frequenze portanti** (base esatta a ogni $L$). Ogni
+> risonanza ha una **larghezza di riga** $\Gamma_L$ (quanto si spalma sui modi vicini),
+> e quella larghezza e' fissata dalla **rigidita' locale del livello $L$**.
+
+Come ogni sistema risonante reale: la riga non e' una delta, ha una larghezza data
+dall'accoppiamento. Qui la "rigidita'" e' il coupling scale-dipendente.
+
+### 9.2 La legge di rigidita' e' gia' analitica nel motore
+
+La rigidita' di accoppiamento e' nota in forma chiusa (verificata in
+`physics_context.py`):
+$$\alpha_K(L) = \alpha_K^{(1)}\,24^{-(L-1)}\quad\text{[rapporti consecutivi}=24\text{ esatti]},
+\qquad \beta=\text{const (doppio pozzo on-site, sempre L0)}.$$
+Valori: $\alpha_K=$ 0.0417 (L1), 1.74e-3 (L2), 7.23e-5 (L3), 3.01e-6 (L4).
+La **lunghezza di guarigione** (healing length) di Ginzburg-Landau e':
+$$\xi_L \sim \sqrt{\alpha_K(L)/\beta}\;\sim\;24^{-L/2},$$
+e $\xi_L$ fissa l'inviluppo spettrale: difetto largo ($\xi$ grande) $\to$ spettro
+stretto; difetto puntuale ($\xi$ piccolo) $\to$ spettro largo.
+
+**[PREDIZIONE ANALITICA]**
+$$\boxed{\;\Gamma_L \sim 1/\xi_L \sim 24^{+L/2}\;}\qquad
+\frac{\xi_L}{\xi_{L+1}}=\frac{\Gamma_{L+1}}{\Gamma_L}=\sqrt{24}\approx 4.9 .$$
+La concentrazione spettrale $C_L\sim\xi_L\sim 24^{-L/2}$ DECRESCE con $L$; il rapporto
+tra livelli consecutivi e' $\sqrt{24}$.
+
+### 9.3 L'indizio gia' presente (debole)
+
+Spettro di fase, probe GLOBALE 1 seed: IPR $L2=0.107$, $L3=0.073$ (floor piatto
+$=0.043$). Concentrazione in eccesso $C=(\mathrm{IPR}-\mathrm{flat})/\mathrm{flat}$:
+$C_{L2}=1.49$, $C_{L3}=0.70$, rapporto $\approx2.1$. Direzione GIUSTA (decresce con L),
+ma il valore ($2.1$) e' sotto il predetto ($4.9$): probe globale diluito + 1 seed.
+NON e' prova, e' un numero da raffinare con ensemble + ring locale.
+
+### 9.4 Caveat e osservabile corretto
+
+Trappola: a L2 il difetto e' gia' SINGLE-SITE (sez. 5.2) $\to$ il profilo $\chi$ e'
+gia' saturo (delta), la rigidita' non puo' allargarlo oltre. Quindi l'osservabile
+testabile NON e' la larghezza del profilo $\chi$ (saturo) ma la **concentrazione
+spettrale** $C_L$ del ring locale (puo' continuare ad appiattirsi verso il floor) e,
+come diagnostica secondaria, $n_{\mathrm{eff}}$ della torsione (con l'avvertenza che la
+*zona* di torsione ha larghezza ~geometrica del coupling, non ~$\alpha_K$).
+
+### 9.5 Il test (P9)
+
+Tool `experiments/exp3/analyze_rigidita_linewidth.py`: dai campi salvati
+(`--save-field`), per ogni campo prende il RING LOCALE del difetto (logica P8),
+misura $C_L$ (concentrazione spettrale ampiezza+fase) e $n_{\mathrm{eff}}$ torsione,
+AGGREGA per livello, e confronta il rapporto $C_L/C_{L+1}$ misurato col predetto
+$\sqrt{\alpha_K(L)/\alpha_K(L+1)}=\sqrt{24}$.
+
+**Esiti possibili**:
+- $C_L/C_{L+1}\approx\sqrt{24}$ entro le barre $\to$ la **legge di rigidita' regge**:
+  lo spalmamento E' fisico, fissato da $\alpha_K(L)$. Allora la legge di risonanza
+  generalizzata e': **pettine $Z_{24}$ universale + linewidth $\Gamma(L)\sim 24^{L/2}$**
+  $\to$ UNA legge per ogni $L$, due ingredienti, entrambi analitici (sez. 1
+  precedente sul punto fisso completerebbe la parte continua).
+- $C_L/C_{L+1}$ scorrelato da $\sqrt{24}$ $\to$ lo spalmamento NON e' la rigidita'
+  (e' altro: rumore termico, o linewidth saturata): ipotesi falsificata. Anche
+  questo e' un risultato.
+
+NB: predizione FALSIFICABILE con un numero analitico ($\sqrt{24}$) $\to$ test pulito.
