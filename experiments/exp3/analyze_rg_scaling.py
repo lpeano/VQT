@@ -109,6 +109,7 @@ def main():
 
     # ---------- [A] FSS ----------
     c_inf = None
+    fit = None    # (c_inf, a, lam) se il fit FSS riesce -> usato in [D]
     print("\n  [A] Finite-Size Scaling di chi_c/stable")
     if nval >= 3:
         from scipy.optimize import curve_fit
@@ -121,9 +122,13 @@ def main():
                                    absolute_sigma=True, maxfev=20000)
             perr = np.sqrt(np.diag(pcov))
             c_inf = popt[0]
+            fit = (float(popt[0]), float(popt[1]), float(popt[2]))
             print(f"      chi_c/stable(L->inf) = {c_inf:.4f} +- {perr[0]:.4f}")
             print(f"      a = {popt[1]:.3f},  lambda = {popt[2]:.3f} +- {perr[2]:.3f}")
             print(f"      -> il punto critico ASINTOTICO estratto da {nval} livelli.")
+            if nval == 3:
+                print(f"      [AVVISO] 3 punti, 3 parametri = fit ESATTO (0 DOF): la forma")
+                print(f"      e' IMPOSTA, non validata. Servono >=4 punti (L5) per testarla.")
         except Exception as e:
             print(f"      fit FSS fallito: {e}")
     elif nval == 2:
@@ -136,6 +141,39 @@ def main():
         c_inf = c_inf_lin
     else:
         print(f"      Solo {nval} livello valido: impossibile estrapolare. Servono L2,L3(,L4).")
+
+    # ---------- [D] derivate del flusso / beta-function ----------
+    print("\n  [D] Derivate del flusso (beta-function dg/dL = legge variazionale)")
+    gv = gc[valid]; Lv = L[valid]
+    if nval >= 2:
+        d1 = np.diff(gv) / np.diff(Lv)
+        midL = (Lv[:-1] + Lv[1:]) / 2.0
+        print("      derivata 1a dg/dL (diff. finite, ai midpoint):")
+        print("        " + ", ".join(f"L={m:.1f}: {d:+.4f}" for m, d in zip(midL, d1)))
+        if len(d1) >= 2:
+            trend = "in CALO -> flusso DECELERA (verso punto fisso)" if abs(d1[-1]) < abs(d1[0]) \
+                    else "in CRESCITA -> flusso ACCELERA (emergenza?)"
+            print(f"        |dg/dL| {trend}")
+    if nval >= 3:
+        d2 = gv[2:] - 2.0 * gv[1:-1] + gv[:-2]   # spaziatura unitaria (L interi)
+        print("      derivata 2a d2g/dL2 (curvatura, diff. centrale):")
+        print("        " + ", ".join(f"L={Lv[i+1]:.0f}: {d:+.4f}" for i, d in enumerate(d2)))
+        seg = "concava (decelera -> PUNTO FISSO)" if d2[-1] > 0 else \
+              "convessa (accelera -> EMERGENZA / no fixed point)"
+        print(f"        -> curvatura {seg}")
+        if nval == 3:
+            print("        [AVVISO] 3 punti = UNA sola differenza seconda, senza barra,")
+            print("        ipersensibile al rumore di 1 punto. La curvatura ROBUSTA")
+            print("        (con errore) richiede >=4 punti -> L5. A 3 punti e' indicativa.")
+    if fit is not None:
+        c_inf_f, a_f, lam_f = fit
+        slope = -lam_f * np.log(24.0)            # autovalore (linearizzato) al punto fisso
+        print(f"      beta-function ANALITICA dal fit FSS:")
+        print(f"        dg/dL = {slope:+.3f} * (g - {c_inf_f:.4f})   [lineare per costruzione]")
+        print(f"        punto fisso g* = {c_inf_f:.4f}; autovalore = {slope:+.3f} "
+              f"({'IRRILEVANTE: converge a g*' if slope < 0 else 'RELEVANTE: si allontana'})")
+        print(f"        NB: questa beta e' LINEARE perche' imposta dall'ansatz a 1 esponente.")
+        print(f"        Una beta NON lineare (piu' punti fissi) richiede >=4-5 punti + fit flessibile.")
 
     # ---------- [C] consistenza del flusso (geometrico) ----------
     if nval >= 3:
