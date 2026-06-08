@@ -206,3 +206,40 @@ elegante non verificato = artefatto).
 ### 6.4 La domanda che decide tutto (tienila in testa)
 rho*_Leech (impacchettamento geometrico) == rho*_EC (bounce di spin) ? Se si',
 geometria = gravita', i coupling sono DERIVATI, e il Muratore di Planck e' una teoria.
+
+### 6.5 [VER] LA FISICA EC ESISTEVA E SI RECUPERA (scoperta 2026-06-08 sera)
+
+Intuizione dell'utente confermata: i pezzi EC sono stati persi nel REFACTORING OOP
+(fine maggio, prima della disciplina checkpoint), NON erano sbagliati. Sono RECUPERABILI:
+
+1. **`dinamica_hamiltoniana_chiralita.py`** (318 righe) — CANCELLATO nel refactoring
+   (commit a5b417e "cleanup obsolete files"), recuperabile da git:
+   `git show 5afefb9:dinamica_hamiltoniana_chiralita.py`
+   Contiene la FISICA EC VERA, mai portata in wqt_oop:
+   - `E_torsion[i] = beta*(K^2_i - K^2_ref)^2` (energia di torsione come POTENZIALE
+     dinamico, non diagnostico) -> proprio il termine ~beta*rho^2 che cerchiamo.
+   - `update_dinamica_chiralita`: la chiralita' modula la densita' di materia (SX),
+     "torsione alta attrae materia", forza = gradiente dell'energia di torsione.
+   - `K2_REF_720`: il riferimento di chiusura spinoriale a 720°.
+
+2. **`legacy/WQT_manifold.py`** (il monolite pre-refactoring) contiene:
+   - `BETA_REPULSIONE_SPIN = 1.0` + "PRESSIONE DI DEGENERAZIONE SPIN (Einstein-Cartan)"
+     = la pressione `beta*rho^2` con il bounce.
+   - Dualita' DX/SX esplicita: `f_sx = e^-chi` (materia, condensa), `f_dx = e^+chi`
+     (spazio, espande), "gravita' = forza residua DX-SX".
+   - Dissipazione torsione->entropia quando E_tors > E_Planck (saturazione di Planck).
+   - Import da `dinamica_hamiltoniana_chiralita` (modulo sopra).
+
+3. **`CoreEngine_v2/`** ESISTE nel repo (global_state, recursive_manifold_manager,
+   phase_transition_signal) = il "core V2" (automazione gerarchica). NON e' la fisica
+   EC (quella e' nei due punti sopra), ma c'e'.
+
+### 6.6 DOMANI (piano di recupero, sostituisce in parte 6.3)
+1. Recuperare e studiare `dinamica_hamiltoniana_chiralita.py` (git show 5afefb9:...)
+   e la sezione pressione-spin di `legacy/WQT_manifold.py`.
+2. Capire PERCHE' fu tolto: solo "cleanup" del refactoring, o instabilita'? (leggere
+   il commit a5b417e e dintorni). Se instabilita' -> la cura e' re-integrarlo STABILE.
+3. Re-integrare nel motore wqt_oop ADDITIVO dietro flag `ec_saturation_enabled`:
+   l'energia di torsione `beta*(K^2-K^2_ref)^2` come forza vera + la pressione di spin.
+4. A/B vs legacy, GATE. Poi la domanda 6.4 (rho*_Leech == rho*_EC).
+NB: NON era un'idea sbagliata. Era un'idea COSTRUITA e poi persa nel refactoring.
