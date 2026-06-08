@@ -155,3 +155,54 @@ elegante non verificato).
   single-site, Delta t_relax ~50).
 - La pipeline P1-P10 (tool funzionanti, committati). Cambia COSA misuriamo (densita'
   intensiva, non il binario) e COME interpretiamo (i coupling come parametrizzazione).
+
+---
+
+## 6. >>> RIPRENDI DA QUI (passo 2: la forma del termine EC) <<<
+
+Stato: passo 1 FATTO (questo doc, commit 5090be1). Passo 2 = derivare la FORMA
+discreta del termine di saturazione EC. Iniziato il ragionamento, NON ancora chiuso.
+
+### 6.1 [VER] Scoperta chiave: la dualita' materia<->spazio E' GIA' nel modello
+Letto TEORIA_FISICA_COMPLETA.md §4 ("Chiralita' DX vs SX - Dualita' Materia-Spazio"):
+- **SX (sinistra) = canale MATERIA**: `f_sx = exp(-chi*kappa)`.
+- **DX (destra) = canale SPAZIO**: `f_dx = exp(+chi*kappa)`.
+- La GRAVITA' = forza residua dell'interazione DX-SX: quando DX e SX si sovrappongono
+  "annichilano/creano TORSIONE -> liberano energia -> curvatura" (§4.2).
+- Pattern chirale alternato `chiralita'[i] = +1 (pari), -1 (dispari)` -> "genera la
+  torsione S_λμν che distingue Einstein-Cartan da Einstein" (§4.3).
+
+=> L'accoppiamento MATERIA<->SPAZIO che cercavamo (l'espansione, sez. 3.4) E' la
+dualita' DX(spazio)-SX(materia), gia' nella struttura base. E la torsione EC e'
+sorgentata dalla loro interazione chirale. NB: lo staggered (-1)^i e' ANCHE il modo di
+Nyquist (zero-point). Tre cose coincidono: chiralita', torsione EC, vuoto vivo.
+
+### 6.2 [CNG] Conseguenza per la forma del termine
+La densita' di spin EC: `sigma ~ sovrapposizione DX-SX` ~ sbilancio di chiralita'.
+Il contatto spin-spin EC e' quartico: `P_rep ~ G*sigma^2 ~ (DX-SX overlap)^2`. Quindi
+il termine di saturazione mancante e' un **contatto quartico nella sovrapposizione
+chirale DX-SX** -- che si lega alla FRUSTRAZIONE cross-fase gia' misurata (Legge II:
+solitoni di segno opposto = chiralita' opposta). Bellissimo SE regge: lo stesso
+oggetto che da' la materia frustrata darebbe la saturazione.
+
+Candidati concreti (da decidere DERIVANDO, non indovinando):
+- A) contatto di torsione `beta*K^4` (K^2 = energia di torsione).
+- B) `beta*(f_sx*f_dx)^2` o `beta*(sbilancio_chiralita')^2` -- la sovrapposizione DX-SX.
+Il legame A<->B: K (torsione) e' generata dalla chiralita' (§4.3), quindi A e B
+potrebbero essere la stessa cosa scritta in variabili diverse. Da verificare.
+
+### 6.3 DOMANI: i prossimi passi concreti
+1. Leggere TEORIA_FISICA_COMPLETA.md §4-5 e §6 per intero + come f_sx/f_dx, chiralita'
+   e K entrano (o NON entrano) nella dinamica del segmento (in `_compute_force` NON
+   c'erano: verificare se f_sx/f_dx sono usati altrove o sono solo diagnostici).
+2. Derivare sigma (densita' di spin) esplicita dalla struttura DX-SX chirale.
+3. Scrivere `P_rep = beta*sigma^2` come ENERGIA aggiuntiva -> forza `-d/dchi` su ogni
+   segmento. Coefficiente beta legato a rho* (G, kappa_spin; e sez.3.3: rho*_Leech?).
+4. SOLO DOPO: implementare additivo dietro flag `ec_saturation_enabled` (default OFF),
+   A/B vs legacy, GATE statistico (sez.4 passi 3-4).
+NON scrivere codice prima di aver derivato la forma (lezione del 2026-06-08: termine
+elegante non verificato = artefatto).
+
+### 6.4 La domanda che decide tutto (tienila in testa)
+rho*_Leech (impacchettamento geometrico) == rho*_EC (bounce di spin) ? Se si',
+geometria = gravita', i coupling sono DERIVATI, e il Muratore di Planck e' una teoria.
