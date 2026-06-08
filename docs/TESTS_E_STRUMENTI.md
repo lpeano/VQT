@@ -834,6 +834,40 @@ Psi_L(eps0)=1.03. Servono L3,L4 (con lo STESSO P1) per il fit FSS e il test di f
 
 ---
 
+### 6.5 `experiments/exp3/analyze_spettro_cluster.py` — P7 spettro a due canali
+
+**Cosa fa e perche'**: test di FORMALIZZAZIONE sez. 8. Decompone il parametro d'ordine
+del cluster `psi_B = m_B*exp(i*phi_B)` in canale RADIALE (ampiezza m_B=<tanh(chi/chi0)>
+= massa, Higgs-like) e canale di FASE (phi_B dal settore tau = propagazione,
+Goldstone-like). DFT su Z_24. Usa np.fft (= autobase di SpectralBasis su circolante,
+esatta) SOLO come diagnostica, MAI l'integratore spettrale (bug 38%).
+
+```bash
+python experiments/exp3/analyze_spettro_cluster.py --level 2            # solo Parte A
+python experiments/exp3/analyze_spettro_cluster.py --level 2 --quench --chi-mean 72
+```
+
+| Parametro | Default | Descrizione |
+|---|---|---|
+| `--level` | 2 | Livello |
+| `--quench` | off | genera campo congelato e fa la Parte B |
+| `--chi-mean` | 72 | chi_mean del campo (per Parte B) |
+| `--seed` | 1 | seed |
+
+**Parte A** (istantanea): struttura della base dei modi Z_24. **[OSS]** i periodi
+24/gcd(m,24) sono ESATTAMENTE i divisori di 24 {1,2,3,4,6,8,12,24}, con i loro
+autovalori di coupling (m=12 = Nyquist staggered). Struttura della base, esatta.
+**Parte B** (--quench): split di energia radiale vs fase, cross-correlazione
+(ortogonalita'), spettro di fase (concentrato vs spalmato), modi dominanti. Figura
+`figures/spettro_cluster_L{n}_cm{xx}.png`.
+**[OSS] primo campo L2 cm72 (M_tot=865, 1 seed)**: E_radiale=0.18, E_fase=0.12;
+cross-corr=+0.35 (ACCOPPIATI -> il difetto IRRAGGIA fase); spettro di fase SPALMATO
+(atteso per difetto quasi-puntuale, NON struttura sui divisori); modo dominante m=12.
+> NB: 1 seed, preliminare. A cm72 ci sono difetti multipli (n_def~6); per testare
+> l'ortogonalita' PULITA serve il regime a 1 difetto (cm68-70) + media su seed.
+
+---
+
 ## Sezione 7 — Librerie di supporto (non eseguibili)
 
 | File | Descrizione |

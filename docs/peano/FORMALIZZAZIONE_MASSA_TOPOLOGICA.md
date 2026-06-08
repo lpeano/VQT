@@ -643,3 +643,73 @@ struttura del cluster e' scale-stabile prima di attribuirle una carica topologic
 attorno al core con abbastanza blocchi. Si aggancia al punto P5 di
 `METODO_SCALING_RG.md` (RG-covarianza della triade + c-function): il winding sarebbe un
 invariante topologico candidato a sopravvivere al coarse-graining.
+
+---
+
+## 8. [CNG] Decomposizione spettrale a due canali (ampiezza vs fase)
+
+> **Status**: congettura strutturale + analisi DIAGNOSTICA eseguibile gia' ora su un
+> campo congelato (non richiede l'integratore spettrale, che ha un bug: serve solo il
+> roundtrip DFT, esatto a 1e-15). Origine: discussione 2026-06-05 "due tipi di
+> energia: ortogonale (frequenza, cluster adiacenti) e di percorrenza (singolo voxel)".
+
+### 8.1 Le due energie = ampiezza e fase di psi (Higgs / Goldstone)
+
+Le fluttuazioni del parametro d'ordine $\psi_B=m_B e^{i\phi_B}$ (sez. 7) si separano in
+due modi ORTOGONALI nel piano complesso:
+
+| Canale | Modo di psi | Natura | Carattere fisico |
+|---|---|---|---|
+| RADIALE (ampiezza $\delta m$) | "Higgs-like" | MASSIVO (curvatura del pozzo) | localizzato sul core del difetto = la massa $E_\Psi$ |
+| FASE (angolo $\delta\phi$) | "Goldstone-like" | quasi-massless (direzione piatta) | propagante, delocalizzato sui cluster adiacenti = vibrazione |
+
+La "percorrenza del singolo voxel" = direzione radiale (massa); la "vibrazione
+ortogonale sui cluster adiacenti" = modo di fase (l'orologio collettivo $f_{\mathrm{dom}}$
+che viaggia da cluster a cluster). "Ortogonale" e' letterale: la fase e' ortogonale
+all'ampiezza nel piano di $\psi$.
+
+**[onesta'] Da dove viene la fase $\phi_B$ in un campo STATICO (congelato)?** Non da
+un'oscillazione (tutto e' fermo). Il candidato fedele e' il settore **spinoriale**:
+$\phi_B$ dalla fase $\tau$ (tempo proprio locale, gia' tracciato dal motore e gia'
+usato in `compute_geometric_E_psi` via il deficit di chiusura $720^\circ$). Quindi:
+canale ampiezza = settore $\chi$ (magnetizzazione), canale fase = settore $\tau$
+(spinoriale). Sono due campi reali distinti, non una fase inventata da un campo reale.
+
+### 8.2 I divisori di 24 nel dominio giusto: la base dei modi
+
+Il canale di fase su un anello di 24 cluster si decompone nei 24 modi di Fourier della
+matrice circolante $W$ (autovettori $\mathbf v_m=(\omega^{jm})$, autovalori $\lambda_m$).
+Ogni modo $m$ ha **periodo spaziale $24/\gcd(m,24)$** — e questi periodi sono ESATTAMENTE
+i divisori di 24: $\{1,2,3,4,6,8,12,24\}$. Quindi i 24 modi si organizzano in classi per
+periodo (= divisore). **Questa e' struttura della BASE, esatta e indipendente dal campo.**
+
+**[onesta' CRITICA] base dei modi vs occupazione.** Che la base si organizzi sui
+divisori e' un fatto esatto. Che un DATO campo CONCENTRI la sua energia sui modi-divisore
+e' tutt'altra cosa, empirica. Un difetto PUNTUALE singolo (sez. 5.2) e' una quasi-delta
+nello spazio -> la sua trasformata e' SPALMATA su tutti i 24 modi: NON e' evidenza di
+struttura, e' l'attesa per una delta. La concentrazione su modi-divisore richiederebbe un
+pattern COLLETTIVO commensurato (es. regime di plasma, o un'onda stazionaria coerente).
+Non aspettarsi "picchi nitidi sui divisori" da un singolo difetto: sarebbe un errore.
+
+### 8.3 Il test (eseguibile su campo congelato)
+
+**Predizione**: l'energia si partiziona in canale radiale (massa, localizzata sul
+difetto) e canale di fase (propagazione, delocalizzata), ORTOGONALI (cross-correlazione
+$\approx0$), accoppiati solo nei termini non lineari (l'irraggiamento del difetto).
+
+**Protocollo** (su campo congelato, anche L2/L3 generato apposta):
+1. Per ogni blocco L1: $m_B=\langle\tanh(\chi/\chi_0)\rangle$ (ampiezza), $\phi_B$ dal
+   settore $\tau$ (fase).
+2. DFT su $\mathbb{Z}_{24}$ di entrambi -> spettri di potenza $P_m^{(amp)}$, $P_m^{(fase)}$.
+3. Misure: (a) dove sta la potenza (modi bassi? divisori? spalmata?); (b) split di
+   energia radiale vs fase; (c) cross-correlazione radiale-fase (ortogonalita'?).
+4. Confronto tra regimi: difetto singolo (spalmato atteso) vs plasma (eventuale
+   concentrazione commensurata).
+
+**Tool**: `experiments/exp3/analyze_spettro_cluster.py` (P7). Usa `SpectralBasis`
+(`wqt_oop/spectral_coupling.py`) SOLO come diagnostica (roundtrip DFT esatto); NON
+l'integratore spettrale (bug deriva 38%).
+
+**[caveat]** Modi normali CLASSICI (fononi), non quantistici: Higgs/Goldstone come
+analogia strutturale, non campi quantizzati. L'orticolarita' dei due canali e' IPOTESI
+da misurare; il loro ACCOPPIAMENTO (difetto che irraggia fase) sarebbe la fisica vera.

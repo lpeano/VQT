@@ -96,7 +96,17 @@ non riproducibili al bit. Coerenti con L3 seedato perche' stesso ensemble.
        Protocollo in FORMALIZZAZIONE_MASSA_TOPOLOGICA.md sez. 7.3. Se winding intero
        -> massa = carica topologica quantizzata (dominio giusto per "divisori di 24":
        un conteggio, non le energie). Origine: domanda "voxel = qubit?" 2026-06-05.
+    6. [ESEGUIBILE GIA' ORA] P7 decomposizione spettrale a due canali: canale
+       RADIALE (ampiezza m_B = massa, Higgs) vs FASE (phi_B da tau = propagazione,
+       Goldstone). DFT su Z_24: periodi 24/gcd(m,24) = divisori di 24 (struttura
+       base, esatta). NB difetto singolo si SPALMA su tutti i modi (atteso!), non e'
+       struttura. Tool: analyze_spettro_cluster.py (SpectralBasis solo diagnostica,
+       NON l'integratore spettrale buggato). FORMALIZZAZIONE sez.8. Genera campo
+       proprio (i campi delle campagne NON sono salvati). Origine: "due energie:
+       ortogonale/frequenza vs percorrenza" 2026-06-05.
   NB: rho_M e Psi_L per CNG A/B; t_quench_s a L4 = numero che decide vettorizzazione.
+  NB2: i campi congelati NON sono persistiti da P1 -> aggiungere salvataggio opzionale
+  del profilo chi+tau a P1 per L4 (serve a winding P6 e spettro P7).
 
 
 [METODO SCALING/RG 2026-06-05] NUOVO DOCUMENTO: docs/peano/METODO_SCALING_RG.md

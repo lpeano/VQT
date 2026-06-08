@@ -183,6 +183,15 @@ Con L4 si passa da 2 a 3 punti -> primo vero fit di flusso.
       Protocollo completo in FORMALIZZAZIONE_MASSA_TOPOLOGICA.md sez. 7.3. Se il
       winding e' intero -> massa = carica topologica quantizzata (il dominio GIUSTO
       per un'eventuale "legge dei divisori": un conteggio, non le energie).
+- [ ] **P7. [eseguibile gia' ora] Decomposizione spettrale a due canali.** Campo
+      congelato -> canale RADIALE (ampiezza m_B = massa, Higgs-like) vs canale FASE
+      (phi_B dal settore tau = propagazione, Goldstone-like). DFT su Z_24 del canale
+      di fase: i periodi 24/gcd(m,24) SONO i divisori di 24 (struttura della base,
+      esatta). Test: split di energia, ortogonalita' (cross-corr ~0), dove sta la
+      potenza. NB: difetto singolo si SPALMA su tutti i modi (atteso, non struttura);
+      concentrazione su divisori solo da pattern collettivi. Protocollo:
+      FORMALIZZAZIONE_MASSA_TOPOLOGICA.md sez. 8. Tool: analyze_spettro_cluster.py
+      (usa SpectralBasis SOLO come diagnostica, NON l'integratore spettrale buggato).
 
 NB metodologico (vincolo di progetto): nessun numero/affermazione di performance o
 di fisica va scritto prima di averlo MISURATO. Questo documento e' un PIANO: i
