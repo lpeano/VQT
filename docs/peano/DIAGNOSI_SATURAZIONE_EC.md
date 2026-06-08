@@ -243,3 +243,17 @@ Intuizione dell'utente confermata: i pezzi EC sono stati persi nel REFACTORING O
    l'energia di torsione `beta*(K^2-K^2_ref)^2` come forza vera + la pressione di spin.
 4. A/B vs legacy, GATE. Poi la domanda 6.4 (rho*_Leech == rho*_EC).
 NB: NON era un'idea sbagliata. Era un'idea COSTRUITA e poi persa nel refactoring.
+
+### 6.7 DECISIONE (2026-06-08 sera) — DA QUI SI PARTE
+Partire dal **RECUPERO DEL CORE ENGINE ORIGINALE** (con la fisica EC: chiralita'
+alternata + chiusura 720° + inversione/saturazione + DX/SX + pressione di spin), e
+**rivedere cosa non va**, PRIMA di qualunque altra cosa. Ordine concreto:
+1. Recuperare i file persi: `git show 5afefb9:dinamica_hamiltoniana_chiralita.py`
+   (318 righe) e studiare la sezione pressione-spin di `legacy/WQT_manifold.py` +
+   `dinamica_hamiltoniana_chiralita.py` (alternanza AI FLESSI vs per parita': leggere
+   la funzione di chiralita' riga per riga, e' la prima cosa).
+2. Capire PERCHE' fu tolto nel refactoring (commit a5b417e "cleanup obsolete files":
+   solo pulizia o instabilita'?).
+3. Decidere: ri-portare la fisica EC nel motore wqt_oop (additivo, flag) OPPURE
+   ripartire dal core originale. Review di cosa non va in entrambi.
+4. Poi: la domanda 6.4 (rho*_Leech == rho*_EC) e la verifica.
