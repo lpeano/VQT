@@ -66,6 +66,7 @@ sys.path.insert(0, os.path.join(ROOT, "experiments", "exp3"))
 
 RESUME_DIR = os.path.join(ROOT, "experiments", "exp3", "resume")
 SUMMARY_DIR = os.path.join(ROOT, "experiments", "exp3", "rg_summary")
+FIELDS_DIR = os.path.join(ROOT, "experiments", "exp3", "fields")
 os.makedirs(SUMMARY_DIR, exist_ok=True)
 MTOT_MIN = 1.0
 CHI_STABLE = 50.0
@@ -110,7 +111,7 @@ def _save_resume(path, data):
 # Funzione top-level (pickling multiprocessing su Windows/spawn).
 # ---------------------------------------------------------------------------
 def _measure_one(task):
-    cm, seed, level, pre, quench_steps, dt = task
+    cm, seed, level, pre, quench_steps, dt, save_field = task
     sys.path.insert(0, ROOT)
     sys.path.insert(0, os.path.join(ROOT, "experiments", "exp3"))
     import numpy as _np
@@ -133,10 +134,11 @@ def _measure_one(task):
 
     # --- conteggio difetti puntuali sulle FOGLIE (per esponente p) ---
     chi0 = getattr(frozen.physics, "chi_stable", CHI_STABLE)
-    leaves = []
+    leaves, taus = [], []
     def _walk(n):
         if isinstance(n, SegmentoQuantistico):
             leaves.append(float(n.chi))
+            taus.append(float(getattr(n, "tau_locale", getattr(n, "tau", 0.0))))
         else:
             for c in n.children:
                 _walk(c)
@@ -148,6 +150,16 @@ def _measure_one(task):
     n_leaves = int(hm["n_leaves"])
     N_dof = 2 * n_leaves
     M_tot = float(hm["M_tot"])
+
+    # --- salvataggio opzionale del campo congelato (chi+tau) per winding/spettro ---
+    # disk-friendly: solo se richiesto E solo sui campi CON difetto (M_tot>1);
+    # float32 + compresso (campo quasi-uniforme -> comprime molto). Ordine DFS:
+    # reshape(24,-1) ricostruisce i cluster del top-ring a qualsiasi livello.
+    if save_field and M_tot > 1.0:
+        os.makedirs(FIELDS_DIR, exist_ok=True)
+        fp = os.path.join(FIELDS_DIR, f"campo_L{level}_cm{cm:.0f}_seed{seed}.npz")
+        _np.savez_compressed(fp, chi=chi.astype(_np.float32),
+                             tau=_np.asarray(taus, dtype=_np.float32))
 
     obs = {
         "M_tot": M_tot,
@@ -185,6 +197,9 @@ def main():
     ap.add_argument("--pre", type=int, default=40)
     ap.add_argument("--quench-steps", type=int, default=500)
     ap.add_argument("--workers", type=int, default=0)
+    ap.add_argument("--save-field", action="store_true",
+                    help="salva il campo congelato chi+tau (.npz compresso) SOLO dei "
+                         "kink (M_tot>1) in experiments/exp3/fields/ - per winding/spettro")
     args = ap.parse_args()
 
     seeds = list(range(1, args.seeds + 1))
@@ -210,7 +225,8 @@ def main():
             if str(seed) in resume[cm]:
                 n_cached += 1
             else:
-                pending.append((cm, seed, args.level, args.pre, args.quench_steps, dt))
+                pending.append((cm, seed, args.level, args.pre, args.quench_steps, dt,
+                                args.save_field))
 
     total = len(chi_means) * len(seeds)
     print(f"\n  Task totali: {total}  |  gia' fatti: {n_cached}  |  "
