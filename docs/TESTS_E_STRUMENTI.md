@@ -696,6 +696,54 @@ quindi un run da' SIA densita' SIA frazione di nucleazione binaria.
 
 ---
 
+### 5.16 `experiments/exp3/test_osservabili_rg.py` (PARALLELO) — P1 programma RG
+
+**Cosa fa e perche'**: primo passo del programma RG (docs/peano/METODO_SCALING_RG.md).
+Misura, sullo STESSO ensemble di quench, TUTTI gli osservabili che "fluiscono" con
+la scala, cosi' da confrontarli tra L2, L3, L4 (i tre punti del flusso RG). Serve a
+testare CNG A (invarianza di rho_M/Gamma = punto fisso RG) e CNG B (stabilita' della
+chiusura Psi_L). Riusa freeze_and_measure_mass + compute_hierarchical_mass +
+compute_geometric_E_psi (motore INTATTO, additivo). Parallelo + seeding
+deterministico + persistenza JSON propria crash-safe (.tmp+os.replace, .bak).
+
+Osservabili per quench (su stato congelato): M_tot, rho_M (=M_tot/n_foglie),
+Psi_L (=M_tot/N_dof), localization_ratio, regime, E_RX, E_psi_anchored, frustration,
+closure_err_norm, detorsion_quality, n_def, t_quench_s.
+
+```bash
+# smoke test L2 (veloce, ~1 min con 4 worker):
+python experiments/exp3/test_osservabili_rg.py --level 2 --seeds 2 \
+  --chi-means 64,68,72 --workers 4
+# campagna L3:
+python experiments/exp3/test_osservabili_rg.py --level 3 --seeds 10 \
+  --chi-means 58,60,62,64,66,68 --workers 6
+# singolo quench L4 per t_quench_s (decide vettorizzazione Strategia B):
+python experiments/exp3/test_osservabili_rg.py --level 4 --seeds 1 \
+  --chi-means 62 --workers 1
+```
+
+| Parametro | Default | Descrizione |
+|---|---|---|
+| `--level` | 2 | Livello (24^L foglie) |
+| `--seeds` | 5 | Seed per punto |
+| `--chi-means` | `62,...,72` | Sweep chi_mean |
+| `--pre` | 40 | Step di pre-evoluzione prima del quench |
+| `--quench-steps` | 500 | Step quench |
+| `--workers` | 0 (auto) | Worker paralleli |
+
+**Output**: tabella osservabili per chi_mean (media +- sem), chi_c (fit logistico),
++ summary JSON in `experiments/exp3/rg_summary/osservabili_L{n}.json` (lo leggeranno
+P2/P3 per il fit di flusso RG). Resume in `resume/osservabili_L{n}_cm{xx}.json`.
+
+**[OSS] Smoke test L2 (2026-06-05, 2 seed, cm 64/68/72)**: strumento verificato
+funzionante. M_tot bimodale (vuoto ~5e-4 vs kink ~10^2-10^3), n_def 0->1->4,
+rho_M(cm72)=2.17, chi_c/stable=1.318 (vicino all'1.338 noto; barra infinita perche'
+3 punti/2 seed danno uno scalino: serve sweep fitto + piu' seed). t_quench L2 ~30s.
+> NOTA: per chi_c con barre vere serve sweep fitto attorno alla soglia + >=10 seed.
+> Il summary JSON e' il ponte verso P2 (fit FSS) e P3 (mappa RG).
+
+---
+
 ## Sezione 6 — Strumenti di analisi e generazione dati
 
 ### 6.1 `experiments/exp3/analyze_exp3.py`

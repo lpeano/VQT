@@ -60,20 +60,29 @@ non riproducibili al bit. Coerenti con L3 seedato perche' stesso ensemble.
   localization_ratio, E_RX, E_psi_anchored, frustration, closure_err_norm,
   detorsion_quality, n_def, t_quench_s. Aggrega per livello -> chi_c (logistico) +
   summary JSON in experiments/exp3/rg_summary/ (lo leggeranno P2/P3 per il fit RG).
-  STATO: codice COMPILA (py_compile OK). Persistenza: NON usa ResumeManager (e'
-  specializzato per mtot+conteggi); ha la sua persistenza JSON minimale crash-safe
-  (.tmp+os.replace, .bak). Worker riusa freeze_and_measure_mass +
-  compute_hierarchical_mass + compute_geometric_E_psi (motore INTATTO, additivo).
+  STATO (2026-06-05): codice COMPILA e GIRA. Persistenza JSON propria crash-safe
+  (.tmp+os.replace, .bak; NON ResumeManager, specializzato). Worker riusa
+  freeze_and_measure_mass + compute_hierarchical_mass + compute_geometric_E_psi
+  (motore INTATTO, additivo).
+  FATTO:
+    [x] Smoke test L2 (2 seed, cm 64/68/72): PASS. M_tot bimodale (vuoto ~5e-4 vs
+        kink ~1e2-1e3), n_def 0->1->4, rho_M(cm72)=2.17, chi_c/stable=1.318
+        (vicino all'1.338 noto; barra inf perche' 3 punti/2 seed = scalino).
+        t_quench L2 ~30s.
+    [x] Documentato in TESTS_E_STRUMENTI.md sez. 5.16. Commit fdc45ee.
+  IN CORSO: campagna L2 vera (10 seed, cm 60,63,65,66,67,68,70,73, 6 worker) per
+    chi_c con barre vere = primo punto RG solido. Log: rg_summary/_run_L2.log;
+    summary -> rg_summary/osservabili_L2.json.
   DA FARE alla ripresa:
-    1. Smoke test L2: python experiments/exp3/test_osservabili_rg.py --level 2
-       --seeds 2 --chi-means 64,68,72 --workers 4  (verificare che gira e i numeri
-       siano sensati: rho_M ~2.9, chi_c/stable ~1.338).
-    2. Documentare in docs/TESTS_E_STRUMENTI.md (pattern obbligatorio).
-    3. Campagna L2/L3, poi UN quench L4 (--level 4 --seeds 1) per il t_quench_s
-       REALE -> decide se serve la vettorizzazione Strategia B per L4.
-    4. Commit (branch perf/evolve-vectorized).
+    1. Verificare summary L2 (atteso chi_c/stable ~1.338; annotare rho_M, Psi_L).
+    2. Campagna L3 (background/overnight, t_quench L3 ~25min stima -> resume):
+       python experiments/exp3/test_osservabili_rg.py --level 3 --seeds 10
+       --chi-means 56,58,60,62,64,66 --workers 6
+    3. UN quench L4 (--level 4 --seeds 1 --chi-means 62) per t_quench_s REALE
+       (stima ~8h) -> decide vettorizzazione Strategia B.
+    4. P2 (fit FSS chi_c/rho_M su L2/L3/L4) + P3 (mappa RG + test consistenza).
   NB osservabili-chiave: rho_M e Psi_L per CNG A/B; t_quench_s a L4 = numero che
-  decide la vettorizzazione (vedi discussione "ci servono ancora le ottimizzazioni").
+  decide la vettorizzazione. Summary JSON in rg_summary/ = ponte verso P2/P3.
 
 
 [METODO SCALING/RG 2026-06-05] NUOVO DOCUMENTO: docs/peano/METODO_SCALING_RG.md
