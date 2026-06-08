@@ -1,5 +1,15 @@
 # Checkpoint VQT - Ultimo Aggiornamento: 2026-06-08
 
+## >>> NUOVO BRANCH 2026-06-08: physics/einstein-cartan-saturation <<<
+Diagnosi + cura foundational documentate in docs/peano/DIAGNOSI_SATURAZIONE_EC.md.
+VERIFICATO oggi: il solitone di base NON ha la pressione di saturazione Einstein-
+Cartan (beta*rho^2); la dinamica e' solo doppio-pozzo + damping + coupling; la
+torsione e' un diagnostico passivo. Questa assenza = radice probabile dei coupling
+postulati + febbre. CURA [CNG]: aggiungere il termine EC additivo (flag opt-in,
+default OFF) -> saturazione fisica -> coupling derivati invece che postulati.
+PIANO in DIAGNOSI_SATURAZIONE_EC.md sez.4. Branch genealogia: perf/evolve-vectorized
+-> physics/einstein-cartan-saturation (eredita tutta la pipeline P1-P10 + docs).
+
 ## >>> SVOLTA FOUNDATIONAL 2026-06-08: il "flusso di chi_c" e' una PARAMETRIZZAZIONE <<<
 
 CONTESTO: stavamo misurando il flusso RG di chi_c (L2=1.353, L3=1.237) per decidere
