@@ -79,15 +79,26 @@ non riproducibili al bit. Coerenti con L3 seedato perche' stesso ensemble.
         Legge rg_summary/osservabili_L*.json. Fa: FSS chi_c (asintoto L->inf),
         confronto rho_M/Psi_L a EPSILON RIDOTTO UGUALE (non media globale!),
         test consistenza flusso. Verificato su L2. Doc: TESTS 6.4.
-  IN CORSO: CAMPAGNA L3 (P1) in background (10 seed, cm 56,58,60,62,64,66, 6 worker).
-    Log: rg_summary/_run_L3.log; summary -> osservabili_L3.json. t_quench L3 LENTO
-    (~10-25min/quench) -> ore. Resume crash-safe: se si interrompe, rilanciare lo
-    STESSO comando.
-  DA FARE alla ripresa:
-    1. A L3 finita: python experiments/exp3/analyze_rg_scaling.py (2 punti ->
-       trend chi_c, stima lineare 1/N; verificare rho_M(eps0) L2 vs L3 per CNG A).
-    2. UN quench L4 (--level 4 --seeds 1 --chi-means 62) per t_quench_s REALE
-       (stima ~8h, background) -> 3o punto + decide vettorizzazione Strategia B.
+    [x] CAMPAGNA L3 (P1) FATTA: chi_c = 61.86 +- 0.13 -> chi_c/stable = 1.2371
+        +- 0.0026 (sigmoide pulita cm60->66: 0.20/0.50/0.90/1.00). Coincide col
+        vecchio 1.240. t_quench L3 = 789s (~13.2 min). Commit 4e6fb2d.
+    [x] FLUSSO RG 2 punti (P2): 1.3531 (L2) -> 1.2371 (L3), calo ~14 sigma.
+        Estrapolazione lineare 1/N -> 1.232 (NON robusta, serve L4 per curvatura).
+        rho_M(eps0): 2.07 -> 0.074 ~ 1/N -> vicino soglia M_tot e' ~scale-invariante
+        (1 difetto), la densita' si diluisce. CNG A "rho_M invariante" NON regge
+        vicino soglia; invariante candidato = massa del singolo difetto.
+    [x] P1 --save-field (opt-in): salva chi+tau (.npz compresso) solo kink, per
+        winding/spettro. L2 ~3.9KB/campo, L4 stimato <1MB. fields/ in gitignore.
+  DA FARE alla ripresa (PROSSIMO = L4, il terzo punto):
+    1. Quench L4 (background, t_quench ~5h stimato = 24x L3 789s; RAM L4 da
+       verificare): python experiments/exp3/test_osservabili_rg.py --level 4
+       --seeds 1 --chi-means 60,62,64 --workers 3 --save-field
+       (pochi seed: serve il 3o punto + il timing reale + un campo per winding/spettro).
+    2. analyze_rg_scaling.py con 3 punti -> fit FSS completo + CURVATURA (punto
+       fisso ~1.23? o continua a scendere = emergenza). Decide anche vettorizzazione.
+    GOTCHA: P1 sovrascrive il summary del livello ad ogni run -> per rigenerare il
+    summary completo di un livello, rilanciare con TUTTI i suoi chi_means (cached
+    = istantaneo). (Successo coi smoke test cm74 che avevano azzerato il summary L2.)
     3. Con L4: analyze_rg_scaling completo (fit FSS 3 parametri + test flusso).
     4. P3 mappa RG T:(L_n->L_{n+1}) + test consistenza (METODO_SCALING_RG.md).
     5. [DOPO L4 - TEST FONDAMENTALE] P6 winding del parametro d'ordine psi:
