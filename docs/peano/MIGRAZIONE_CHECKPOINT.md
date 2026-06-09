@@ -54,7 +54,18 @@ a^2=Theta/R_phys, R_phys=R_geo/a^2). Anello rigidezza->gravita'->dinamica CHIUSO
 Feedback STABILE (no runaway, regolato da diluizione ~1/a^2). Flag g_emergent_active
 (OFF bit-identico), GATE [4] in test_muratore_equivalence (a_max~1.0002, no NaN).
 
+KINK-STIFFENING [FATTO 2026-06-09]: la materia irrigidisce lo spaziotempo
+R_local=R_geo(1+K2/rho*) -> beta/=(1+K2/rho*). VERIFICATO (test_gravita_clumping.py):
+rallenta l'espansione dei blocchi densi (a 1.000036 vs 1.000122, ~3.4x) -> conferma
+"denso->rigido->lento" (Gemini) e l'unificazione di Luca (spinta=attrazione, una forza).
+PEZZO MANCANTE per il clumping completo: i vuoti restano a=1 (il muratore sorgenta
+l'espansione dalla torsione LOCALE, zero nei vuoti). Serve un DRIVE DI FONDO (emissione
+Planck = la "febbre") modulato dalla rigidezza: H = H_fondo/(1+K2/rho*) + bounce. Chiude
+il cerchio con la febbre. H_fondo = scala di emissione (tied a calibrazione Hubble, aperta).
+
 TASK APERTI (in ordine):
+  0. DRIVE DI FONDO (gravita' completa): H=H_fondo/(1+K2/rho*)+bounce -> vuoti espandono,
+     materia si addensa (clumping). H_fondo = emissione Planck/febbre (origine da chiarire).
   2. COSMOGENESI: muratore da spazio MINIMALE + seme stocastico (dadi/SSB); a=0 singolare
      -> partire da a minimale. Testa SSB + auto-amplificazione del primo eccesso.
   3. RICALIBRARE rho* (prefattore geometrico): W normalizzata per riga -> K2 e' media
