@@ -45,7 +45,10 @@ J_TWIST = 1.0                 # rigidita' del twist 180 per legame
 K_CLOSURE = 0.05              # rigidita' della chiusura 720
 RELAX_THETA = 0.10            # tasso di rilassamento di theta (stabile)
 RELAX_DPHI = 0.10            # tasso di rilassamento dei twist di legame
-SLOPE_SCALE = 50.0           # scala della pendenza (chi0): s = dchi / SLOPE_SCALE
+RELAX_SAT = 0.50             # tasso del bounce EC sullo spin (allineamento gated)
+# NB: la scala della pendenza e' chi0 = physics.chi_stable, PASSATA (non hardcoded).
+# Le costanti J_*, RELAX_*, K_CLOSURE sono coefficienti NUMERICI del rilassamento
+# (come dt), non valori fisici. Le costanti topologiche pi/4pi (180/720) sono derivate.
 
 
 def bond_twist_target(N):
@@ -56,9 +59,10 @@ def bond_twist_target(N):
     return CLOSURE_4PI / N + HALF_TWIST * np.where(i % 2 == 0, 1.0, -1.0)
 
 
-def kink_slope(chi):
-    """Pendenza locale del kink = gradiente centrato di chi (anello), normalizzato."""
-    return (np.roll(chi, -1) - np.roll(chi, 1)) / (2.0 * SLOPE_SCALE)
+def kink_slope(chi, chi0):
+    """Pendenza locale del kink = gradiente centrato di chi (anello), normalizzato per
+    chi0 (= physics.chi_stable, NON hardcoded): s_i = (chi_{i+1}-chi_{i-1})/(2 chi0)."""
+    return (np.roll(chi, -1) - np.roll(chi, 1)) / (2.0 * chi0)
 
 
 def abs_phase(dphi):
@@ -77,34 +81,68 @@ def chirality_densities(theta):
     return np.sin(theta / 2.0) ** 2, np.cos(theta / 2.0) ** 2
 
 
-def relax_step(theta, dphi, chi, dt):
-    """Un passo di rilassamento STABILE: theta -> tan(theta/2)=|pendenza|; dphi -> twist
-    180 di legame + winding 4pi. Ritorna (theta_new, dphi_new, diag)."""
+def bloch_vectors(theta, dphi):
+    """Vettore di Bloch (densita' di spin) per voxel: n = <psi|sigma|psi> =
+    (sin theta cos phi, sin theta sin phi, cos theta), phi = cumsum(dphi). |n|=1."""
+    phi = abs_phase(dphi)
+    return np.stack([np.sin(theta) * np.cos(phi),
+                     np.sin(theta) * np.sin(phi),
+                     np.cos(theta)], axis=1)               # (N, 3)
+
+
+def spin_torsion_K2(theta, dphi, W, chi0):
+    """TORSIONE SORGENTATA DALLO SPIN (Einstein-Cartan vero): la torsione viene dal
+    GRADIENTE della densita' di spin (vettore di Bloch), NON dal gradiente scalare di chi.
+        K2_spin_i = chi0^2 * sum_j W_ij |n_i - n_j|^2 ,   |n_i-n_j|^2 = 2 - 2 n_i.n_j
+    Scalata per chi0^2 -> STESSE unita' della torsione scalare (una parete spinoriale, n
+    quasi antipodali, da' ~2 chi0^2 = rho*). Include la fase (twist 180/720): lo spin
+    (incluso il suo avvolgimento) genera la torsione che guida saturazione/espansione."""
+    n = bloch_vectors(theta, dphi)
+    diff2 = 2.0 - 2.0 * (n @ n.T)                          # |n_i - n_j|^2 (N,N)
+    return chi0 ** 2 * np.sum(W * diff2, axis=1)
+
+
+def relax_step(theta, dphi, chi, dt, W=None, chi0=50.0, beta_sat=1e-8, rho_star=None):
+    """Un passo di rilassamento STABILE dello spinore:
+      - theta -> tan(theta/2)=|pendenza kink|  (beta/alpha = pendenza);
+      - dphi  -> twist 180 di legame + winding 4pi (chiusura 720);
+      - SATURAZIONE EC sullo spin (se W, rho_star dati): dove la torsione FISICA sorgentata
+        dallo spin K2_spin eccede rho*, gli spin si ALLINEANO (bounce) -> riduce la torsione.
+        E' Einstein-Cartan vero: lo spin genera la torsione e la torsione in eccesso e'
+        respinta agendo sullo spin stesso.
+    Ritorna (theta_new, dphi_new, diag)."""
     N = len(chi)
     tau = bond_twist_target(N)
-    s = np.abs(kink_slope(chi))
+    s = np.abs(kink_slope(chi, chi0))
 
-    # settore theta: tan(theta/2) -> |s| (beta/alpha = pendenza del kink)
     th = np.clip(theta, 1e-6, np.pi - 1e-6)
     t_half = np.tan(th / 2.0)
     dtheta = J_SLOPE * (t_half - s) * (0.5 / np.cos(th / 2.0) ** 2)
     theta_new = np.clip(th - RELAX_THETA * dt * dtheta, 1e-6, np.pi - 1e-6)
 
-    # settore dphi: twist 180 per legame + chiusura 720 (winding = Sum dphi -> 4pi)
     winding = float(np.sum(dphi))
     closure = winding - CLOSURE_4PI
     g = J_TWIST * np.sin(dphi - tau) + 2.0 * K_CLOSURE * closure
     dphi_new = dphi - RELAX_DPHI * dt * g
+
+    # --- SATURAZIONE / BOUNCE EC SULLO SPIN ---
+    if W is not None and rho_star is not None:
+        K2 = spin_torsion_K2(theta_new, dphi_new, W, chi0)
+        gate = np.maximum(K2 - rho_star, 0.0)
+        gate = gate / (rho_star + gate + 1e-30)          # [0,1): peso dell'eccesso
+        theta_bar = W @ theta_new                        # media pesata vicini (W riga=1)
+        theta_new = np.clip(theta_new - RELAX_SAT * dt * gate * (theta_new - theta_bar),
+                            1e-6, np.pi - 1e-6)
 
     diag = {"winding": winding, "closure_err": float(closure),
             "slope_err": float(np.mean(np.abs(t_half - s)))}
     return theta_new, dphi_new, diag
 
 
-def init_from_field(chi):
+def init_from_field(chi, chi0):
     """Inizializza: theta da |pendenza kink| (beta/alpha=pendenza), dphi=0 (winding 0):
-    il rilassamento porta dphi->tau e il winding a 4pi."""
-    s = np.abs(kink_slope(chi))
+    il rilassamento porta dphi->tau e il winding a 4pi. chi0 = physics.chi_stable."""
+    s = np.abs(kink_slope(chi, chi0))
     theta = np.clip(2.0 * np.arctan(s), 1e-6, np.pi - 1e-6)
     dphi = np.zeros_like(chi)
     return theta, dphi
@@ -119,7 +157,7 @@ def _self_test():
     chi0 = 50.0
     chi = chi0 + 5.0 * rng.standard_normal(N)
     chi[10:15] = -chi0
-    theta, dphi = init_from_field(chi)
+    theta, dphi = init_from_field(chi, chi0)
     print("=" * 70)
     print("  MOTORE CHIRALE SPINORIALE self-test (completo)")
     print("=" * 70)
@@ -128,7 +166,7 @@ def _self_test():
         theta, dphi, diag = relax_step(theta, dphi, chi, dt=1.0)
     a, b = spinor_components(theta, dphi)
     rho_sx, rho_dx = chirality_densities(theta)
-    s = np.abs(kink_slope(chi))
+    s = np.abs(kink_slope(chi, chi0))
     ratio = np.abs(b) / (np.abs(a) + 1e-12)
     norm = np.abs(a) ** 2 + np.abs(b) ** 2
     print(f"  dopo rilassamento (2000 step):")

@@ -215,6 +215,12 @@ class SolitoneComposito(AbstractSoliton):
         # Vive ACCANTO a (chi,v); default OFF -> bit-identico. Vedi motore_chirale_spinoriale.py.
         self.spinore_enabled: bool = False
 
+        # === EINSTEIN-CARTAN COMPLETO: la TORSIONE e' sorgentata dallo SPIN ===
+        # Quando attivo: la torsione K2 usata in saturazione/espansione/gravita' viene dal
+        # vettore di Bloch dello spinore (K2_spin = chi0^2 * sum W |n_i-n_j|^2), NON dal
+        # gradiente scalare di chi. Lo spin genera la torsione (EC vero). Richiede lo spinore.
+        self.ec_torsion_from_spin: bool = False
+
     @staticmethod
     def _build_leech_coupling(N: int) -> np.ndarray:
         """
@@ -901,6 +907,14 @@ class SolitoneComposito(AbstractSoliton):
         """
         from .segmento_quantistico import SegmentoQuantistico
         from .einstein_cartan import ec_forces, torsion_density_K2
+        # EC completo: se la torsione e' sorgentata dallo SPIN, la saturazione/bounce e'
+        # gia' applicata sullo spinore (relax_step) -> NON applicare il settore scalare su
+        # chi (evita doppio conteggio). La torsione e' tutta dello spin.
+        if self.ec_torsion_from_spin:
+            for c in self.children:
+                if isinstance(c, SolitoneComposito):
+                    c.apply_ec_kick(dt)
+            return
         if self.children and isinstance(self.children[0], SegmentoQuantistico):
             # blocco L1: i 24 figli sono segmenti
             chi = np.array([c.chi for c in self.children], dtype=float)
@@ -971,10 +985,20 @@ class SolitoneComposito(AbstractSoliton):
         chi = np.array([self._get_child_chi(c) for c in self.children], dtype=float)
         W = self.coupling_matrix
         W = (W.toarray() if hasattr(W, "toarray") else np.asarray(W))
-        k2_mean = float(np.mean(torsion_density_K2(chi, W)))      # per kink-stiffening
+        # TORSIONE: in EC completo viene sorgentata dallo SPIN (vettore di Bloch dello
+        # spinore), altrimenti dal gradiente scalare di chi (legacy).
+        if (self.ec_torsion_from_spin and self.children
+                and isinstance(self.children[0], SegmentoQuantistico)):
+            from .motore_chirale_spinoriale import spin_torsion_K2
+            theta = np.array([c.theta_spin for c in self.children], dtype=float)
+            dphi = np.array([c.dphi_spin for c in self.children], dtype=float)
+            K2 = spin_torsion_K2(theta, dphi, W, self.physics.chi_stable)
+        else:
+            K2 = torsion_density_K2(chi, W)
+        k2_mean = float(np.mean(K2))                             # per kink-stiffening
         # (1) BOUNCE locale: relief della torsione in eccesso (K2-rho*)+
         H = hubble_rate(chi, W, self.scale_factor_a,
-                        self.ec_k2_ref_chi, self._beta_eff(k2_mean))
+                        self.ec_k2_ref_chi, self._beta_eff(k2_mean), K2=K2)
         # (2) DRIVE DI FONDO (febbre = motore): emissione di Planck UNIFORME (ogni voxel
         # emette uguale = il bagno/febbre globale, NON la KE locale che traccia la materia),
         # modulata dalla rigidezza: H_fondo = coeff / (1 + K2/rho*). I vuoti (K2 basso)
@@ -1072,7 +1096,15 @@ class SolitoneComposito(AbstractSoliton):
             chi = np.array([c.chi for c in self.children], dtype=float)
             theta = np.array([c.theta_spin for c in self.children], dtype=float)
             dphi = np.array([c.dphi_spin for c in self.children], dtype=float)
-            theta, dphi, _ = relax_step(theta, dphi, chi, dt)
+            W = self.coupling_matrix
+            W = (W.toarray() if hasattr(W, "toarray") else np.asarray(W))
+            # scale fisiche dal physics (NON hardcoded): chi0, rho*, beta_sat.
+            # La saturazione EC sullo spin si attiva con ec_torsion_from_spin (bounce).
+            ec = self.ec_torsion_from_spin
+            theta, dphi, _ = relax_step(
+                theta, dphi, chi, dt, W=(W if ec else None),
+                chi0=self.physics.chi_stable, beta_sat=self.ec_beta_sat,
+                rho_star=(self.ec_k2_ref_chi if ec else None))
             for i, c in enumerate(self.children):
                 c.theta_spin = float(theta[i]); c.dphi_spin = float(dphi[i])
         else:
@@ -1088,12 +1120,28 @@ class SolitoneComposito(AbstractSoliton):
         self.spinore_enabled = enabled
         if enabled and self.children and isinstance(self.children[0], SegmentoQuantistico):
             chi = np.array([c.chi for c in self.children], dtype=float)
-            theta, dphi = init_from_field(chi)
+            theta, dphi = init_from_field(chi, self.physics.chi_stable)
             for i, c in enumerate(self.children):
                 c.theta_spin = float(theta[i]); c.dphi_spin = float(dphi[i])
         for c in self.children:
             if isinstance(c, SolitoneComposito):
                 c.set_spinore(enabled)
+
+    def set_ec_integrato(self, h_fondo_coeff: float) -> None:
+        """EINSTEIN-CARTAN COMPLETAMENTE INTEGRATO: accende lo spinore (spin),
+        rende la TORSIONE sorgentata dallo spin (ec_torsion_from_spin), e accende
+        l'espansione/gravita' (drive di fondo). Un solo EC: lo spin genera la torsione
+        che satura (bounce sullo spin), espande e fa gravita'. Ricorsivo. h_fondo_coeff =
+        tasso di emissione di fondo (l'unica scala; le altre sono derivate da chi0)."""
+        self.set_spinore(True)
+        self.set_drive_fondo(h_fondo_coeff)
+        # torsione dallo spin su TUTTO l'albero (ricorsivo)
+        def _flag(node):
+            node.ec_torsion_from_spin = True
+            for c in node.children:
+                if isinstance(c, SolitoneComposito):
+                    _flag(c)
+        _flag(self)
 
     def get_spinore_state(self) -> dict:
         """Diagnostico spinoriale: winding (->4pi=720), errore beta/alpha vs pendenza kink,
@@ -1111,7 +1159,7 @@ class SolitoneComposito(AbstractSoliton):
                 rsx, rdx = chirality_densities(theta)
                 ratio = np.abs(b) / (np.abs(a) + 1e-12)
                 windings.append(float(np.sum(dphi)))
-                slope_errs.append(float(np.mean(np.abs(ratio - np.abs(kink_slope(chi))))))
+                slope_errs.append(float(np.mean(np.abs(ratio - np.abs(kink_slope(chi, n.physics.chi_stable))))))
                 sx.append(float(rsx.mean())); dx.append(float(rdx.mean()))
                 norms.append(float(np.max(np.abs(np.abs(a)**2 + np.abs(b)**2 - 1.0))))
             else:

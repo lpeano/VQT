@@ -45,49 +45,44 @@ def _l1_blocks(root):
     w(root); return acc
 
 
-def run(regime, n_dense=4, steps=150, dt=0.02, h_fondo=1e-3):
+def run(n_dense=4, steps=150, dt=0.02, h_fondo=1e-3):
+    """MOTORE EC COMPLETAMENTE INTEGRATO (tutte le torsioni dallo SPIN): spinore
+    (beta/alpha=pendenza, 180/720) -> torsione da spin -> saturazione(sullo spin) +
+    espansione + gravita'. Nessun valore hardcoded (chi0 da physics, rho*=2chi0^2)."""
     np.random.seed(7)
     root = make(1, chi_mean=50, level=2)
     blocks = _l1_blocks(root)
-    chi0 = root.physics.chi_stable
-    # blocchi DENSI = PARETE di dominio (meta' +chi0 / meta' -chi0): K2~rho* (materia
-    # MODERATA, bounce debole) -> isola l'effetto del drive di fondo + rigidezza.
-    # blocchi VUOTI = uniforme a chi0. Il drive di fondo e' UNIFORME (non serve T locale).
+    chi0 = root.physics.chi_stable              # NON hardcoded
+    # blocchi DENSI = PARETE di dominio (meta' +chi0 / meta' -chi0); VUOTI = uniforme.
     for j, b in enumerate(blocks):
         for i, leaf in enumerate(b.children):
-            if j < n_dense:
-                leaf.chi = chi0 if i < len(b.children) // 2 else -chi0   # parete
-            else:
-                leaf.chi = chi0                                          # vuoto
+            leaf.chi = ((chi0 if i < len(b.children) // 2 else -chi0)
+                        if j < n_dense else chi0)
             leaf.vel = 0.0
-    if regime == "muratore":
-        root.set_muratore(True)
-    elif regime == "g_emergent":
-        root.set_g_emergent(True)
-    elif regime == "kink_stiff":
-        root.set_kink_stiffening(True)
-    elif regime == "drive_fondo":
-        root.set_drive_fondo(h_fondo)              # febbre = motore (+ kink-stiffening)
+    root.set_ec_integrato(h_fondo)              # EC COMPLETO: spin->torsione->sat+esp+grav
     for _ in range(steps):
         root.compute_hamiltonian(); root.evolve_with_muratore(dt)
     a = np.array([b.scale_factor_a for b in blocks])
-    return float(a[:n_dense].mean()), float(a[n_dense:].mean())
+    return float(a[:n_dense].mean()), float(a[n_dense:].mean()), root.get_spinore_state()
 
 
 def main():
     print("=" * 74)
     print("  GRAVITA' EMERGENTE: a(denso) vs a(vuoto) nei 3 regimi")
     print("=" * 74)
-    print(f"  {'regime':>14} | {'a DENSO (materia)':>18} | {'a VUOTO':>12} | {'a_vuoto/a_denso':>16}")
-    for reg in ["muratore", "g_emergent", "kink_stiff", "drive_fondo"]:
-        ad, av = run(reg)
-        ratio = av / ad if ad > 0 else float('nan')
-        print(f"  {reg:>14} | {ad:>18.6f} | {av:>12.6f} | {ratio:>16.4f}")
+    ad, av, sp = run()
+    ratio = av / ad if ad > 0 else float("nan")
+    print(f"  MOTORE EC COMPLETO (torsione dallo spin, 180/720, beta/alpha=pendenza):")
+    print(f"    a DENSO (materia) = {ad:.6f}")
+    print(f"    a VUOTO           = {av:.6f}")
+    print(f"    a_vuoto/a_denso   = {ratio:.4f}  -> CLUMPING {'SI' if av > ad else 'NO'}")
+    print(f"    spinore: winding={sp['winding_mean']:.2f} (->4pi)  "
+          f"beta/alpha=pendenza err={sp['slope_err_mean']:.1e}  norma_err={sp['norm_err_max']:.0e}")
+    print(f"    chiralita': rho_SX(materia)={sp['rho_sx_mean']:.3f}  rho_DX(spazio)={sp['rho_dx_mean']:.3f}")
     print()
-    print("  CLUMPING (gravita'): col DRIVE DI FONDO (febbre=motore) i VUOTI espandono")
-    print("  PIU' della materia (a_vuoto > a_denso, rapporto > 1) -> la materia si addensa.")
-    print("  E' l'attrazione come controparte della spinta espansiva (frame materia).")
-    print("  Senza drive (muratore/g_emergent/kink_stiff) i vuoti restano a=1.")
+    print("  La gravita' (vuoti espandono > materia -> clumping) emerge da una TORSIONE")
+    print("  SORGENTATA DALLO SPIN (Einstein-Cartan completo). Spinta espansiva (frame")
+    print("  spaziotempo) = attrazione (frame materia). Nessun valore hardcoded.")
 
 
 if __name__ == "__main__":

@@ -40,15 +40,19 @@ def physical_torsion(chi, W, a):
     return torsion_density_K2(chi, W) / (a * a)
 
 
-def hubble_rate(chi, W, a, k2_ref, beta_sat):
+def hubble_rate(chi, W, a, k2_ref, beta_sat, K2=None):
     """H = a'/a sorgentato dall'ECCESSO di torsione fisica sopra rho*.
 
     H = beta_sat * < (K2_fisica_i - rho*)+ >   (eccesso LOCALE per-nodo, poi media).
     LOCALE (non (<K2>-rho*)+): cosi' nodi localizzati ad alta torsione (pareti, difetti)
     sorgentano espansione anche se la MEDIA del blocco e' sotto rho* -> espansione segue
     la materia DOVE sta (gravita' locale). Auto-regolante e KNOB-FREE: riusa beta_sat e
-    k2_ref dell'EC. H=0 quando OGNI nodo e' sotto rho* (densita' fisica <= rho*)."""
-    K2_phys = physical_torsion(chi, W, a)
+    k2_ref dell'EC. H=0 quando OGNI nodo e' sotto rho* (densita' fisica <= rho*).
+
+    K2: se fornito (torsione gia' calcolata, es. SORGENTATA DALLO SPIN), usa quella invece
+    del gradiente scalare -> Einstein-Cartan: lo spin sorgenta la torsione che espande."""
+    K2coord = K2 if K2 is not None else torsion_density_K2(chi, W)
+    K2_phys = K2coord / (a * a)
     excess = float(np.mean(np.maximum(K2_phys - k2_ref, 0.0)))   # per-nodo poi media
     return beta_sat * excess
 

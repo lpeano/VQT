@@ -145,15 +145,17 @@ def test_clumping_gravita():
         for i, leaf in enumerate(b.children):
             leaf.chi = (chi0 if i < len(b.children)//2 else -chi0) if j < n_dense else chi0
             leaf.vel = 0.0
-    c.set_drive_fondo(1e-3)
+    c.set_ec_integrato(1e-3)               # EC COMPLETO: torsione dallo spin -> gravita'
     for _ in range(150):
         c.compute_hamiltonian(); c.evolve_with_muratore(0.02)
     a = np.array([b.scale_factor_a for b in blocks])
     a_dense, a_void = float(a[:n_dense].mean()), float(a[n_dense:].mean())
+    sp = c.get_spinore_state()
     assert not np.any(np.isnan(_leaves_chi(c))), "clumping: NaN"
     assert a_void > a_dense, f"NO clumping: a_vuoto={a_void:.6f} <= a_denso={a_dense:.6f}"
-    print(f"  [5] clumping (gravita'): a_vuoto={a_void:.6f} > a_denso={a_dense:.6f} "
-          f"(vuoti espandono di piu' -> materia si addensa) -> PASS")
+    assert sp["norm_err_max"] < 1e-9, "spinore non normalizzato"
+    print(f"  [5] clumping EC completo (torsione dallo SPIN): a_vuoto={a_void:.6f} > "
+          f"a_denso={a_dense:.6f}; beta/alpha=pendenza err={sp['slope_err_mean']:.1e} -> PASS")
 
 
 def main():
