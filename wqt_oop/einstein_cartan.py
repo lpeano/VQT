@@ -100,7 +100,12 @@ def ec_energy(chi, tau, W, chi0, beta_sat, kappa_closure, k2_ref_chi):
     Ritorna (E_tot, E_sat, E_clo) per diagnostica.
     """
     K2 = torsion_density_K2(chi, W)
-    E_sat = beta_sat * np.sum((K2 - k2_ref_chi) ** 2)
+    # SATURAZIONE A SOFFITTO (one-sided): penalizza SOLO l'eccesso sopra rho*.
+    # Sotto rho* la forza e' nulla (vuoto/domini stabili); sopra -> bounce. La forma
+    # simmetrica (K2-rho*)^2 spingerebbe la torsione VERSO rho* anche dal basso
+    # (creando torsione nel vuoto): sbagliato. (K2-rho*)+ = solo ceiling.
+    exc = np.maximum(K2 - k2_ref_chi, 0.0)
+    E_sat = beta_sat * np.sum(exc ** 2)
     closure = np.sum(tau) - TAU_CLOSURE_4PI
     E_clo = kappa_closure * closure ** 2
     return float(E_sat + E_clo), float(E_sat), float(E_clo)
@@ -121,7 +126,9 @@ def ec_forces(chi, tau, W, chi0, beta_sat, kappa_closure, k2_ref_chi):
     """
     N = len(chi)
     K2 = torsion_density_K2(chi, W)
-    coef = 2.0 * beta_sat * (K2 - k2_ref_chi)      # (N,)
+    # one-sided (ceiling): coef = 2 beta (K2-rho*)+ -> zero sotto soglia (vuoto stabile),
+    # bounce solo sopra. Gradiente di E_sat = beta*sum((K2-rho*)+^2) (vedi ec_energy).
+    coef = 2.0 * beta_sat * np.maximum(K2 - k2_ref_chi, 0.0)   # (N,)
     diff = chi[:, None] - chi[None, :]             # diff[i,j] = chi_i - chi_j
 
     dK2_self = 2.0 * np.sum(W * diff, axis=1)       # dK2_i/dchi_i
@@ -136,10 +143,16 @@ def ec_forces(chi, tau, W, chi0, beta_sat, kappa_closure, k2_ref_chi):
 
 def default_k2_ref_chi(chi0):
     """Soglia di saturazione del settore chi (torsione di gradiente).
-    Ancorata alla scala fisica del campo: il salto massimo Jitterbug
-    (sqrt(2)*chi0) tra pozzi opposti. NON un fit: deriva da chi0 e sqrt(2).
-    K2_ref ~ (2*chi0)^2 (salto pieno +chi0 -> -chi0), scala di un difetto singolo."""
-    return (2.0 * chi0) ** 2
+
+    DERIVATA (misurata, non fit) = la scala della PARETE di dominio / del disordine:
+        rho* = (sqrt(2)*chi0)^2 = 2*chi0^2 .
+    Misura su coupling Leech reale: una parete di dominio ha K2 ~ 2*chi0^2 (nodi di
+    parete ~5018 per chi0=50); un campo disordinato ha <K2> ~ 2*chi0^2 (~5083). Il
+    (2*chi0)^2 = 4*chi0^2 lo raggiunge SOLO un nodo isolato totalmente frustrato (max),
+    mai una parete tipica -> con quella soglia la saturazione/espansione non scattava.
+    rho* = 2*chi0^2 e' anche la costante sqrt(2) Jitterbug (Ottaedro->Cubottaedro):
+    la torsione 'di materia' (kink/parete) e' la soglia naturale del bounce."""
+    return 2.0 * chi0 ** 2
 
 
 # ---------------------------------------------------------------------------
@@ -149,7 +162,9 @@ def _self_test():
     rng = np.random.default_rng(0)
     N = 24
     chi0 = 50.0
+    # config CON DIFETTO (parete) -> K2 sopra rho* -> gradiente one-sided NON banale
     chi = chi0 + 8.0 * rng.standard_normal(N)
+    chi[8:14] = -chi0           # dominio opposto: nodi di parete con K2 > rho*
     tau = 0.1 * rng.standard_normal(N)
     # coupling circolante decrescente (giocattolo, simil-Leech)
     W = np.zeros((N, N))
@@ -164,9 +179,10 @@ def _self_test():
 
     E0, Es0, Ec0 = ec_energy(chi, tau, W, chi0, beta_sat, kappa_closure, k2ref)
     Fchi, Ftau = ec_forces(chi, tau, W, chi0, beta_sat, kappa_closure, k2ref)
-    # verifica gradiente numerico settore chi
+    # verifica gradiente numerico settore chi: perturba il nodo a K2 MASSIMO
+    # (sicuramente sopra rho* -> forza one-sided non nulla e differenziabile)
     eps = 1e-4
-    k = 3
+    k = int(np.argmax(torsion_density_K2(chi, W)))
     chi_p = chi.copy(); chi_p[k] += eps
     chi_m = chi.copy(); chi_m[k] -= eps
     Ep, _, _ = ec_energy(chi_p, tau, W, chi0, beta_sat, kappa_closure, k2ref)

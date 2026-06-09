@@ -43,13 +43,14 @@ def physical_torsion(chi, W, a):
 def hubble_rate(chi, W, a, k2_ref, beta_sat):
     """H = a'/a sorgentato dall'ECCESSO di torsione fisica sopra rho*.
 
-    H = beta_sat * max(<K2_fisica> - rho*, 0).
-    Auto-regolante e KNOB-FREE: riusa beta_sat e k2_ref dell'EC. H=0 a equilibrio
-    (densita' fisica = rho*). Mai negativo: lo spazio non si contrae qui (la
-    contrazione locale e' il bounce dell'EC, non il muratore)."""
+    H = beta_sat * < (K2_fisica_i - rho*)+ >   (eccesso LOCALE per-nodo, poi media).
+    LOCALE (non (<K2>-rho*)+): cosi' nodi localizzati ad alta torsione (pareti, difetti)
+    sorgentano espansione anche se la MEDIA del blocco e' sotto rho* -> espansione segue
+    la materia DOVE sta (gravita' locale). Auto-regolante e KNOB-FREE: riusa beta_sat e
+    k2_ref dell'EC. H=0 quando OGNI nodo e' sotto rho* (densita' fisica <= rho*)."""
     K2_phys = physical_torsion(chi, W, a)
-    excess = float(np.mean(K2_phys)) - k2_ref
-    return beta_sat * excess if excess > 0.0 else 0.0
+    excess = float(np.mean(np.maximum(K2_phys - k2_ref, 0.0)))   # per-nodo poi media
+    return beta_sat * excess
 
 
 def expand(a, H, dt):
@@ -63,10 +64,11 @@ def voxel_count(a, d_f=3.0):
 
 
 def equilibrium_a(chi, W, k2_ref):
-    """Punto fisso analitico: a* tale che K2_fisica = rho*, cioe' H=0.
-    a* = sqrt(<K2_coord>/rho*) se il blocco eccede rho*, altrimenti 1 (non espande).
-    Serve a VERIFICARE che il feedback converga qui (auto-regolazione knob-free)."""
-    m = float(np.mean(torsion_density_K2(chi, W)))
+    """Punto fisso analitico del muratore LOCALE: a* tale che H=0, cioe' OGNI nodo sotto
+    rho* (K2_i/a^2 <= rho*). Lo fissa il nodo a torsione MASSIMA (il piu' frustrato):
+        a* = sqrt(max_i K2_i / rho*)  se max K2 > rho*, altrimenti 1 (non espande).
+    Coerente con hubble_rate locale (l'eccesso si annulla quando anche il max scende a rho*)."""
+    m = float(np.max(torsion_density_K2(chi, W)))
     return np.sqrt(m / k2_ref) if m > k2_ref else 1.0
 
 
@@ -93,9 +95,11 @@ def _self_test():
     print("=" * 64)
     print("  MURATORE DI PLANCK self-test (auto-regolazione knob-free)")
     print("=" * 64)
-    K2m = float(np.mean(torsion_density_K2(chi, W)))
-    print(f"  <K2_coord>={K2m:.3e}  rho*={k2ref:.3e}  eccede={'SI' if K2m>k2ref else 'NO'}")
-    print(f"  a* atteso (punto fisso) = sqrt(<K2>/rho*) = {a_eq:.4f}")
+    K2 = torsion_density_K2(chi, W)
+    K2m = float(K2.mean()); K2max = float(K2.max())
+    print(f"  <K2_coord>={K2m:.3e}  max K2={K2max:.3e}  rho*={k2ref:.3e}  "
+          f"eccede={'SI' if K2max>k2ref else 'NO'}")
+    print(f"  a* atteso (punto fisso LOCALE) = sqrt(maxK2/rho*) = {a_eq:.4f}")
 
     # integra il feedback: a parte da 1, H sorgentato dall'eccesso, dt grande per
     # arrivare a convergenza in pochi passi (qui contano i NUMERI, non il tempo reale)
@@ -108,7 +112,7 @@ def _self_test():
     Hf = hubble_rate(chi, W, a, k2ref, beta_sat)
     print(f"  H iniziale = {H0:.3e}  (>0: il blocco DEVE espandere)")
     print(f"  dopo feedback: a={a:.4f}  H_finale={Hf:.3e}  voxel~a^3={voxel_count(a):.2f}")
-    print(f"  K2_fisica finale = <K2>/a^2 = {K2m/(a*a):.3e}  (target rho*={k2ref:.3e})")
+    print(f"  K2_fisica MAX finale = maxK2/a^2 = {K2max/(a*a):.3e}  (target rho*={k2ref:.3e})")
 
     conv = abs(a - a_eq) / a_eq < 1e-2           # a converge al punto fisso analitico
     relaxed = Hf < 1e-3 * (H0 + 1e-30)           # H crolla -> auto-regolato

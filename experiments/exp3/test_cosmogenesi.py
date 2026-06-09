@@ -89,7 +89,7 @@ def main():
         ssb = order_peak > 0.5
         exp = amax_f > 1.0
         print(f"    -> SSB (ordine PICCO={order_peak:.2f} ->1) {'SI' if ssb else 'NO'};  "
-              f"espansione (a>1) {'SI' if exp else 'NO'} (torsione domini < rho*: vedi task 3)")
+              f"espansione (a>1) {'SI' if exp else 'NO'} (a cricca su mentre l'ordine respira)")
     print("\n  LETTURA: con i dadi -> SSB (ordine 0->~1, domini) -> struttura -> il")
     print("  muratore espande (a>1). Senza dadi -> resta simmetrico (niente universo).")
     print("  L'universo NASCE da una fluttuazione. Magnitudine espansione ~beta_sat.")
