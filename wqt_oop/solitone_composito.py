@@ -181,6 +181,14 @@ class SolitoneComposito(AbstractSoliton):
         self.muratore_d_f: float = 3.0           # dim. effettiva per il conteggio voxel
         self.muratore_H_last: float = 0.0        # ultimo H = a'/a (diagnostico)
 
+        # === G EMERGENTE ATTIVA (additivo, opt-in): beta_sat <- rigidezza FISICA ===
+        # La rigidezza fisica e' R_phys = R_geo/a^2 (diluita dall'espansione), quindi
+        # beta = Theta/R_phys = beta_baseline * a^2 per blocco: dove lo spazio si e'
+        # espanso, G e' MAGGIORE (gravita' indotta). Feedback espansione->G->espansione,
+        # regolato dalla diluizione della torsione (~1/a^2). Flag OFF -> beta costante
+        # (GATE bit-identico). Vedi wqt_oop/rigidezza_geometrica.py.
+        self.g_emergent_active: bool = False
+
     @staticmethod
     def _build_leech_coupling(N: int) -> np.ndarray:
         """
@@ -880,7 +888,7 @@ class SolitoneComposito(AbstractSoliton):
             if self.muratore_enabled:
                 k2_ref_eff = self.ec_k2_ref_chi * (self.scale_factor_a ** 2)
             F_chi, F_tau = ec_forces(chi, tau, W, self.physics.chi_stable,
-                                     self.ec_beta_sat, self.ec_kappa_closure,
+                                     self._beta_eff(), self.ec_kappa_closure,
                                      k2_ref_eff)
             for i, c in enumerate(self.children):
                 c.vel += float(F_chi[i]) * dt          # forza EC sul campo
@@ -936,7 +944,7 @@ class SolitoneComposito(AbstractSoliton):
         W = self.coupling_matrix
         W = (W.toarray() if hasattr(W, "toarray") else np.asarray(W))
         H = hubble_rate(chi, W, self.scale_factor_a,
-                        self.ec_k2_ref_chi, self.ec_beta_sat)
+                        self.ec_k2_ref_chi, self._beta_eff())
         self.muratore_H_last = float(H)
         self.scale_factor_a = float(expand(self.scale_factor_a, H, dt))
         # ricorre: anche i sotto-compositi espandono il loro a
@@ -966,6 +974,25 @@ class SolitoneComposito(AbstractSoliton):
         for c in self.children:
             if isinstance(c, SolitoneComposito):
                 c.set_muratore(enabled)
+
+    def _beta_eff(self) -> float:
+        """beta_sat EFFETTIVO del blocco. G emergente attiva (g_emergent_active):
+        beta = beta_baseline * a^2 = Theta/R_phys, R_phys = R_geo/a^2 (rigidezza FISICA
+        diluita dall'espansione) -> dove a>1, G maggiore. Flag OFF o a=1 -> beta_baseline
+        (GATE bit-identico)."""
+        if self.g_emergent_active:
+            return self.ec_beta_sat * (self.scale_factor_a ** 2)
+        return self.ec_beta_sat
+
+    def set_g_emergent(self, enabled: bool) -> None:
+        """Attiva/disattiva la G emergente attiva (beta<-rigidezza fisica) su tutto
+        l'albero. Richiede il muratore (a varia)."""
+        self.g_emergent_active = enabled
+        if enabled and not self.muratore_enabled:
+            self.set_muratore(True)
+        for c in self.children:
+            if isinstance(c, SolitoneComposito):
+                c.set_g_emergent(enabled)
 
     def get_expansion_state(self) -> dict:
         """Diagnostico dell'espansione PER LIVELLO (a vive a ogni livello). Ritorna

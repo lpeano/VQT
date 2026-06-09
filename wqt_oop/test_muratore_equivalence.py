@@ -91,6 +91,36 @@ def test_autoregolazione_on():
           f"|chi|max={np.abs(chi).max():.1f} -> PASS")
 
 
+def test_g_emergente_stabile():
+    """G emergente attiva (beta <- rigidezza fisica = beta_baseline*a^2): il feedback
+    espansione->G->espansione e' STABILE (no runaway), regolato dalla diluizione ~1/a^2."""
+    from test_soglia_formazione import make
+    np.random.seed(42)
+    c = make(1, chi_mean=50, level=2)
+    blk = None
+    def f(n):
+        nonlocal blk
+        from wqt_oop.segmento_quantistico import SegmentoQuantistico
+        if n.children and isinstance(n.children[0], SegmentoQuantistico):
+            blk = blk or n
+        else:
+            for ch in n.children:
+                f(ch)
+    f(c)
+    amp = 1.8 * c.physics.chi_stable
+    for i, leaf in enumerate(blk.children):
+        leaf.chi = amp if i % 2 == 0 else -amp
+    c.set_g_emergent(True)                         # beta ~ a^2 + muratore
+    for _ in range(200):
+        c.compute_hamiltonian(); c.evolve_with_muratore(0.02)
+    st = c.get_expansion_state(); chi = _leaves_chi(c)
+    assert not np.any(np.isnan(chi)), "G emergente ON: NaN"
+    assert np.abs(chi).max() < 1e4, f"G emergente ON: runaway |chi|max={np.abs(chi).max():.2e}"
+    assert st["a_max"] < 10.0, f"G emergente ON: runaway a_max={st['a_max']:.2e}"
+    print(f"  [4] G emergente ON stabile (no runaway): a_max={st['a_max']:.6f} "
+          f"beta_eff~beta0*a^2 |chi|max={np.abs(chi).max():.1f} -> PASS")
+
+
 def main():
     print("=" * 60)
     print("  GATE MURATORE DI PLANCK (additivita' + auto-regolazione)")
@@ -98,6 +128,7 @@ def main():
     test_modulo_muratore()
     test_gate_ab_off()
     test_autoregolazione_on()
+    test_g_emergente_stabile()
     print("  TUTTI I TEST PASS")
 
 
