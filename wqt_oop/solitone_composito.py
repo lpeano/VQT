@@ -158,6 +158,14 @@ class SolitoneComposito(AbstractSoliton):
         # sono ancorati a scale fisiche/topologiche. beta_sat = forza della
         # saturazione; kappa_closure = rigidita' della chiusura 720; k2_ref dalla
         # scala del campo (sqrt(2)*chi0 Jitterbug), non un fit.
+        # beta_sat = l'analogo di G (accoppiamento gravitazionale del muratore EC).
+        # NON e' un knob libero: e' DERIVATO dalla rigidezza geometrica (gravita'
+        # indotta, Sakharov/Verlinde) -> beta_sat = Theta / R_geo, con
+        #   R_geo = 4 N/(N-1) = 4*24/23 = 4.174  (topologico, dal 24 di Leech)
+        #   Theta = scala intrinseca del voxel (da chi0, beta_pot), NON tarata.
+        # Vedi wqt_oop/rigidezza_geometrica.py e docs/peano/EDIFICIO_EINSTEIN_CARTAN.md.
+        # Il valore qui e' il placeholder in unita' di codice (Theta=1); per usare la
+        # G emergente: beta_sat <- rigidezza_geometrica.block_rigidity(...)[1].
         self.ec_beta_sat: float = 1e-8
         self.ec_kappa_closure: float = 1e-2
         from .einstein_cartan import default_k2_ref_chi
