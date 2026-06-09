@@ -63,9 +63,15 @@ l'espansione dalla torsione LOCALE, zero nei vuoti). Serve un DRIVE DI FONDO (em
 Planck = la "febbre") modulato dalla rigidezza: H = H_fondo/(1+K2/rho*) + bounce. Chiude
 il cerchio con la febbre. H_fondo = scala di emissione (tied a calibrazione Hubble, aperta).
 
+GRAVITA' EMERGENTE [FATTO 2026-06-09]: DRIVE DI FONDO (febbre=motore, opzione 2 Luca).
+  H = bounce + H_fondo, H_fondo = coeff/(1+K2/rho*) (emissione UNIFORME di Planck modulata
+  dalla rigidezza). VERIFICATO (GATE [5]): vuoti espandono PIU' della materia (a_vuoto
+  1.003 > a_denso 1.002) -> CLUMPING -> attrazione = controparte della spinta (una forza,
+  due frame). La febbre/termostato DIVENTA il drive (deprecato come bagno separato).
+  Iter onesto: H_fondo~T_locale FALLI' (T locale traccia materia + bounce domina);
+  fix = drive UNIFORME + materia moderata. Flag muratore_h_fondo_coeff (default 0=bit-id).
+
 TASK APERTI (in ordine):
-  0. DRIVE DI FONDO (gravita' completa): H=H_fondo/(1+K2/rho*)+bounce -> vuoti espandono,
-     materia si addensa (clumping). H_fondo = emissione Planck/febbre (origine da chiarire).
   2. COSMOGENESI: muratore da spazio MINIMALE + seme stocastico (dadi/SSB); a=0 singolare
      -> partire da a minimale. Testa SSB + auto-amplificazione del primo eccesso.
   3. RICALIBRARE rho* (prefattore geometrico): W normalizzata per riga -> K2 e' media
