@@ -919,24 +919,30 @@ class SolitoneComposito(AbstractSoliton):
                 c.set_ec_dynamics(enabled, beta_sat, kappa_closure)
 
     def apply_muratore_step(self, dt: float) -> None:
-        """Un tick di Planck del MURATORE: ogni blocco L1 espande (a cresce) in
-        proporzione all'ECCESSO di torsione fisica sopra rho*. Auto-regolante
-        (knob-free): riusa ec_beta_sat e ec_k2_ref_chi. Attivo solo se
-        muratore_enabled. Ricorre nei sotto-compositi (L>=2)."""
+        """Un tick di Planck del MURATORE: OGNI blocco (a ogni livello) espande il
+        proprio fattore di scala a in proporzione all'ECCESSO di torsione fisica
+        COARSE del suo livello sopra rho*. Auto-regolante (knob-free): riusa
+        ec_beta_sat e ec_k2_ref_chi. Attivo solo se muratore_enabled.
+
+        La torsione e' calcolata sulla chi COARSE-GRAINED dei figli (foglia -> chi;
+        composito -> chi medio via _get_child_chi): cosi' l'espansione puo' nascere a
+        QUALSIASI scala dove la materia si concentra (gradiente coarse tra i figli),
+        non solo a L1. -> G(scala) puo' diventare non-monotono dalla dinamica stessa.
+        Poi ricorre nei sotto-compositi (che espandono il loro a)."""
         from .segmento_quantistico import SegmentoQuantistico
         from .muratore_planck import hubble_rate, expand
-        if self.children and isinstance(self.children[0], SegmentoQuantistico):
-            chi = np.array([c.chi for c in self.children], dtype=float)
-            W = self.coupling_matrix
-            W = (W.toarray() if hasattr(W, "toarray") else np.asarray(W))
-            H = hubble_rate(chi, W, self.scale_factor_a,
-                            self.ec_k2_ref_chi, self.ec_beta_sat)
-            self.muratore_H_last = float(H)
-            self.scale_factor_a = float(expand(self.scale_factor_a, H, dt))
-        else:
-            for c in self.children:
-                if isinstance(c, SolitoneComposito):
-                    c.apply_muratore_step(dt)
+        # chi coarse del livello = rappresentativo di ciascun figlio
+        chi = np.array([self._get_child_chi(c) for c in self.children], dtype=float)
+        W = self.coupling_matrix
+        W = (W.toarray() if hasattr(W, "toarray") else np.asarray(W))
+        H = hubble_rate(chi, W, self.scale_factor_a,
+                        self.ec_k2_ref_chi, self.ec_beta_sat)
+        self.muratore_H_last = float(H)
+        self.scale_factor_a = float(expand(self.scale_factor_a, H, dt))
+        # ricorre: anche i sotto-compositi espandono il loro a
+        for c in self.children:
+            if isinstance(c, SolitoneComposito):
+                c.apply_muratore_step(dt)
 
     def evolve_with_muratore(self, dt: float, external_force: np.ndarray = None) -> None:
         """Evoluzione con EC + MURATORE (espansione) ADDITIVI (opt-in).
@@ -962,29 +968,52 @@ class SolitoneComposito(AbstractSoliton):
                 c.set_muratore(enabled)
 
     def get_expansion_state(self) -> dict:
-        """Diagnostico dell'espansione: a medio, conteggio voxel ~a^d_f totale,
-        H medio sui blocchi L1. (a=1 ovunque -> nessuna espansione.)"""
+        """Diagnostico dell'espansione PER LIVELLO (a vive a ogni livello). Ritorna
+        aggregati globali + per_level[L] = {a_mean, a_max, H_mean, beta} con
+        beta(L)=Theta/(R_geo/<a^2>) = (Theta/R_geo)*<a^2> (G emergente, Theta=1).
+        Cosi' si vede se G(L) e' monotono o no (task 1). a=1 ovunque -> nessuna espansione."""
         from .segmento_quantistico import SegmentoQuantistico
         from .muratore_planck import voxel_count
-        a_list, H_list, vox = [], [], 0.0
+        from .rigidezza_geometrica import geometric_rigidity
+        W = self.coupling_matrix
+        W = (W.toarray() if hasattr(W, "toarray") else np.asarray(W))
+        R_geo = geometric_rigidity(W)
+
+        per_lev = {}   # depth -> lists
+        vox = [0.0]
+
+        def depth(node):
+            if not node.children or isinstance(node.children[0], SegmentoQuantistico):
+                return 1
+            return 1 + depth(node.children[0])
+
         def walk(node):
-            nonlocal vox
-            if node.children and isinstance(node.children[0], SegmentoQuantistico):
-                a_list.append(node.scale_factor_a)
-                H_list.append(node.muratore_H_last)
-                vox += voxel_count(node.scale_factor_a, node.muratore_d_f)
-            else:
-                for c in node.children:
-                    if isinstance(c, SolitoneComposito):
-                        walk(c)
+            # registra OGNI composito al suo livello (L1 incluso: depth=1)
+            L = depth(node)
+            d = per_lev.setdefault(L, {"a": [], "H": []})
+            d["a"].append(node.scale_factor_a)
+            d["H"].append(node.muratore_H_last)
+            vox[0] += voxel_count(node.scale_factor_a, node.muratore_d_f)
+            for c in node.children:
+                if isinstance(c, SolitoneComposito):
+                    walk(c)
         walk(self)
-        n = max(len(a_list), 1)
+
+        per_level = {}
+        all_a, all_H = [], []
+        for L, d in per_lev.items():
+            a = np.array(d["a"]); all_a.extend(d["a"]); all_H.extend(d["H"])
+            a2m = float((a ** 2).mean())
+            per_level[L] = {"a_mean": float(a.mean()), "a_max": float(a.max()),
+                            "H_mean": float(np.mean(d["H"])),
+                            "beta": a2m / R_geo, "n_blocks": len(d["a"])}
         return {
-            "a_mean": float(np.mean(a_list)) if a_list else 1.0,
-            "a_max": float(np.max(a_list)) if a_list else 1.0,
-            "H_mean": float(np.mean(H_list)) if H_list else 0.0,
-            "voxel_total": float(vox),
-            "n_blocks": len(a_list),
+            "a_mean": float(np.mean(all_a)) if all_a else 1.0,
+            "a_max": float(np.max(all_a)) if all_a else 1.0,
+            "H_mean": float(np.mean(all_H)) if all_H else 0.0,
+            "voxel_total": float(vox[0]),
+            "R_geo": R_geo,
+            "per_level": per_level,
         }
 
     def evolve_fast(self, dt: float, external_force: np.ndarray = None) -> None:
