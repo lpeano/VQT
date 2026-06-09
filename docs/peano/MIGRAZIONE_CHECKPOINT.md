@@ -5,8 +5,9 @@
 Branch: physics/einstein-cartan-saturation. Edificio Einstein-Cartan COMPLETO e verde
 (8 pezzi: EC saturazione/720, muratore, G emergente, scala metrica, G non-monotono,
 cosmogenesi, ricalibrazione rho*, beta<-rigidezza, kink-stiffening, gravita'/clumping).
-Doc scientifica: docs/peano/EDIFICIO_EINSTEIN_CARTAN.md. Test: docs/TESTS_E_STRUMENTI.md
-sez.8. Tutti i GATE/self-test PASS, legacy intatto.
+Doc: docs/peano/VQT_FORMALIZZAZIONE.md (formale: statica/dinamica/ipotesi),
+docs/peano/EDIFICIO_EINSTEIN_CARTAN.md (implementativa), docs/TESTS_E_STRUMENTI.md sez.8
+(test). Tutti i GATE/self-test PASS, legacy intatto.
 
 PRIMA COSA DA FARE (in ordine, scegliere con Luca):
   1) [consigliato] COLLASSO DINAMICO: run lungo -> la materia migra DAVVERO nei grumi?
