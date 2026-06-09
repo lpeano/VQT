@@ -24,10 +24,17 @@ RISULTATI MISURATI:
     -> ancorare lunghezza = scegliere G, e' unita'). Hubble tension NON risolta (ci sono
     gli ingredienti: G scala-dipendente + inomogeneita' locale; manca calibrazione).
 
+TASK 1 [FATTO 2026-06-09]: NON-MONOTONIA di G CONFERMATA (ipotesi Luca corretta).
+  - test_g_nonmonotono.py (meccanismo, a* analitico): vuoto->beta(L) piatto (G topologico
+    0.240); materia a scala L -> G picca li' -> NON MONOTONO.
+  - Muratore esteso a TUTTI i livelli (apply_muratore_step su ogni composito, torsione
+    coarse via _get_child_chi); get_expansion_state riporta beta(L) per livello.
+  - test_g_dinamico.py (la DINAMICA lo genera): materia a L2 -> beta picca a L2 (non
+    monotono) da se'. Magnitudine ~beta_sat (lento); la STRUTTURA e' il risultato.
+  VERDETTO: G NON e' legge di scala universale, e' un campo che traccia la scala della
+  materia. E' l'ingrediente per la differenza early-vs-late (Hubble). GATE verdi.
+
 TASK APERTI (in ordine):
-  1. NON-MONOTONIA di G (ipotesi Luca): misura_rigidezza_scala su stato EVOLUTO
-     disomogeneo (l'idealizzato uniforme da' serie monotona). E' il numero che dice se
-     la differenza early-vs-late (Hubble) puo' esistere nel reticolo. PRIORITA' 1.
   2. COSMOGENESI: muratore da spazio MINIMALE + seme stocastico (dadi/SSB); a=0 singolare
      -> partire da a minimale. Testa SSB + auto-amplificazione del primo eccesso.
   3. RICALIBRARE rho* (prefattore geometrico): W normalizzata per riga -> K2 e' media
