@@ -163,6 +163,16 @@ class SolitoneComposito(AbstractSoliton):
         from .einstein_cartan import default_k2_ref_chi
         self.ec_k2_ref_chi: float = default_k2_ref_chi(self.physics.chi_stable)
 
+        # === MURATORE DI PLANCK (additivo, opt-in; lato ESPANSIONE dell'EC) ===
+        # La stessa pressione di spin che satura (bounce) spinge lo spazio a crescere:
+        # fattore di scala a per blocco, guidato dall'eccesso di torsione fisica
+        # (K2/a^2 - rho*)+, AUTO-REGOLANTE (H->0 a equilibrio). ZERO parametri nuovi:
+        # riusa ec_beta_sat e ec_k2_ref_chi. Vedi wqt_oop/muratore_planck.py.
+        self.muratore_enabled: bool = False      # DEFAULT OFF -> nessuna espansione
+        self.scale_factor_a: float = 1.0         # metrica del blocco (a=1: nessuna)
+        self.muratore_d_f: float = 3.0           # dim. effettiva per il conteggio voxel
+        self.muratore_H_last: float = 0.0        # ultimo H = a'/a (diagnostico)
+
     @staticmethod
     def _build_leech_coupling(N: int) -> np.ndarray:
         """
@@ -855,9 +865,15 @@ class SolitoneComposito(AbstractSoliton):
             tau = np.array([c.tau_locale for c in self.children], dtype=float)
             W = self.coupling_matrix
             W = (W.toarray() if hasattr(W, "toarray") else np.asarray(W))
+            # Muratore ON: la soglia di saturazione si dilata con lo spazio
+            # (K2 vs rho**a^2  <=>  K2_fisica vs rho*) -> l'espansione ALLEVIA il
+            # bounce. OFF (o a=1): soglia invariata -> EC identico (GATE).
+            k2_ref_eff = self.ec_k2_ref_chi
+            if self.muratore_enabled:
+                k2_ref_eff = self.ec_k2_ref_chi * (self.scale_factor_a ** 2)
             F_chi, F_tau = ec_forces(chi, tau, W, self.physics.chi_stable,
                                      self.ec_beta_sat, self.ec_kappa_closure,
-                                     self.ec_k2_ref_chi)
+                                     k2_ref_eff)
             for i, c in enumerate(self.children):
                 c.vel += float(F_chi[i]) * dt          # forza EC sul campo
                 c.tau_locale += float(F_tau[i]) * dt   # chiusura spinoriale 720
@@ -893,6 +909,75 @@ class SolitoneComposito(AbstractSoliton):
         for c in self.children:
             if isinstance(c, SolitoneComposito):
                 c.set_ec_dynamics(enabled, beta_sat, kappa_closure)
+
+    def apply_muratore_step(self, dt: float) -> None:
+        """Un tick di Planck del MURATORE: ogni blocco L1 espande (a cresce) in
+        proporzione all'ECCESSO di torsione fisica sopra rho*. Auto-regolante
+        (knob-free): riusa ec_beta_sat e ec_k2_ref_chi. Attivo solo se
+        muratore_enabled. Ricorre nei sotto-compositi (L>=2)."""
+        from .segmento_quantistico import SegmentoQuantistico
+        from .muratore_planck import hubble_rate, expand
+        if self.children and isinstance(self.children[0], SegmentoQuantistico):
+            chi = np.array([c.chi for c in self.children], dtype=float)
+            W = self.coupling_matrix
+            W = (W.toarray() if hasattr(W, "toarray") else np.asarray(W))
+            H = hubble_rate(chi, W, self.scale_factor_a,
+                            self.ec_k2_ref_chi, self.ec_beta_sat)
+            self.muratore_H_last = float(H)
+            self.scale_factor_a = float(expand(self.scale_factor_a, H, dt))
+        else:
+            for c in self.children:
+                if isinstance(c, SolitoneComposito):
+                    c.apply_muratore_step(dt)
+
+    def evolve_with_muratore(self, dt: float, external_force: np.ndarray = None) -> None:
+        """Evoluzione con EC + MURATORE (espansione) ADDITIVI (opt-in).
+
+        Se muratore_enabled=False -> evolve_with_ec(dt) (che a sua volta e' legacy se
+        EC off): NESSUN effetto. Se ON: prima espande (a cresce dall'eccesso di
+        torsione), poi passo EC (la cui soglia di saturazione e' ora dilatata da a:
+        l'espansione allevia il bounce). Il muratore richiede l'EC come sorgente."""
+        if not self.muratore_enabled:
+            self.evolve_with_ec(dt, external_force)
+            return
+        self.apply_muratore_step(dt)
+        self.evolve_with_ec(dt, external_force)
+
+    def set_muratore(self, enabled: bool) -> None:
+        """Attiva/disattiva il muratore su TUTTO l'albero (ricorsivo). Abilita anche
+        l'EC (la torsione e' la sorgente dell'espansione)."""
+        self.muratore_enabled = enabled
+        if enabled and not self.ec_dynamics_enabled:
+            self.set_ec_dynamics(True)
+        for c in self.children:
+            if isinstance(c, SolitoneComposito):
+                c.set_muratore(enabled)
+
+    def get_expansion_state(self) -> dict:
+        """Diagnostico dell'espansione: a medio, conteggio voxel ~a^d_f totale,
+        H medio sui blocchi L1. (a=1 ovunque -> nessuna espansione.)"""
+        from .segmento_quantistico import SegmentoQuantistico
+        from .muratore_planck import voxel_count
+        a_list, H_list, vox = [], [], 0.0
+        def walk(node):
+            nonlocal vox
+            if node.children and isinstance(node.children[0], SegmentoQuantistico):
+                a_list.append(node.scale_factor_a)
+                H_list.append(node.muratore_H_last)
+                vox += voxel_count(node.scale_factor_a, node.muratore_d_f)
+            else:
+                for c in node.children:
+                    if isinstance(c, SolitoneComposito):
+                        walk(c)
+        walk(self)
+        n = max(len(a_list), 1)
+        return {
+            "a_mean": float(np.mean(a_list)) if a_list else 1.0,
+            "a_max": float(np.max(a_list)) if a_list else 1.0,
+            "H_mean": float(np.mean(H_list)) if H_list else 0.0,
+            "voxel_total": float(vox),
+            "n_blocks": len(a_list),
+        }
 
     def evolve_fast(self, dt: float, external_force: np.ndarray = None) -> None:
         """
