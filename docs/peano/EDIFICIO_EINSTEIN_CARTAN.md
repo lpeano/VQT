@@ -51,11 +51,17 @@ Energia di saturazione e forza (gradiente analitico, **conservativo**):
 > E_sat = β_sat · Σ_i (K²_i − ρ\*)²
 > F_χ = −∂E_sat/∂χ
 
-Oltre la soglia ρ\* il fattore (K² − ρ\*) **cambia segno → la forza inverte (bounce)**:
-la torsione in eccesso e' respinta, la densita' **satura**. E' il termine β·ρ² di
-Einstein-Cartan (no singolarita'). Soglia **derivata**, non fit:
+Saturazione **a soffitto** (one-sided): `E_sat = β·Σ((K²−ρ\*)₊)²`, forza
+`coef = 2β(K²−ρ\*)₊`. Sotto ρ\* la forza e' **nulla** (vuoto/domini stabili); sopra ρ\*
+la torsione in eccesso e' respinta (**bounce**), la densita' **satura**. (La forma
+simmetrica (K²−ρ\*)² spingerebbe la torsione verso ρ\* anche dal basso = torsione
+spuria nel vuoto: scartata.) Soglia **DERIVATA (misurata)**, non fit:
 
-> ρ\* = (2 χ₀)²   — scala del salto Jitterbug pieno (+χ₀ → −χ₀), da χ₀ e √2.
+> ρ\* = 2 χ₀² = (√2 χ₀)²   — scala della PARETE di dominio / del disordine (√2 Jitterbug).
+
+Misura su Leech reale: parete K²~5018, disordine ⟨K²⟩~5083 → 2χ₀²; il (2χ₀)²=4χ₀² lo
+tocca SOLO un nodo isolato max-frustrato (mai una parete) → con quella soglia la
+saturazione non scattava sui difetti reali. [TASK 3, risolto 2026-06-09]
 
 **[VER]** gradiente analitico vs numerico: `err_rel = 3e-8` (conservativo).
 
@@ -113,9 +119,10 @@ gravita'**). **L'omogeneita' e' un output, non una regola** — coerente con
 **[VER]** GATE: flag OFF bit-identico al legacy; flag ON stabile, auto-regolante,
 `a ≥ 1`, espande solo dove K² > ρ\*.
 
-**Nota calibrazione [APERTO]**: con `W` normalizzata per riga, K² e' una **media
-pesata** dei salti², che supera ρ\*=(2χ₀)² solo con overshoot |χ|>χ₀. Il prefattore
-geometrico di ρ\* (vale anche per la saturazione EC) e' da rivedere.
+**Nota calibrazione [RISOLTO TASK 3]**: ρ\* ricalibrato a 2χ₀² (scala parete/disordine
+misurata) + risposta LOCALE per-nodo (`H=β⟨(K²/a²−ρ\*)₊⟩`): l'espansione ora scatta su
+pareti/difetti reali, non solo su overshoot. `equilibrium_a=√(maxK²/ρ\*)` (driven dal
+nodo piu' frustrato).
 
 ---
 
@@ -255,7 +262,7 @@ valore estremo, non i coupling.
 
 | Grandezza | Stato | Origine |
 |---|---|---|
-| ρ\* (soglia saturazione/espansione) | **derivata** | (2χ₀)², Jitterbug √2 (topologica) |
+| ρ\* (soglia saturazione/espansione) | **derivata (misurata)** | 2χ₀²=(√2χ₀)², scala parete/disordine (√2 Jitterbug) |
 | 4π, π (chiusura 720, twist 180) | **topologiche** | spin-1/2 |
 | R_geo → β_local (G) | **derivata** | 4N/(N−1), N=24 (Leech) |
 | β_pot (doppio pozzo) | fisica | Landau-Ginzburg on-site (primitiva) |
@@ -272,19 +279,26 @@ misura** (porre Θ=1 in unita' di codice), che non e' fisica ma convenzione.
 
 ---
 
-## 7. Punti aperti [APERTO]
+## 7. Stato dei task
 
-1. **Prefattore geometrico di ρ\***: con W normalizzata per riga, ricalibrare ρ\* alla
-   scala reale di K² (vale per EC e muratore).
-2. **G non monotono**: misurare `misura_rigidezza_scala` su un albero **evoluto e
-   disomogeneo** per testare la previsione di Luca (non monotonia da geometria/materia
-   variabile).
-3. **Cosmogenesi**: accendere il muratore da **spazio minimale + seme stocastico**
-   (i "dadi") → la fluttuazione si auto-amplifica (SSB), il primo eccesso di torsione
-   supera ρ\*, lo spazio cresce da se'. (`a=0` e' singolare → partire da `a` minimale.)
-4. **β_sat ← β_local**: collegare il muratore alla rigidezza derivata (G emergente
-   effettivo nella dinamica), con GATE.
+**FATTI [VER 2026-06-09]:**
+- **Task 1 — G non monotono**: `test_g_nonmonotono.py` + `test_g_dinamico.py`. G traccia
+  la scala della materia (vuoto → piatto; materia a L → β picca a L). Confermato sia il
+  meccanismo (a\* analitico) sia la dinamica (muratore a tutti i livelli).
+- **Task 2 — Cosmogenesi**: `test_cosmogenesi.py`. Origine simmetrica + dadi → SSB →
+  domini → espansione (a cricca su). Senza dadi → niente. I dadi sono necessari.
+- **Task 3 — Ricalibrazione ρ\***: ρ\*=2χ₀² + soffitto one-sided + risposta locale.
+  Tutto il sistema si accende su materia reale (vedi §1.2, §2.5).
+
+**APERTI:**
+1. **β_sat ← β_local**: collegare il muratore alla rigidezza derivata (G emergente
+   attivo nella dinamica, non solo diagnostico), con GATE.
+2. **Oscillazione SSB**: l'ordine "respira" (meta-stabilita'? bagno termico FDT?) — capire.
+3. **Calibrazione fisica → Hubble**: da Θ=E_Planck a km/s/Mpc; predire il gap early-vs-late.
+4. **Aritmetica 180°/720°** [DA CONFERMARE]: 24 mezze onde vs chiusura spinoriale.
 5. **ρ\*_Leech == ρ\*_EC**: la pietra angolare teorica.
+6. **Deprecare il termostato legacy** (damping FDT + pompa di calore) se il muratore
+   fornisce la dissipazione (l'espansione dissipa l'eccesso): da verificare con A/B.
 
 ---
 

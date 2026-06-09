@@ -41,10 +41,15 @@ TASK 2 [FATTO 2026-06-09]: COSMOGENESI - SSB da origine simmetrica + dadi CONFER
   - Espansione muratore NON scatta: torsione domini SSB < rho* -> serve TASK 3.
   - Ordine OSCILLA (meta-stabilita'/bagno termico, da capire).
 
-TASK APERTI (in ordine; TASK 3 ora sblocca cosmogenesi+muratore):
-  3'. RICALIBRARE rho* [PRIORITA' ORA]: con W normalizzata per riga K2 e' media pesata,
-      supera (2chi0)^2 solo con overshoot. Sblocca "struttura->espansione" (task 2) e
-      l'azione del muratore in generale. Derivare il prefattore geometrico (no fit).
+TASK 3 [FATTO 2026-06-09]: RICALIBRAZIONE rho* -> tutto il sistema si accende.
+  3 correzioni DERIVATE (misurate): (1) rho*=2chi0^2=(sqrt2 chi0)^2 (scala parete/
+  disordine, era 4chi0^2 = solo nodo isolato max); (2) saturazione A SOFFITTO one-sided
+  (K2-rho*)+ (vuoto stabile, bounce solo sopra); (3) muratore LOCALE per-nodo +
+  equilibrium_a=sqrt(maxK2/rho*). VERIFICHE: EC grad err 5e-11, GATE OFF bit-id/ON
+  stabile. COSMOGENESI ora COMPLETA (SSB+dadi -> domini -> espansione si accende);
+  G non-monotono piu' marcato (beta picca 0.91 vs base 0.24).
+
+TASK APERTI (in ordine):
   2. COSMOGENESI: muratore da spazio MINIMALE + seme stocastico (dadi/SSB); a=0 singolare
      -> partire da a minimale. Testa SSB + auto-amplificazione del primo eccesso.
   3. RICALIBRARE rho* (prefattore geometrico): W normalizzata per riga -> K2 e' media
