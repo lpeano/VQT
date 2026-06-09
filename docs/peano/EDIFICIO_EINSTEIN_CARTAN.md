@@ -289,11 +289,13 @@ misura** (porre Θ=1 in unita' di codice), che non e' fisica ma convenzione.
   domini → espansione (a cricca su). Senza dadi → niente. I dadi sono necessari.
 - **Task 3 — Ricalibrazione ρ\***: ρ\*=2χ₀² + soffitto one-sided + risposta locale.
   Tutto il sistema si accende su materia reale (vedi §1.2, §2.5).
+- **β_sat ← β_local (G emergente ATTIVA)**: β_sat per blocco = β_baseline·a² = Θ/R_phys
+  (R_phys=R_geo/a²). Anello rigidezza→gravita'→dinamica CHIUSO. Feedback STABILE (no
+  runaway, regolato da diluizione ~1/a²). Flag `g_emergent_active` (OFF bit-identico),
+  GATE [4] in test_muratore_equivalence.
 
 **APERTI:**
-1. **β_sat ← β_local**: collegare il muratore alla rigidezza derivata (G emergente
-   attivo nella dinamica, non solo diagnostico), con GATE.
-2. **Oscillazione SSB**: l'ordine "respira" (meta-stabilita'? bagno termico FDT?) — capire.
+1. **Oscillazione SSB**: l'ordine "respira" (meta-stabilita'? bagno termico FDT?) — capire.
 3. **Calibrazione fisica → Hubble**: da Θ=E_Planck a km/s/Mpc; predire il gap early-vs-late.
 4. **Aritmetica 180°/720°** [DA CONFERMARE]: 24 mezze onde vs chiusura spinoriale.
 5. **ρ\*_Leech == ρ\*_EC**: la pietra angolare teorica.

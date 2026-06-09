@@ -49,6 +49,11 @@ TASK 3 [FATTO 2026-06-09]: RICALIBRAZIONE rho* -> tutto il sistema si accende.
   stabile. COSMOGENESI ora COMPLETA (SSB+dadi -> domini -> espansione si accende);
   G non-monotono piu' marcato (beta picca 0.91 vs base 0.24).
 
+G EMERGENTE ATTIVA [FATTO 2026-06-09]: beta_sat <- rigidezza fisica (beta=beta_baseline*
+a^2=Theta/R_phys, R_phys=R_geo/a^2). Anello rigidezza->gravita'->dinamica CHIUSO.
+Feedback STABILE (no runaway, regolato da diluizione ~1/a^2). Flag g_emergent_active
+(OFF bit-identico), GATE [4] in test_muratore_equivalence (a_max~1.0002, no NaN).
+
 TASK APERTI (in ordine):
   2. COSMOGENESI: muratore da spazio MINIMALE + seme stocastico (dadi/SSB); a=0 singolare
      -> partire da a minimale. Testa SSB + auto-amplificazione del primo eccesso.
