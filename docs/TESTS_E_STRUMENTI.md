@@ -921,6 +921,46 @@ torsione geometrica).
 
 ---
 
+## Sezione 8 — Edificio Einstein-Cartan (gravità emergente)
+
+Branch `physics/einstein-cartan-saturation`. Saturazione/bounce + espansione (muratore)
++ G emergente da rigidezza + scala metrica + gravità (clumping). Tutto ADDITIVO (legacy
+`evolve()` intatto), coefficienti DERIVATI. Doc scientifica: `docs/peano/EDIFICIO_EINSTEIN_CARTAN.md`.
+
+### Moduli (con `_self_test` eseguibile)
+
+| Modulo | Cosa fa (fisica) | Self-test |
+|---|---|---|
+| `wqt_oop/einstein_cartan.py` | Saturazione settore chi (bounce, soffitto one-sided `(K2-rho*)+`) + chiusura spinoriale 720. `rho*=2chi0^2` (parete, sqrt2 Jitterbug). | `python -m wqt_oop.einstein_cartan` (gradiente err 5e-11) |
+| `wqt_oop/muratore_planck.py` | Espansione: `H=beta<(K2/a^2-rho*)+>` (locale) + drive di fondo. Auto-regolante, `a*=sqrt(maxK2/rho*)`. | `python -m wqt_oop.muratore_planck` |
+| `wqt_oop/rigidezza_geometrica.py` | G emergente (Sakharov): `beta=Theta/R_geo`, `R_geo=4N/(N-1)=4.174` topologico. | `python -m wqt_oop.rigidezza_geometrica` |
+| `wqt_oop/scala_planck.py` | Scala metrica: `ell_voxel(L0)=ell_Planck`; ladder `24^(L/d)`; protone~L43. | `python -m wqt_oop.scala_planck` |
+
+### GATE di equivalenza (PASS obbligatorio)
+
+| Test | Verifica | Esecuzione |
+|---|---|---|
+| `wqt_oop/test_einstein_cartan_equivalence.py` | [1] gradiente conservativo, [2] flag OFF == legacy bit-identico, [3] ON stabile. | `python -m wqt_oop.test_einstein_cartan_equivalence` (~5s) |
+| `wqt_oop/test_muratore_equivalence.py` | [1] auto-regolazione, [2] OFF bit-identico, [3] espande, [4] G emergente stabile, [5] clumping (vuoto>materia). | `python -m wqt_oop.test_muratore_equivalence` (~10s) |
+
+### Esperimenti (experiments/exp3)
+
+| Script | Domanda / risultato | Esecuzione |
+|---|---|---|
+| `test_cura_coupling.py` | I coupling postulati 24^L sono superflui? SI (densità intensiva, scaled~flat~cura). | `--chi-means 66,72 --seeds 2` (~11 min) |
+| `test_legge_febbre.py` | La febbre è una legge di scala? NO, transiente (R^2=0.70, alpha=0.165 bocciato). | `--levels 1,2,3,4 --include-l4 --seeds 3` (~33 min) |
+| `test_g_nonmonotono.py` | G(scala) monotono? NO (a* analitico): G traccia la scala della materia. | (no args, ~30s) |
+| `test_g_dinamico.py` | La dinamica genera G non-monotono? SI (muratore a tutti i livelli). | (no args, ~5 min) |
+| `test_cosmogenesi.py` | Universo da origine simmetrica + dadi? SI (SSB; senza dadi niente). | (no args, ~2 min) |
+| `test_gravita_clumping.py` | I vuoti espandono più della materia (clumping=gravità)? SI col drive di fondo. | (no args, ~2 min) |
+
+**Flag opt-in (default OFF → comportamento legacy bit-identico)**: `ec_dynamics_enabled`,
+`muratore_enabled`, `g_emergent_active`, `kink_stiffening_active`, `muratore_h_fondo_coeff>0`.
+Attivatori ricorsivi: `set_ec_dynamics`, `set_muratore`, `set_g_emergent`,
+`set_kink_stiffening`, `set_drive_fondo`.
+
+---
+
 ## Appendice — Pattern per nuovi test
 
 Ogni nuovo script di test deve seguire questo template:

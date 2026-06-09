@@ -1,6 +1,29 @@
 # Checkpoint VQT - Ultimo Aggiornamento: 2026-06-09
 
-## >>> PROSSIMI TASK PRIORITARI (2026-06-09, sessione edificio EC) <<<
+## >>> PER DOMANI (leggi questo per primo) <<<
+
+Branch: physics/einstein-cartan-saturation. Edificio Einstein-Cartan COMPLETO e verde
+(8 pezzi: EC saturazione/720, muratore, G emergente, scala metrica, G non-monotono,
+cosmogenesi, ricalibrazione rho*, beta<-rigidezza, kink-stiffening, gravita'/clumping).
+Doc scientifica: docs/peano/EDIFICIO_EINSTEIN_CARTAN.md. Test: docs/TESTS_E_STRUMENTI.md
+sez.8. Tutti i GATE/self-test PASS, legacy intatto.
+
+PRIMA COSA DA FARE (in ordine, scegliere con Luca):
+  1) [consigliato] COLLASSO DINAMICO: run lungo -> la materia migra DAVVERO nei grumi?
+     (la firma forte della gravita'; finora solo differenza di espansione). Task A sotto.
+  2) CALIBRAZIONE HUBBLE: da coeff/Theta=E_Planck a km/s/Mpc, predire gap early-vs-late
+     (G non-monotono gia' pronto). Task B sotto.
+  3) OSCILLAZIONE SSB (il "respiro"): meta-stabilita' o bagno FDT? Task C sotto.
+Da confermare con Luca: ARITMETICA 180/720 (task D) e DEPRECARE TERMOSTATO (task E,
+ora che la febbre e' il drive). Dettagli e lista completa: blocco "TASK APERTI" sotto.
+
+VERIFICA RAPIDA STATO (eseguire a inizio sessione):
+  python -m wqt_oop.test_einstein_cartan_equivalence   # GATE EC
+  python -m wqt_oop.test_muratore_equivalence          # GATE muratore (5 test, incl clumping)
+
+---
+
+## >>> EDIFICIO EC: COSA E' STATO FATTO (2026-06-09) <<<
 
 EDIFICIO EINSTEIN-CARTAN COMPLETATO (branch physics/einstein-cartan-saturation).
 Doc unica: docs/peano/EDIFICIO_EINSTEIN_CARTAN.md. Tutto ADDITIVO (legacy intatto),
@@ -71,15 +94,19 @@ GRAVITA' EMERGENTE [FATTO 2026-06-09]: DRIVE DI FONDO (febbre=motore, opzione 2 
   Iter onesto: H_fondo~T_locale FALLI' (T locale traccia materia + bounce domina);
   fix = drive UNIFORME + materia moderata. Flag muratore_h_fondo_coeff (default 0=bit-id).
 
-TASK APERTI (in ordine):
-  2. COSMOGENESI: muratore da spazio MINIMALE + seme stocastico (dadi/SSB); a=0 singolare
-     -> partire da a minimale. Testa SSB + auto-amplificazione del primo eccesso.
-  3. RICALIBRARE rho* (prefattore geometrico): W normalizzata per riga -> K2 e' media
-     pesata, supera (2chi0)^2 solo con overshoot |chi|>chi0. Vale per EC e muratore.
-  4. ARITMETICA 180/720 [DA CONFERMARE]: 24 mezze onde (12 monti+12 valli) vs chiusura
-     spinoriale 720 (doppio rivestimento). Riconciliare fase spaziale/spinoriale.
-  5. COLLEGARE beta_sat <- beta_local (G emergente attivo nella dinamica), con GATE.
-  6. CALIBRAZIONE FISICA completa (verso Hubble): da Theta=E_Planck a km/s/Mpc.
+TASK APERTI (aggiornati 2026-06-09 fine sessione; vedi blocco PER DOMANI in testa):
+  A. COLLASSO DINAMICO (firma forte della gravita'): run lungo, la materia MIGRA davvero
+     nei grumi? Finora mostrato solo come differenza di espansione (a_vuoto>a_denso),
+     non come collasso/aggregazione dinamica. Misurare la concentrazione nel tempo.
+  B. CALIBRAZIONE FISICA -> Hubble: da coeff/Theta=E_Planck a km/s/Mpc; predire il gap
+     early-vs-late (usa G non-monotono gia' dimostrato). coeff = tasso emissione (~T_eff).
+  C. OSCILLAZIONE SSB: l'ordine "respira" (sale a ~1, ridiscende). Meta-stabilita'
+     (frustrazione chirale) o bagno termico FDT? Caratterizzare.
+  D. ARITMETICA 180/720 [DA CONFERMARE con Luca]: 24 mezze onde (12 monti+12 valli) vs
+     chiusura spinoriale 720 (doppio rivestimento). Riconciliare fase spaziale/spinoriale.
+  E. DEPRECARE TERMOSTATO LEGACY: ora la febbre E' il drive (drive di fondo); il bagno
+     FDT come entita' separata e' ridondante? A/B per verificare e rimuovere.
+  F. rho*_Leech == rho*_EC: la pietra angolare teorica (verifica concettuale).
 
 ## >>> NUOVO BRANCH 2026-06-08: physics/einstein-cartan-saturation <<<
 
