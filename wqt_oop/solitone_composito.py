@@ -147,7 +147,22 @@ class SolitoneComposito(AbstractSoliton):
         
         # Posizione centroide (media posizioni figli)
         self._centroid: Optional[np.ndarray] = None
-    
+
+        # === EINSTEIN-CARTAN (additivo, opt-in; legacy evolve() INTATTO) ===
+        # Dinamica EC: torsione a chiralita' alternata (180 deg) + chiusura spinoriale
+        # 720 deg + saturazione (pressione di degenerazione di spin = bounce).
+        # Recupera la fisica persa nel refactoring (commit a5b417e). Vedi
+        # wqt_oop/einstein_cartan.py e docs/peano/DIAGNOSI_SATURAZIONE_EC.md.
+        self.ec_dynamics_enabled: bool = False   # DEFAULT OFF -> comportamento legacy
+        # Coefficienti EC (tarabili). NON sono i coupling postulati scala-dipendenti:
+        # sono ancorati a scale fisiche/topologiche. beta_sat = forza della
+        # saturazione; kappa_closure = rigidita' della chiusura 720; k2_ref dalla
+        # scala del campo (sqrt(2)*chi0 Jitterbug), non un fit.
+        self.ec_beta_sat: float = 1e-8
+        self.ec_kappa_closure: float = 1e-2
+        from .einstein_cartan import default_k2_ref_chi
+        self.ec_k2_ref_chi: float = default_k2_ref_chi(self.physics.chi_stable)
+
     @staticmethod
     def _build_leech_coupling(N: int) -> np.ndarray:
         """
@@ -817,6 +832,67 @@ class SolitoneComposito(AbstractSoliton):
                 c.vel = float(vv)
             self.E_zero_point_injected += E_inj
             self._cache_valid = False  # le velocita' sono cambiate
+
+    # =======================================================================
+    # EINSTEIN-CARTAN (additivo, opt-in). NON modifica evolve() legacy.
+    # =======================================================================
+    def apply_ec_kick(self, dt: float) -> None:
+        """Applica il kick di Einstein-Cartan a OGNI blocco L1 dell'albero.
+
+        Su un blocco L1 (figli = SegmentoQuantistico, anello Z_24) calcola le forze EC
+        (saturazione settore chi + chiusura 720 settore tau) e le applica come kick
+        additivo: vel += F_chi*dt (settore campo), tau_locale += F_tau*dt (settore
+        spinoriale). Ricorre nei sotto-compositi per i livelli L>=2.
+
+        Conservativo (le forze sono gradienti di einstein_cartan.ec_energy) e stabile
+        (forze limitate). Attivo solo se ec_dynamics_enabled.
+        """
+        from .segmento_quantistico import SegmentoQuantistico
+        from .einstein_cartan import ec_forces
+        if self.children and isinstance(self.children[0], SegmentoQuantistico):
+            # blocco L1: i 24 figli sono segmenti
+            chi = np.array([c.chi for c in self.children], dtype=float)
+            tau = np.array([c.tau_locale for c in self.children], dtype=float)
+            W = self.coupling_matrix
+            W = (W.toarray() if hasattr(W, "toarray") else np.asarray(W))
+            F_chi, F_tau = ec_forces(chi, tau, W, self.physics.chi_stable,
+                                     self.ec_beta_sat, self.ec_kappa_closure,
+                                     self.ec_k2_ref_chi)
+            for i, c in enumerate(self.children):
+                c.vel += float(F_chi[i]) * dt          # forza EC sul campo
+                c.tau_locale += float(F_tau[i]) * dt   # chiusura spinoriale 720
+            self._cache_valid = False
+        else:
+            for c in self.children:
+                if isinstance(c, SolitoneComposito):
+                    c.apply_ec_kick(dt)
+
+    def evolve_with_ec(self, dt: float, external_force: np.ndarray = None) -> None:
+        """Evoluzione con dinamica Einstein-Cartan ADDITIVA (opt-in).
+
+        Strang splitting conservativo: half-kick EC, passo simplettico legacy,
+        half-kick EC. NON modifica evolve(): se ec_dynamics_enabled=False e' identico
+        a evolve() (path legacy verificato). Propaga il flag ai sotto-compositi.
+        """
+        if not self.ec_dynamics_enabled:
+            self.evolve(dt, external_force)            # legacy puro
+            return
+        self.apply_ec_kick(0.5 * dt)
+        self.evolve(dt, external_force)
+        self.apply_ec_kick(0.5 * dt)
+
+    def set_ec_dynamics(self, enabled: bool, beta_sat: float = None,
+                        kappa_closure: float = None) -> None:
+        """Attiva/disattiva la dinamica EC su TUTTO l'albero (ricorsivo)."""
+        from .segmento_quantistico import SegmentoQuantistico
+        self.ec_dynamics_enabled = enabled
+        if beta_sat is not None:
+            self.ec_beta_sat = beta_sat
+        if kappa_closure is not None:
+            self.ec_kappa_closure = kappa_closure
+        for c in self.children:
+            if isinstance(c, SolitoneComposito):
+                c.set_ec_dynamics(enabled, beta_sat, kappa_closure)
 
     def evolve_fast(self, dt: float, external_force: np.ndarray = None) -> None:
         """

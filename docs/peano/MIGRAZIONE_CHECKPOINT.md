@@ -1,6 +1,24 @@
 # Checkpoint VQT - Ultimo Aggiornamento: 2026-06-08
 
 ## >>> NUOVO BRANCH 2026-06-08: physics/einstein-cartan-saturation <<<
+
+[IMPLEMENTAZIONE EC 2026-06-09] FATTA e VERIFICATA (relazione completa in
+docs/peano/RELAZIONE_IMPLEMENTAZIONE_EC.md):
+  - NUOVO wqt_oop/einstein_cartan.py: dinamica EC (saturazione settore chi = pressione
+    di spin/bounce, forza conservativa GRADIENTE VERIFICATO err 3e-8; chiusura 720 deg
+    settore tau; twist 180 alternato come diagnostico). Self-test PASS.
+  - ADDITIVO in solitone_composito: flag ec_dynamics_enabled (default OFF),
+    apply_ec_kick/evolve_with_ec (Strang)/set_ec_dynamics. evolve() legacy INTATTO.
+  - GATE wqt_oop/test_einstein_cartan_equivalence.py: flag OFF == legacy BIT-IDENTICO
+    (diff 0.0), flag ON STABILE (no NaN). TUTTI PASS.
+  - Archeologia: la fisica EC fu persa nel cleanup a5b417e (2026-05-26), NON per
+    instabilita' -> recuperata da git 5afefb9 + legacy/.
+  - INVENTARIO COSTANTI (relazione sez.3): da eliminare i coupling postulati/legacy
+    (lambda_exchange~24^2L PRIORITA'1, alpha_K~1/24^L, kappa, gamma, d_f=2); da tenere
+    chi_stable, 4pi/pi topologici, doppio pozzo, Leech, Verlet.
+  APERTI: geometria esatta 180->720 [DA CONFERMARE Luca]; dissoluzione coupling (da
+  misurare con EC ON); rho*_Leech==rho*_EC; misura febbre/saturazione con flag ON.
+
 Diagnosi + cura foundational documentate in docs/peano/DIAGNOSI_SATURAZIONE_EC.md.
 VERIFICATO oggi: il solitone di base NON ha la pressione di saturazione Einstein-
 Cartan (beta*rho^2); la dinamica e' solo doppio-pozzo + damping + coupling; la
