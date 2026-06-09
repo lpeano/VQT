@@ -34,7 +34,17 @@ TASK 1 [FATTO 2026-06-09]: NON-MONOTONIA di G CONFERMATA (ipotesi Luca corretta)
   VERDETTO: G NON e' legge di scala universale, e' un campo che traccia la scala della
   materia. E' l'ingrediente per la differenza early-vs-late (Hubble). GATE verdi.
 
-TASK APERTI (in ordine):
+TASK 2 [FATTO 2026-06-09]: COSMOGENESI - SSB da origine simmetrica + dadi CONFERMATA.
+  - test_cosmogenesi.py: campo simmetrico chi~0 + seme stocastico (dadi). CON dadi
+    (anche 0.1) -> SSB (ordine->~1, domini); SENZA dadi -> resta 0 (niente universo).
+    I DADI SONO NECESSARI (l'universo nasce da una fluttuazione - intuizione Luca).
+  - Espansione muratore NON scatta: torsione domini SSB < rho* -> serve TASK 3.
+  - Ordine OSCILLA (meta-stabilita'/bagno termico, da capire).
+
+TASK APERTI (in ordine; TASK 3 ora sblocca cosmogenesi+muratore):
+  3'. RICALIBRARE rho* [PRIORITA' ORA]: con W normalizzata per riga K2 e' media pesata,
+      supera (2chi0)^2 solo con overshoot. Sblocca "struttura->espansione" (task 2) e
+      l'azione del muratore in generale. Derivare il prefattore geometrico (no fit).
   2. COSMOGENESI: muratore da spazio MINIMALE + seme stocastico (dadi/SSB); a=0 singolare
      -> partire da a minimale. Testa SSB + auto-amplificazione del primo eccesso.
   3. RICALIBRARE rho* (prefattore geometrico): W normalizzata per riga -> K2 e' media
