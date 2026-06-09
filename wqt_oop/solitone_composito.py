@@ -189,6 +189,16 @@ class SolitoneComposito(AbstractSoliton):
         # (GATE bit-identico). Vedi wqt_oop/rigidezza_geometrica.py.
         self.g_emergent_active: bool = False
 
+        # === KINK-STIFFENING (additivo, opt-in): la MATERIA irrigidisce lo spaziotempo ===
+        # In VQT i kink SONO complessita' dello spaziotempo (la materia nasce dalla
+        # torsione). Quindi i kink aumentano la rigidezza locale:
+        #   R_local = R_geo * (1 + K2/rho*)   (knob-free: usa il rho* derivato)
+        #   beta_local = Theta/R_local = beta_geom / (1 + K2/rho*)
+        # -> dove c'e' materia (K2 alto) beta cala -> espansione SOPPRESSA li'; i VUOTI
+        #    (soffici) espandono -> la materia si addensa (grumi). La spinta espansiva
+        #    (frame spaziotempo) E' attrazione (frame materia): UNA sola forza.
+        self.kink_stiffening_active: bool = False
+
     @staticmethod
     def _build_leech_coupling(N: int) -> np.ndarray:
         """
@@ -874,7 +884,7 @@ class SolitoneComposito(AbstractSoliton):
         (forze limitate). Attivo solo se ec_dynamics_enabled.
         """
         from .segmento_quantistico import SegmentoQuantistico
-        from .einstein_cartan import ec_forces
+        from .einstein_cartan import ec_forces, torsion_density_K2
         if self.children and isinstance(self.children[0], SegmentoQuantistico):
             # blocco L1: i 24 figli sono segmenti
             chi = np.array([c.chi for c in self.children], dtype=float)
@@ -887,8 +897,9 @@ class SolitoneComposito(AbstractSoliton):
             k2_ref_eff = self.ec_k2_ref_chi
             if self.muratore_enabled:
                 k2_ref_eff = self.ec_k2_ref_chi * (self.scale_factor_a ** 2)
+            k2_mean = float(np.mean(torsion_density_K2(chi, W)))   # per kink-stiffening
             F_chi, F_tau = ec_forces(chi, tau, W, self.physics.chi_stable,
-                                     self._beta_eff(), self.ec_kappa_closure,
+                                     self._beta_eff(k2_mean), self.ec_kappa_closure,
                                      k2_ref_eff)
             for i, c in enumerate(self.children):
                 c.vel += float(F_chi[i]) * dt          # forza EC sul campo
@@ -939,12 +950,14 @@ class SolitoneComposito(AbstractSoliton):
         Poi ricorre nei sotto-compositi (che espandono il loro a)."""
         from .segmento_quantistico import SegmentoQuantistico
         from .muratore_planck import hubble_rate, expand
+        from .einstein_cartan import torsion_density_K2
         # chi coarse del livello = rappresentativo di ciascun figlio
         chi = np.array([self._get_child_chi(c) for c in self.children], dtype=float)
         W = self.coupling_matrix
         W = (W.toarray() if hasattr(W, "toarray") else np.asarray(W))
+        k2_mean = float(np.mean(torsion_density_K2(chi, W)))      # per kink-stiffening
         H = hubble_rate(chi, W, self.scale_factor_a,
-                        self.ec_k2_ref_chi, self._beta_eff())
+                        self.ec_k2_ref_chi, self._beta_eff(k2_mean))
         self.muratore_H_last = float(H)
         self.scale_factor_a = float(expand(self.scale_factor_a, H, dt))
         # ricorre: anche i sotto-compositi espandono il loro a
@@ -975,14 +988,20 @@ class SolitoneComposito(AbstractSoliton):
             if isinstance(c, SolitoneComposito):
                 c.set_muratore(enabled)
 
-    def _beta_eff(self) -> float:
-        """beta_sat EFFETTIVO del blocco. G emergente attiva (g_emergent_active):
-        beta = beta_baseline * a^2 = Theta/R_phys, R_phys = R_geo/a^2 (rigidezza FISICA
-        diluita dall'espansione) -> dove a>1, G maggiore. Flag OFF o a=1 -> beta_baseline
-        (GATE bit-identico)."""
+    def _beta_eff(self, k2_mean: float = 0.0) -> float:
+        """beta_sat EFFETTIVO del blocco (G emergente + kink-stiffening).
+        - g_emergent_active: beta = beta_baseline * a^2 = Theta/R_phys (R_phys=R_geo/a^2):
+          dove a>1 (espanso) G maggiore.
+        - kink_stiffening_active: beta /= (1 + K2/rho*): dove c'e' materia (K2 alto) la
+          rigidezza sale e beta cala -> espansione soppressa (i vuoti espandono, la materia
+          si addensa = gravita'). Knob-free (usa rho*).
+        Flag OFF (o a=1, K2=0) -> beta_baseline (GATE bit-identico)."""
+        b = self.ec_beta_sat
         if self.g_emergent_active:
-            return self.ec_beta_sat * (self.scale_factor_a ** 2)
-        return self.ec_beta_sat
+            b = b * (self.scale_factor_a ** 2)
+            if self.kink_stiffening_active:
+                b = b / (1.0 + k2_mean / self.ec_k2_ref_chi)
+        return b
 
     def set_g_emergent(self, enabled: bool) -> None:
         """Attiva/disattiva la G emergente attiva (beta<-rigidezza fisica) su tutto
@@ -993,6 +1012,16 @@ class SolitoneComposito(AbstractSoliton):
         for c in self.children:
             if isinstance(c, SolitoneComposito):
                 c.set_g_emergent(enabled)
+
+    def set_kink_stiffening(self, enabled: bool) -> None:
+        """Attiva/disattiva il kink-stiffening (la materia irrigidisce lo spaziotempo:
+        beta /= 1+K2/rho*) su tutto l'albero. Richiede la G emergente (modifica beta)."""
+        self.kink_stiffening_active = enabled
+        if enabled and not self.g_emergent_active:
+            self.set_g_emergent(True)
+        for c in self.children:
+            if isinstance(c, SolitoneComposito):
+                c.set_kink_stiffening(enabled)
 
     def get_expansion_state(self) -> dict:
         """Diagnostico dell'espansione PER LIVELLO (a vive a ogni livello). Ritorna
