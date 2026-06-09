@@ -2,25 +2,45 @@
 
 ## >>> PER DOMANI (leggi questo per primo) <<<
 
-Branch: physics/einstein-cartan-saturation. Edificio Einstein-Cartan COMPLETO e verde
-(8 pezzi: EC saturazione/720, muratore, G emergente, scala metrica, G non-monotono,
-cosmogenesi, ricalibrazione rho*, beta<-rigidezza, kink-stiffening, gravita'/clumping).
-Doc: docs/peano/VQT_FORMALIZZAZIONE.md (formale: statica/dinamica/ipotesi),
-docs/peano/EDIFICIO_EINSTEIN_CARTAN.md (implementativa), docs/TESTS_E_STRUMENTI.md sez.8
-(test). Tutti i GATE/self-test PASS, legacy intatto.
+Branch: physics/einstein-cartan-saturation.
 
-PRIMA COSA DA FARE (in ordine, scegliere con Luca):
-  1) [consigliato] COLLASSO DINAMICO: run lungo -> la materia migra DAVVERO nei grumi?
-     (la firma forte della gravita'; finora solo differenza di espansione). Task A sotto.
-  2) CALIBRAZIONE HUBBLE: da coeff/Theta=E_Planck a km/s/Mpc, predire gap early-vs-late
-     (G non-monotono gia' pronto). Task B sotto.
-  3) OSCILLAZIONE SSB (il "respiro"): meta-stabilita' o bagno FDT? Task C sotto.
-Da confermare con Luca: ARITMETICA 180/720 (task D) e DEPRECARE TERMOSTATO (task E,
-ora che la febbre e' il drive). Dettagli e lista completa: blocco "TASK APERTI" sotto.
+STATO: MOTORE EINSTEIN-CARTAN COMPLETAMENTE INTEGRATO. La TORSIONE e' sorgentata dallo
+SPIN (non piu' dal gradiente scalare). Ogni voxel ha uno SPINORE (theta, dphi):
+  - beta/alpha = tan(theta/2) e^{i phi} = PENDENZA DEL KINK (la richiesta storica);
+  - twist 180 alternato per legame + CHIUSURA 720 (winding -> 4pi, spin-1/2);
+  - densita' chirali SX (materia)/DX (spazio) DERIVATE dallo spinore.
+  - K2_spin = chi0^2 * sum W |n_i-n_j|^2 (n=Bloch) guida TUTTO: saturazione (bounce sullo
+    SPIN), espansione, gravita'. set_ec_integrato(coeff) accende tutto.
+NIENTE HARDCODED (chi0 da physics.chi_stable, rho*=2chi0^2 derivato, 4pi/pi topologici).
+Moduli: wqt_oop/motore_chirale_spinoriale.py (spinore), einstein_cartan/muratore_planck/
+rigidezza_geometrica/scala_planck. Tutti i GATE PASS, legacy bit-identico (flag OFF).
+
+D'ORA IN POI: TUTTI i test usano il MOTORE COMPLETO -> root.set_ec_integrato(coeff) e
+root.evolve_with_muratore(dt). Esempio: experiments/exp3/test_gravita_clumping.py.
+
+GRAVITA' verificata sul motore completo: vuoti espandono > materia -> CLUMPING (torsione
+dallo spin). beta/alpha=pendenza err 1.3e-3, spinore normalizzato, stabile.
+
+PRIMA COSA DA FARE (scegliere con Luca):
+  0) [ritocco rapido] alzare il rateo di rilassamento spinore (RELAX_DPHI/K_CLOSURE in
+     motore_chirale_spinoriale.py) cosi' il winding chiude a 720 DENTRO il run (ora 4.4
+     vs 4pi=12.57 in 150 step; il self-test a 2000 step chiude).
+  1) [consigliato] COLLASSO DINAMICO sul motore completo: run lungo -> la materia MIGRA
+     e si aggrega in strutture? (firma forte della gravita'; finora solo differenza di a).
+  2) VALIDARE LO SPINORE: 180/720 + beta/alpha=pendenza producono la fenomenologia giusta
+     (risonanze, qubit) - la diagnosi del primo giorno (campo complesso ridotto a scalare).
+  3) CALIBRAZIONE HUBBLE: da chi0=Planck a km/s/Mpc, gap early-vs-late (G non-monotono pronto).
 
 VERIFICA RAPIDA STATO (eseguire a inizio sessione):
   python -m wqt_oop.test_einstein_cartan_equivalence   # GATE EC
-  python -m wqt_oop.test_muratore_equivalence          # GATE muratore (5 test, incl clumping)
+  python -m wqt_oop.test_muratore_equivalence          # GATE muratore (5 test, incl clumping EC completo)
+  python -m wqt_oop.motore_chirale_spinoriale          # self-test spinore (720, beta/alpha)
+  python experiments/exp3/test_gravita_clumping.py     # gravita' sul motore completo
+
+DEBITO DOC [APERTO]: VQT_FORMALIZZAZIONE.md e EDIFICIO_EINSTEIN_CARTAN.md descrivono
+ancora la versione SCALARE (settori paralleli). Vanno aggiornati al motore INTEGRATO
+(torsione dallo spin, spinore 180/720). Farlo PRIMA di nuova scienza (oggi la deriva
+doc->codice e' costata tempo).
 
 ---
 
