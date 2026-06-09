@@ -209,6 +209,12 @@ class SolitoneComposito(AbstractSoliton):
         #    (frame spaziotempo) E' attrazione (frame materia): UNA sola forza.
         self.kink_stiffening_active: bool = False
 
+        # === MOTORE CHIRALE SPINORIALE (additivo, opt-in) ===
+        # Da' ai voxel lo spinore (theta, dphi): beta/alpha = pendenza del kink, twist 180
+        # alternato + chiusura 720. Le densita' chirali SX/DX derivano dallo spinore.
+        # Vive ACCANTO a (chi,v); default OFF -> bit-identico. Vedi motore_chirale_spinoriale.py.
+        self.spinore_enabled: bool = False
+
     @staticmethod
     def _build_leech_coupling(N: int) -> np.ndarray:
         """
@@ -990,6 +996,8 @@ class SolitoneComposito(AbstractSoliton):
         EC off): NESSUN effetto. Se ON: prima espande (a cresce dall'eccesso di
         torsione), poi passo EC (la cui soglia di saturazione e' ora dilatata da a:
         l'espansione allevia il bounce). Il muratore richiede l'EC come sorgente."""
+        if self.spinore_enabled:
+            self.apply_spinore_step(dt)            # rilassa lo spinore (additivo, accanto a chi,v)
         if not self.muratore_enabled:
             self.evolve_with_ec(dt, external_force)
             return
@@ -1053,6 +1061,72 @@ class SolitoneComposito(AbstractSoliton):
         for c in self.children:
             if isinstance(c, SolitoneComposito):
                 c.set_drive_fondo(coeff)
+
+    def apply_spinore_step(self, dt: float) -> None:
+        """Un passo del MOTORE CHIRALE SPINORIALE su ogni blocco L1 (anello di 24): rilassa
+        lo spinore (theta = pendenza kink via beta/alpha; dphi = twist 180 + chiusura 720)
+        usando il campo chi dei figli. Additivo (non tocca chi,v). Ricorre per L>=2."""
+        from .segmento_quantistico import SegmentoQuantistico
+        from .motore_chirale_spinoriale import relax_step
+        if self.children and isinstance(self.children[0], SegmentoQuantistico):
+            chi = np.array([c.chi for c in self.children], dtype=float)
+            theta = np.array([c.theta_spin for c in self.children], dtype=float)
+            dphi = np.array([c.dphi_spin for c in self.children], dtype=float)
+            theta, dphi, _ = relax_step(theta, dphi, chi, dt)
+            for i, c in enumerate(self.children):
+                c.theta_spin = float(theta[i]); c.dphi_spin = float(dphi[i])
+        else:
+            for c in self.children:
+                if isinstance(c, SolitoneComposito):
+                    c.apply_spinore_step(dt)
+
+    def set_spinore(self, enabled: bool) -> None:
+        """Attiva/disattiva il motore chirale spinoriale su tutto l'albero. Inizializza
+        lo spinore dal campo (theta da |pendenza kink|) quando lo accende."""
+        from .segmento_quantistico import SegmentoQuantistico
+        from .motore_chirale_spinoriale import init_from_field
+        self.spinore_enabled = enabled
+        if enabled and self.children and isinstance(self.children[0], SegmentoQuantistico):
+            chi = np.array([c.chi for c in self.children], dtype=float)
+            theta, dphi = init_from_field(chi)
+            for i, c in enumerate(self.children):
+                c.theta_spin = float(theta[i]); c.dphi_spin = float(dphi[i])
+        for c in self.children:
+            if isinstance(c, SolitoneComposito):
+                c.set_spinore(enabled)
+
+    def get_spinore_state(self) -> dict:
+        """Diagnostico spinoriale: winding (->4pi=720), errore beta/alpha vs pendenza kink,
+        densita' chirali medie SX (materia)/DX (spazio), norma."""
+        from .segmento_quantistico import SegmentoQuantistico
+        from .motore_chirale_spinoriale import (spinor_components, chirality_densities,
+                                                kink_slope, CLOSURE_4PI)
+        windings, slope_errs, sx, dx, norms = [], [], [], [], []
+        def walk(n):
+            if n.children and isinstance(n.children[0], SegmentoQuantistico):
+                chi = np.array([c.chi for c in n.children], dtype=float)
+                theta = np.array([c.theta_spin for c in n.children], dtype=float)
+                dphi = np.array([c.dphi_spin for c in n.children], dtype=float)
+                a, b = spinor_components(theta, dphi)
+                rsx, rdx = chirality_densities(theta)
+                ratio = np.abs(b) / (np.abs(a) + 1e-12)
+                windings.append(float(np.sum(dphi)))
+                slope_errs.append(float(np.mean(np.abs(ratio - np.abs(kink_slope(chi))))))
+                sx.append(float(rsx.mean())); dx.append(float(rdx.mean()))
+                norms.append(float(np.max(np.abs(np.abs(a)**2 + np.abs(b)**2 - 1.0))))
+            else:
+                for c in n.children:
+                    if isinstance(c, SolitoneComposito):
+                        walk(c)
+        walk(self)
+        n = max(len(windings), 1)
+        return {"winding_mean": float(np.mean(windings)) if windings else 0.0,
+                "closure_err_mean": float(np.mean(windings) - CLOSURE_4PI) if windings else 0.0,
+                "slope_err_mean": float(np.mean(slope_errs)) if slope_errs else 0.0,
+                "rho_sx_mean": float(np.mean(sx)) if sx else 0.0,
+                "rho_dx_mean": float(np.mean(dx)) if dx else 0.0,
+                "norm_err_max": float(np.max(norms)) if norms else 0.0,
+                "n_blocks": len(windings)}
 
     def get_expansion_state(self) -> dict:
         """Diagnostico dell'espansione PER LIVELLO (a vive a ogni livello). Ritorna

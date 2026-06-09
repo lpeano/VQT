@@ -96,6 +96,13 @@ class SegmentoQuantistico(AbstractSoliton):
         # Variabili ausiliarie
         self.tau_locale: float = 0.0
         self.chiusura: float = 0.0
+
+        # === SPINORE (additivo, opt-in): il grado di liberta' che mancava ===
+        # psi = cos(theta/2)|0> + sin(theta/2)e^{i phi}|1>; beta/alpha = tan(theta/2)e^{iphi}
+        # = pendenza del kink. dphi_spin = twist del legame uscente (winding -> 4pi/720).
+        # Default neutro; usato solo se SolitoneComposito.spinore_enabled. Non tocca (chi,v).
+        self.theta_spin: float = 1e-6     # latitudine Bloch (tan(theta/2)=|pendenza kink|)
+        self.dphi_spin: float = 0.0       # twist del legame i->i+1 (winding spinoriale)
         
         # Dissipazione (mutabile, aggiornato da SolitoneComposito)
         self.gamma_damping: float = 0.0  # Coefficiente smorzamento [1/s]
