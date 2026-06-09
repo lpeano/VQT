@@ -172,6 +172,51 @@ uniforme** la recursione e' monotona (serie) o invariante (singolo blocco). La
 
 ---
 
+## 3bis. Definizione METRICA del voxel: ancoraggio a Planck
+
+`wqt_oop/scala_planck.py`. Il voxel era definito **dinamicamente** (χ, v in un doppio
+pozzo) ma **non metricamente** (m=1, χ₀=50 = unita' di codice → Θ non mappabile a
+unita' fisiche → niente km/s/Mpc). Questa sezione colma il buco.
+
+### 3bis.1 Auto-similarita' (geometria DERIVATA)
+Un aggregato = N = 24 voxel = **12 monti + 12 valli** (torsioni a chiralita' alternata,
+chiusura 720 deg). Una **mezza onda** (un monte o una valle) = **1 voxel = 1/24
+dell'aggregato**. Il rapporto ×24 per livello e' geometrico (Leech). **[DERIVATO]**
+
+### 3bis.2 Ancoraggio (POSTULATO dichiarato)
+Il **fondo** della gerarchia (il voxel L0 che non si suddivide) **e'** la scala di
+Planck (cutoff UV):
+
+> **ℓ_voxel(L0) = ℓ_Planck = 1.616e-35 m**,  t_step = t_Planck = 5.39e-44 s,
+> **E_voxel = E_Planck = 1.22e19 GeV**,  da cui **Θ = E_Planck**.
+
+L'auto-similarita' fissa il RAPPORTO (×24/livello, derivato); l'ancoraggio fissa la
+SCALA ASSOLUTA (postulato fisico naturale: e' il "muratore di **Planck**"). **[POSTULATO]**
+
+### 3bis.3 Ladder (dipende dalla dimensione d)
+"1/24 dell'aggregato" e' un rapporto di CONTEGGIO/VOLUME (24 voxel sempre). Il rapporto
+LINEARE per livello e' `ℓ_{L+1}/ℓ_L = 24^{1/d}`:
+- d=1 (mezza onda lungo l'anello): ×24/livello;
+- d=3 (volume): ×24^{1/3} ≈ 2.884/livello → **ℓ_L = 24^{L/3} ℓ_Planck**.
+
+**[DERIVATO col codice]** ladder d=3 (coerente con la mappa di scala gia' nel progetto):
+| oggetto | scala | livello L |
+|---|---|---|
+| voxel (Planck) | 1.6e-35 m | 0 |
+| protone | ~1e-15 m | ~43 |
+| atomo | ~1e-10 m | ~54 |
+| uomo | ~1 m | ~76 |
+| universo osservabile | ~8.8e26 m | ~134 |
+
+### 3bis.4 Onesta' sul VALORE di G (circolarita')
+`ℓ_Planck = √(ℏG/c³)`: ancorare la lunghezza del voxel a Planck **E' scegliere il valore
+di G**. Quindi l'ancoraggio FISSA l'unita', **non deriva G in modo indipendente**. Il
+modello PREDICE la **struttura** di G (R_geo = 4N/(N−1), la dipendenza di scala dalla
+rigidezza, §3); il VALORE assoluto e' la scelta di unita'. Predizioni adimensionali +
+1 unita' — come ogni teoria. **[VER/APERTO]**
+
+---
+
 ## 4. La "febbre": verdetto onesto (transiente, NON una legge di scala)
 
 Misura `test_legge_febbre.py` (L1-L4, 3 seed, equilibrio su coda).
@@ -214,7 +259,8 @@ valore estremo, non i coupling.
 | 4π, π (chiusura 720, twist 180) | **topologiche** | spin-1/2 |
 | R_geo → β_local (G) | **derivata** | 4N/(N−1), N=24 (Leech) |
 | β_pot (doppio pozzo) | fisica | Landau-Ginzburg on-site (primitiva) |
-| Θ_Planck (scala) | **derivata** | scala intrinseca del voxel da χ₀, β_pot (NON un knob) |
+| Θ_Planck (scala) | **ancorata** | Θ = E_Planck = 1.22e19 GeV (voxel L0 = ℓ_Planck, §3bis) |
+| ℓ_voxel(L0), ladder ×24^{1/d} | **ancorata+derivata** | ℓ_Planck (postulato) × rapporto Leech (derivato) |
 | β_sat = Θ/R_geo (G) | **derivata** | Θ(χ₀,β_pot) / [4N/(N−1)], N=24 |
 | α_K, κ, λ_exchange~24^{2L}, γ, d_f | **da ELIMINARE** | rattoppi postulati (dissolti, §5) |
 
