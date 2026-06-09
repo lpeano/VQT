@@ -1,4 +1,41 @@
-# Checkpoint VQT - Ultimo Aggiornamento: 2026-06-08
+# Checkpoint VQT - Ultimo Aggiornamento: 2026-06-09
+
+## >>> PROSSIMI TASK PRIORITARI (2026-06-09, sessione edificio EC) <<<
+
+EDIFICIO EINSTEIN-CARTAN COMPLETATO (branch physics/einstein-cartan-saturation).
+Doc unica: docs/peano/EDIFICIO_EINSTEIN_CARTAN.md. Tutto ADDITIVO (legacy intatto),
+niente if-then-else, coefficienti DERIVATI. 4 moduli + 2 GATE verdi:
+  - einstein_cartan.py: saturazione (bounce) + chiusura 720 (gia' nel blocco sotto).
+  - muratore_planck.py: ESPANSIONE auto-regolante H=beta(K2/a^2-rho*)+, punto fisso
+    a*=sqrt(<K2>/rho*), H->0. Zero parametri nuovi. GATE test_muratore_equivalence.py.
+  - rigidezza_geometrica.py: G EMERGENTE (Sakharov) beta=Theta/R_geo; DERIVATO
+    R_geo=4N/(N-1)=4.174 TOPOLOGICO (dal 24, NON 24^L), scala-invariante (Leech reale).
+  - scala_planck.py: VOXEL = ell_Planck (ancoraggio); Theta=E_Planck; ladder
+    ell_L=24^(L/3)*ell_Planck -> protone~L43, atomo~L54, uomo~L76, universo~L134.
+
+RISULTATI MISURATI:
+  - DISSOLUZIONE COUPLING [VER]: scaled~flat~cura, densita' intensiva (CV 0.09-0.13),
+    no divergenza appiattendo (incluso lambda~24^2L). I coupling postulati 24^L sono
+    SUPERFLUI/rimovibili. (experiments/exp3/test_cura_coupling.py + cura_coupling.json)
+  - FEBBRE = TRANSIENTE non legge [VER]: KE/foglia riscalda-poi-raffredda; L4 non
+    equilibrato; fit R^2=0.70 -> alpha=0.165 BOCCIATO (NON codificarlo come T_c~N^alpha).
+    (experiments/exp3/test_legge_febbre.py + legge_febbre.json)
+  - G: predetta la STRUTTURA (topologica), NON il valore assoluto (ell_P=sqrt(hbarG/c^3)
+    -> ancorare lunghezza = scegliere G, e' unita'). Hubble tension NON risolta (ci sono
+    gli ingredienti: G scala-dipendente + inomogeneita' locale; manca calibrazione).
+
+TASK APERTI (in ordine):
+  1. NON-MONOTONIA di G (ipotesi Luca): misura_rigidezza_scala su stato EVOLUTO
+     disomogeneo (l'idealizzato uniforme da' serie monotona). E' il numero che dice se
+     la differenza early-vs-late (Hubble) puo' esistere nel reticolo. PRIORITA' 1.
+  2. COSMOGENESI: muratore da spazio MINIMALE + seme stocastico (dadi/SSB); a=0 singolare
+     -> partire da a minimale. Testa SSB + auto-amplificazione del primo eccesso.
+  3. RICALIBRARE rho* (prefattore geometrico): W normalizzata per riga -> K2 e' media
+     pesata, supera (2chi0)^2 solo con overshoot |chi|>chi0. Vale per EC e muratore.
+  4. ARITMETICA 180/720 [DA CONFERMARE]: 24 mezze onde (12 monti+12 valli) vs chiusura
+     spinoriale 720 (doppio rivestimento). Riconciliare fase spaziale/spinoriale.
+  5. COLLEGARE beta_sat <- beta_local (G emergente attivo nella dinamica), con GATE.
+  6. CALIBRAZIONE FISICA completa (verso Hubble): da Theta=E_Planck a km/s/Mpc.
 
 ## >>> NUOVO BRANCH 2026-06-08: physics/einstein-cartan-saturation <<<
 
