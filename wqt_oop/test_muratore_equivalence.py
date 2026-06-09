@@ -121,6 +121,41 @@ def test_g_emergente_stabile():
           f"beta_eff~beta0*a^2 |chi|max={np.abs(chi).max():.1f} -> PASS")
 
 
+def test_clumping_gravita():
+    """Gravita' emergente: con il drive di fondo (febbre uniforme) modulato dalla
+    rigidezza dei kink, i VUOTI espandono PIU' della materia -> la materia si addensa
+    (clumping = attrazione, controparte della spinta espansiva)."""
+    from test_soglia_formazione import make
+    from wqt_oop.segmento_quantistico import SegmentoQuantistico
+    from wqt_oop.solitone_composito import SolitoneComposito
+    np.random.seed(7)
+    c = make(1, chi_mean=50, level=2)
+    chi0 = c.physics.chi_stable
+    blocks = []
+    def w(n):
+        if n.children and isinstance(n.children[0], SegmentoQuantistico):
+            blocks.append(n)
+        else:
+            for ch in n.children:
+                if isinstance(ch, SolitoneComposito):
+                    w(ch)
+    w(c)
+    n_dense = 4
+    for j, b in enumerate(blocks):
+        for i, leaf in enumerate(b.children):
+            leaf.chi = (chi0 if i < len(b.children)//2 else -chi0) if j < n_dense else chi0
+            leaf.vel = 0.0
+    c.set_drive_fondo(1e-3)
+    for _ in range(150):
+        c.compute_hamiltonian(); c.evolve_with_muratore(0.02)
+    a = np.array([b.scale_factor_a for b in blocks])
+    a_dense, a_void = float(a[:n_dense].mean()), float(a[n_dense:].mean())
+    assert not np.any(np.isnan(_leaves_chi(c))), "clumping: NaN"
+    assert a_void > a_dense, f"NO clumping: a_vuoto={a_void:.6f} <= a_denso={a_dense:.6f}"
+    print(f"  [5] clumping (gravita'): a_vuoto={a_void:.6f} > a_denso={a_dense:.6f} "
+          f"(vuoti espandono di piu' -> materia si addensa) -> PASS")
+
+
 def main():
     print("=" * 60)
     print("  GATE MURATORE DI PLANCK (additivita' + auto-regolazione)")
@@ -129,6 +164,7 @@ def main():
     test_gate_ab_off()
     test_autoregolazione_on()
     test_g_emergente_stabile()
+    test_clumping_gravita()
     print("  TUTTI I TEST PASS")
 
 

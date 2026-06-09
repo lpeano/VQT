@@ -181,6 +181,16 @@ class SolitoneComposito(AbstractSoliton):
         self.muratore_d_f: float = 3.0           # dim. effettiva per il conteggio voxel
         self.muratore_H_last: float = 0.0        # ultimo H = a'/a (diagnostico)
 
+        # === DRIVE DI FONDO (gravita': la FEBBRE e' il motore di espansione) ===
+        # L'espansione di fondo e' sorgentata dall'agitazione termica LOCALE (la febbre
+        # = KE/nodo), modulata dalla rigidezza (i kink la sopprimono):
+        #   H_fondo = h_fondo_coeff * T_local / (1 + K2/rho*)
+        # -> i VUOTI (T>0, K2 basso) espandono; la MATERIA (K2 alto) e' soppressa ->
+        #    la materia si addensa (CLUMPING = gravita' attrattiva, controparte della
+        #    spinta espansiva). Cosi' la febbre/termostato DIVENTA il motore (non un
+        #    bagno separato). coeff=0 (default) -> nessun drive (GATE bit-identico).
+        self.muratore_h_fondo_coeff: float = 0.0
+
         # === G EMERGENTE ATTIVA (additivo, opt-in): beta_sat <- rigidezza FISICA ===
         # La rigidezza fisica e' R_phys = R_geo/a^2 (diluita dall'espansione), quindi
         # beta = Theta/R_phys = beta_baseline * a^2 per blocco: dove lo spazio si e'
@@ -956,8 +966,16 @@ class SolitoneComposito(AbstractSoliton):
         W = self.coupling_matrix
         W = (W.toarray() if hasattr(W, "toarray") else np.asarray(W))
         k2_mean = float(np.mean(torsion_density_K2(chi, W)))      # per kink-stiffening
+        # (1) BOUNCE locale: relief della torsione in eccesso (K2-rho*)+
         H = hubble_rate(chi, W, self.scale_factor_a,
                         self.ec_k2_ref_chi, self._beta_eff(k2_mean))
+        # (2) DRIVE DI FONDO (febbre = motore): emissione di Planck UNIFORME (ogni voxel
+        # emette uguale = il bagno/febbre globale, NON la KE locale che traccia la materia),
+        # modulata dalla rigidezza: H_fondo = coeff / (1 + K2/rho*). I vuoti (K2 basso)
+        # espandono PIENO; la materia (K2 alto) e' soppressa -> i vuoti spingono, la materia
+        # si addensa (CLUMPING = gravita'). coeff = tasso di emissione di fondo (~T_eff).
+        if self.muratore_h_fondo_coeff > 0.0:
+            H += self.muratore_h_fondo_coeff / (1.0 + k2_mean / self.ec_k2_ref_chi)
         self.muratore_H_last = float(H)
         self.scale_factor_a = float(expand(self.scale_factor_a, H, dt))
         # ricorre: anche i sotto-compositi espandono il loro a
@@ -1022,6 +1040,19 @@ class SolitoneComposito(AbstractSoliton):
         for c in self.children:
             if isinstance(c, SolitoneComposito):
                 c.set_kink_stiffening(enabled)
+
+    def set_drive_fondo(self, coeff: float) -> None:
+        """Imposta il drive di fondo (febbre = motore di espansione) su tutto l'albero:
+        H_fondo = coeff * T_local / (1+K2/rho*). Abilita muratore + kink-stiffening
+        (la rigidezza modula il drive -> clumping). coeff=0 -> spento (bit-identico)."""
+        self.muratore_h_fondo_coeff = coeff
+        if coeff > 0.0:
+            if not self.muratore_enabled:
+                self.set_muratore(True)
+            self.kink_stiffening_active = True
+        for c in self.children:
+            if isinstance(c, SolitoneComposito):
+                c.set_drive_fondo(coeff)
 
     def get_expansion_state(self) -> dict:
         """Diagnostico dell'espansione PER LIVELLO (a vive a ogni livello). Ritorna

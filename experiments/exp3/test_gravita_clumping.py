@@ -45,21 +45,29 @@ def _l1_blocks(root):
     w(root); return acc
 
 
-def run(regime, n_dense=4, steps=150, dt=0.02):
+def run(regime, n_dense=4, steps=150, dt=0.02, h_fondo=1e-3):
     np.random.seed(7)
     root = make(1, chi_mean=50, level=2)
     blocks = _l1_blocks(root)
-    amp = 1.8 * root.physics.chi_stable
-    # primi n_dense blocchi DENSI (kink), il resto VUOTO (liscio a chi0)
+    chi0 = root.physics.chi_stable
+    # blocchi DENSI = PARETE di dominio (meta' +chi0 / meta' -chi0): K2~rho* (materia
+    # MODERATA, bounce debole) -> isola l'effetto del drive di fondo + rigidezza.
+    # blocchi VUOTI = uniforme a chi0. Il drive di fondo e' UNIFORME (non serve T locale).
     for j, b in enumerate(blocks):
         for i, leaf in enumerate(b.children):
-            leaf.chi = (amp if i % 2 == 0 else -amp) if j < n_dense else root.physics.chi_stable
+            if j < n_dense:
+                leaf.chi = chi0 if i < len(b.children) // 2 else -chi0   # parete
+            else:
+                leaf.chi = chi0                                          # vuoto
+            leaf.vel = 0.0
     if regime == "muratore":
         root.set_muratore(True)
     elif regime == "g_emergent":
         root.set_g_emergent(True)
     elif regime == "kink_stiff":
         root.set_kink_stiffening(True)
+    elif regime == "drive_fondo":
+        root.set_drive_fondo(h_fondo)              # febbre = motore (+ kink-stiffening)
     for _ in range(steps):
         root.compute_hamiltonian(); root.evolve_with_muratore(dt)
     a = np.array([b.scale_factor_a for b in blocks])
@@ -70,15 +78,16 @@ def main():
     print("=" * 74)
     print("  GRAVITA' EMERGENTE: a(denso) vs a(vuoto) nei 3 regimi")
     print("=" * 74)
-    print(f"  {'regime':>14} | {'a DENSO (materia)':>18} | {'a VUOTO':>12}")
-    for reg in ["muratore", "g_emergent", "kink_stiff"]:
+    print(f"  {'regime':>14} | {'a DENSO (materia)':>18} | {'a VUOTO':>12} | {'a_vuoto/a_denso':>16}")
+    for reg in ["muratore", "g_emergent", "kink_stiff", "drive_fondo"]:
         ad, av = run(reg)
-        print(f"  {reg:>14} | {ad:>18.6f} | {av:>12.6f}")
+        ratio = av / ad if ad > 0 else float('nan')
+        print(f"  {reg:>14} | {ad:>18.6f} | {av:>12.6f} | {ratio:>16.4f}")
     print()
-    print("  ATTESO: kink_stiff RALLENTA a(denso) vs g_emergent (denso->rigido->lento,")
-    print("  conferma Gemini). MA a(vuoto)~1 in tutti (i vuoti non hanno torsione da")
-    print("  scaricare) -> il clumping 'gravitazionale' richiede un DRIVE di fondo")
-    print("  (emissione Planck) modulato dalla rigidezza: PEZZO MANCANTE.")
+    print("  CLUMPING (gravita'): col DRIVE DI FONDO (febbre=motore) i VUOTI espandono")
+    print("  PIU' della materia (a_vuoto > a_denso, rapporto > 1) -> la materia si addensa.")
+    print("  E' l'attrazione come controparte della spinta espansiva (frame materia).")
+    print("  Senza drive (muratore/g_emergent/kink_stiff) i vuoti restano a=1.")
 
 
 if __name__ == "__main__":
