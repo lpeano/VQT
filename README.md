@@ -1,272 +1,161 @@
-# VQT — Voxel/Variational Quantum Topology
+# VQT — Voxel Quantum Theory
 
-## Simulazione di Gravità Quantistica su Manifold Frattale Topologico
+## Gravità emergente da un reticolo frattale — Einstein-Cartan: la torsione dallo spin
 
 ![Status](https://img.shields.io/badge/status-attivo-success)
-![Level](https://img.shields.io/badge/simulazioni-L1%20L2%20L3%20L4-blue)
-![Physics](https://img.shields.io/badge/fisica-topologica%20variazionale-purple)
+![Engine](https://img.shields.io/badge/motore-Einstein--Cartan%20integrato-purple)
+![Tests](https://img.shields.io/badge/GATE-verdi-success)
 ![Python](https://img.shields.io/badge/python-3.10%2B-yellow)
-
----
-
-> ## ⚠️ Linea di ricerca ATTUALE: motore Einstein-Cartan integrato
->
-> Questo README descrive la fase **v3.0 "doppia elica"** (Ramo A cosmology + Ramo B
-> Peano-VQT), che e' il **substrato/fase precedente**. La linea di ricerca **corrente**
-> (branch `physics/einstein-cartan-saturation`) e' il **motore Einstein-Cartan
-> completamente integrato**: la torsione e' sorgentata dallo **spin** (ogni voxel ha uno
-> spinore con `beta/alpha = pendenza del kink`, twist 180/720), e da quell'unica torsione
-> emergono **gravita'** (clumping), **espansione metrica**, **dilatazione gravitazionale
-> del tempo** e **direzione del tempo** (integrazione materia/spazio). Tutto additivo
-> (flag opt-in, default OFF -> legacy bit-identico).
->
-> **Riferimento attuale:**
-> - Teoria formale + schema d'insieme: **[docs/peano/VQT_FORMALIZZAZIONE.md](docs/peano/VQT_FORMALIZZAZIONE.md)** (con figura `docs/figures/vqt_sistema.png`)
-> - Stato lavori: **[docs/peano/MIGRAZIONE_CHECKPOINT.md](docs/peano/MIGRAZIONE_CHECKPOINT.md)** (blocco "PER DOMANI")
-> - Moduli/test: **[docs/TESTS_E_STRUMENTI.md](docs/TESTS_E_STRUMENTI.md) sez. 8**
->
-> *Le sezioni sotto (doppia elica) restano valide come fase precedente; il README
-> verra' rifondato sul motore integrato.*
 
 ---
 
 ## Panoramica
 
-**VQT** è un framework di simulazione numerica per lo studio della gravità
-quantistica emergente da un manifold frattale topologico. L'unità fondamentale è
-un **segmento di lunghezza di Planck** ($\ell_P$) con tre gradi di libertà interni
-$(\chi_i, v_i, \tau_i)$. La geometria spaziale, il tempo e la materia emergono
-dall'interazione collettiva di $N = 24^L$ segmenti organizzati in una gerarchia
-frattale di livello $L$.
+**VQT** simula lo spaziotempo come un **manifold frattale gerarchico** ($N = 24^L$ voxel;
+il 24 dal reticolo di Leech). La linea di ricerca corrente è il **motore Einstein-Cartan
+completamente integrato**: ogni voxel è un campo scalare $\chi$ **più uno SPINORE**
+($\beta/\alpha = $ pendenza del kink, twist $180°$ alternato che chiude a $720°$), e la
+**torsione è sorgentata dallo SPIN**. Da quell'unica torsione $K^2_{\text{spin}}$ emergono,
+come facce di un solo meccanismo:
 
-La ricerca si sviluppa su una **doppia elica** di due rami che condividono lo
-stesso motore (`wqt_oop/`):
+- 🌍 **Gravità** (clumping): i vuoti espandono più della materia → la materia si addensa;
+- 🌌 **Espansione metrica** (auto-regolante);
+- ⏳ **Dilatazione gravitazionale del tempo** (la materia rallenta la fisica locale);
+- ↔️ **Direzione del tempo**, emergente dall'integrazione materia/spazio.
 
-- 🌌 **Ramo A — Cosmology / RG-flow**: il manifold come sistema variazionale
-  autonomo. Analisi spettrale, invarianza di scala della frequenza, mappatura
-  Einstein-Cartan discreta. È l'**impalcatura scientifica**.
-- 🧬 **Ramo B — Peano-VQT**: auto-organizzazione della materia, triade energetica
-  $(E_\chi, E_{RX}, E_\Psi)$, leggi di aggregazione. È il **cuore attuale**, emerso
-  dal Ramo A.
+Tutto è **additivo**: ogni meccanismo è dietro un flag opt-in (default OFF), il motore
+legacy resta **bit-identico** (verificato dai GATE).
 
-> Come il Ramo A ha generato il Ramo B è spiegato in
-> [docs/cosmology/EVOLUZIONE_TEORICA.md](docs/cosmology/EVOLUZIONE_TEORICA.md).
+> La fase precedente **v3.0 "doppia elica"** (Ramo A Cosmology/RG-flow + Ramo B Peano-VQT)
+> è il **substrato/fase precedente** — ancora valida ma non la linea corrente. È
+> documentata in [docs/peano/VQT_MANIFESTO_TEORICO.md](docs/peano/VQT_MANIFESTO_TEORICO.md)
+> e [docs/cosmology/](docs/cosmology/).
 
-### Risultati principali
+### Schema d'insieme
 
-**Ramo A — spettroscopia del vuoto topologico**
+![Schema delle interazioni del sistema VQT](docs/figures/vqt_sistema.png)
 
-| Livello | DOF    | f_dom [1/P]           | σ plateau | Entropia spettrale |
-| ------- | ------ | --------------------- | --------- | ------------------ |
-| L1      | 48     | **0.667**             | 0.086     | 2.539              |
-| L2      | 1152   | **0.600**             | 0.050     | 1.986              |
-| L3      | 27648  | **~0.500** (in corso) | 0.037     | 1.237              |
-
-La frequenza dominante $f_{\text{dom}} \approx 0.76 \cdot N_{\text{dof}}^{-0.033}$ è
-**invariante di scala**: il manifold oscilla alla stessa frequenza fondamentale
-indipendentemente dalla risoluzione.
-
-**Ramo B — auto-organizzazione (Peano-VQT)**
-
-- **Cristallizzazione spontanea a numero di Leech**: 48 solitoni L1 distribuiti a
-  caso si aggregano in un cluster stabile di **24** (step 600), senza vincoli
-  geometrici imposti.
-- **3 leggi misurate**: Aggregazione ferromagnetica, Repulsione topologica
-  (frustrazione), Conservazione della triade $dE_\chi + dE_{RX} + dE_\Psi = 0$.
-- Dettagli in [docs/peano/VQT_MANIFESTO_TEORICO.md](docs/peano/VQT_MANIFESTO_TEORICO.md).
+*Voxel (campo + spinore) → **torsione dallo spin** $K^2_{\text{spin}}$ (cuore) → le quattro
+facce tipo-Relatività-Generale. A destra: tutte le costanti (con stato) e le formule di
+derivazione. Generato da `tools/rendering/genera_diagramma_vqt.py`.*
 
 ---
 
-## Struttura del Progetto
+## La fisica in breve
 
-```
+- **Voxel** = campo $(\chi, v)$ + **spinore** $\psi = \cos\frac{\theta}{2}|0\rangle +
+  \sin\frac{\theta}{2}e^{i\phi}|1\rangle$, con $\beta/\alpha = \tan(\theta/2)e^{i\phi} =$
+  **pendenza del kink** ($\theta$ dalla pendenza locale del campo).
+- **Chiralità** (da $\theta$): $\rho_{SX} = \sin^2(\theta/2)$ = **materia**,
+  $\rho_{DX} = \cos^2(\theta/2)$ = **spazio**.
+- **Torsione dallo spin**: $K^2_{\text{spin}} = \chi_0^2 \sum_j W_{ij}|\mathbf{n}_i -
+  \mathbf{n}_j|^2$ ($\mathbf{n}$ = vettore di Bloch). **Lo spin genera la torsione.**
+- **Saturazione/bounce** (sullo spin, soglia $\rho^* = 2\chi_0^2 = (\sqrt2\chi_0)^2$),
+  **espansione** $H = $ bounce + emissione, **gravità** (clumping), **tempo proprio
+  attivo** $f = 1 - K^2_{\text{spin}}/\rho^*$ e **direzione del tempo**
+  $\tau_{\text{net}} = \tau_{DX} - \tau_{SX}$.
+- **G emergente**: $\beta = \Theta/R_{geo}$, con $R_{geo} = 4N/(N-1) = 4\cdot24/23 = 4.174$
+  **topologica** (Sakharov/Verlinde).
+- **Scala metrica**: $\ell_{\text{voxel}} = \ell_{\text{Planck}}$ (ancoraggio).
+
+Teoria formale completa, costanti e formule: **[docs/peano/VQT_FORMALIZZAZIONE.md](docs/peano/VQT_FORMALIZZAZIONE.md)**.
+
+---
+
+## Struttura del progetto
+
+```text
 VQT_repo/
-├── README.md  ·  requirements.txt  ·  .gitignore
+├── wqt_oop/                          # MOTORE
+│   ├── segmento_quantistico.py       #   voxel L0: campo (χ,v) + spinore (θ,φ) + tempo proprio
+│   ├── solitone_composito.py         #   nodo frattale (24 figli); evolve* additivi
+│   ├── einstein_cartan.py            #   saturazione (bounce) + chiusura 720
+│   ├── muratore_planck.py            #   espansione metrica auto-regolante
+│   ├── rigidezza_geometrica.py       #   G emergente (R_geo = 4·24/23)
+│   ├── scala_planck.py               #   scala metrica (voxel = ℓ_Planck)
+│   ├── motore_chirale_spinoriale.py  #   spinore (β/α=pendenza, 180/720), torsione dallo spin
+│   ├── physics_context.py · energy_metrics.py · ...   (substrato condiviso)
+│   └── reference/                    #   moduli di riferimento per task pendenti
 │
-├── wqt_oop/                  # 🔧 MOTORE (core di produzione, condiviso dai due rami)
-│   ├── segmento_quantistico.py        # Unità fondamentale (χ, v, τ)
-│   ├── solitone_composito.py          # Nodo frattale composito (24 figli/livello)
-│   ├── physics_context.py             # Parametri scale-dependent, RG-flow
-│   ├── energy_metrics.py              # Triade Peano-VQT (PeanoVQTAnalyzer)
-│   ├── fractal_universe_factory.py    # Costruzione gerarchia L1→LN
-│   ├── topological_constraint_validator.py  # Vincoli 720° / detorsione
-│   ├── variational_topological_force.py     # F_top = -∇S
-│   ├── fermi_dirac_screening.py · spatial_cache.py · hdf5_logger.py · ...
-│
-├── core/                     # API pulita (re-export da wqt_oop)
-│
-├── experiments/              # 🧬 Esperimenti Peano-VQT (Ramo B)
-│   ├── genesis_run.py                 # Transizione vuoto→materia
-│   ├── l2_aggregation_run.py          # Legame vs frustrazione topologica
-│   ├── l4_self_assembly_run.py        # Auto-assembly 48 solitoni → cluster 24
-│   ├── test_peano_integration.py      # Unit test della triade
-│   ├── compare_fdom_scaling.py        # Analisi spettrale (Ramo A)
-│   └── exp1/                          # Dataset run cosmologiche L1–L3 (*.h5)
-│
-├── tools/                    # Script standalone (auto-shim verso repo root)
-│   ├── tests/        (5)     #   test motore (verlet, convergenza, timestep)
-│   ├── validation/   (8)     #   audit/check/inspect/validate/verify run L3
-│   ├── rendering/    (12)    #   generate_*, master_*video, manifold_*, torsion
-│   └── analysis/     (3)     #   analyze_topo, compare_l2/scales
-│
-├── docs/                     # 📚 Documentazione (vedi docs/README.md)
-│   ├── peano/                #   Ramo B: MANIFESTO, CHECKPOINT, INDEX (hub)
-│   ├── cosmology/            #   Ramo A: TOPOLOGICAL_DYNAMICS, SCALING, RENDERING, EVOLUZIONE
-│   ├── reference/            #   Spec valide: PHYSICS_MANIFESTO, PHYSICS_LOG, RG_FLOW
-│   ├── reports/              #   Artefatti di processo (proposte, fix, audit)
-│   ├── history/              #   Modelli pre-OOP superati
-│   ├── obsoletes/            #   Patch archiviate
-│   └── figures/              #   Figure §0
-│
-├── data/                     # Dataset HDF5 (cosmo_*.h5, peano_data.zip)
-├── assets/  └─ media/        # Animazioni (.mp4 / .gif) + plot_genesi.png
-├── logs/                     # Log di produzione delle run
-└── legacy/                   # WQT_manifold.py (monolite pre-OOP, riferimento storico)
+├── experiments/exp3/                 # esperimenti EC (gravità, cosmogenesi, direzione tempo, ...)
+├── tools/rendering/genera_diagramma_vqt.py   # genera lo schema d'insieme
+├── docs/peano/                       # VQT_FORMALIZZAZIONE · EDIFICIO_EINSTEIN_CARTAN · CHECKPOINT · INDEX
+├── docs/figures/vqt_sistema.png      # schema del sistema
+└── docs/{cosmology,history,obsoletes,reports,reference}/   # substrato + archivio
 ```
 
-👉 Punto d'ingresso documentazione: **[docs/peano/INDEX.md](docs/peano/INDEX.md)**
+👉 Hub documentazione: **[docs/peano/INDEX.md](docs/peano/INDEX.md)**
 
 ---
 
 ## Quick Start
 
-### Prerequisiti
-
 ```bash
-pip install -r requirements.txt   # numpy, scipy, h5py, matplotlib
+pip install -r requirements.txt          # numpy, scipy, h5py, matplotlib
+
+# GATE (additività + fisica EC) — devono passare
+python -m wqt_oop.test_einstein_cartan_equivalence
+python -m wqt_oop.test_muratore_equivalence
+
+# Gravità sul motore COMPLETO (clumping da torsione dallo spin)
+python experiments/exp3/test_gravita_clumping.py
+
+# Direzione del tempo (materia indietro / spazio avanti, netto avanti)
+python experiments/exp3/test_inversione_tempo.py
+
+# Rigenera lo schema d'insieme (diagramma + costanti + formule)
+python tools/rendering/genera_diagramma_vqt.py
 ```
 
-### Ramo B — Esperimenti Peano-VQT
+**Usare il motore completo nel codice** (d'ora in poi lo standard per i test):
 
-```bash
-# Genesi: transizione vuoto → materia (fase Ottaedrica → Icosaedrica)
-python experiments/genesis_run.py
-
-# Auto-assembly: 48 solitoni → cristallizzazione a cluster 24
-python experiments/l4_self_assembly_run.py
-
-# Unit test della triade energetica (dE_χ + dE_RX + dE_Ψ = 0)
-python experiments/test_peano_integration.py
+```python
+root.set_ec_integrato(coeff)   # spinore + torsione dallo spin + espansione/gravità
+for _ in range(N):
+    root.compute_hamiltonian(); root.evolve_with_muratore(dt)
 ```
-
-### Ramo A — Simulazioni cosmologiche (RG-flow / spettroscopia)
-
-```bash
-# L1 (48 DOF, ~30s)
-python tools/rendering/generate_topological_dataset.py --level 1 --steps 600 --output cosmo_L1.h5
-
-# L3 con MaturityWatchdog (27648 DOF)
-python tools/rendering/generate_topological_dataset.py \
-  --level 3 --steps 800 --watchdog --watchdog-epsilon 1e-4 --output cosmo_L3.h5
-
-# Ripresa da run precedente
-python tools/rendering/generate_topological_dataset.py \
-  --level 3 --steps 400 --resume-from cosmo_L3.h5 --output cosmo_L3_ext.h5
-
-# Analisi spettrale multi-scala
-python experiments/compare_fdom_scaling.py \
-  experiments/exp1/cosmo_L1.h5 experiments/exp1/cosmo_L2.h5 experiments/exp1/cosmo_L3.h5 \
-  --stft --output experiments/exp1/fdom_results.json
-```
-
-> Il watchdog dichiara maturità quando $|\dot{\sigma}(\rho)| < \varepsilon/\sqrt{N_{\text{dof}}}$
-> per $W$ passi consecutivi (finestra auto-sintonizzata su $f_{\text{dom}}$).
 
 ---
 
-## Fisica del Modello
+## Risultati
 
-Formalizzazione completa in **[docs/cosmology/TOPOLOGICAL_DYNAMICS.md](docs/cosmology/TOPOLOGICAL_DYNAMICS.md)**.
-Le leggi di auto-organizzazione in **[docs/peano/VQT_MANIFESTO_TEORICO.md](docs/peano/VQT_MANIFESTO_TEORICO.md)**.
+**Verificati [D]** (GATE/self-test PASS; legacy bit-identico con flag OFF):
 
-### Il Potenziale Topologico (Ramo A)
+- Einstein-Cartan integrato: **una sola torsione** ($K^2_{\text{spin}}$, dallo spin) guida
+  saturazione, espansione, gravità, dilatazione e direzione del tempo.
+- **G topologica e scala-invariante**: $R_{geo} = 4\cdot24/23 = 4.174$ (dal 24, **non**
+  $24^L$); **G non-monotona** con la scala (ingrediente per la tensione di Hubble).
+- **Gravità (clumping)**: i vuoti espandono più della materia.
+- **Tempo proprio attivo**: la materia ~31% più lenta; **direzione del tempo emergente**
+  (materia indietro / spazio avanti → netto avanti perché lo spazio domina il volume).
+- **Dissoluzione dei coupling postulati** $24^L$; **cosmogenesi** (SSB da seme stocastico).
 
-$$S[\chi, \tau] = \lambda \sum_{i=1}^N (\rho_i - \rho_0)^2 + \gamma \sum_{i=1}^N \Omega_i$$
+**Da verificare [H]** (onestà — la fisica è di ricerca):
 
-- **Omeostasi topologica** — penalizza la deviazione dalla densità di vincolo $\rho_0$.
-- **Frustrazione chirale** — promuove l'alternanza $\pm 180^\circ$ (ground state spinoriale).
-
-### La Triade Energetica (Ramo B)
-
-$$H_{\text{coupling}} = E_\chi + E_{RX}, \qquad \text{drain: } E_\chi \to E_\Psi$$
-
-con invariante esatto $dE_\chi + dE_{RX} + dE_\Psi = 0$. $E_\Psi$ (sink radiativo)
-cresce monotonicamente ed è l'indicatore di condensazione/frustrazione.
-
-### Integrazione Simplettica
-
-$$\mathcal{U}_{\text{tot}}(dt) = \mathcal{T}_{dt/2} \circ \mathcal{U}_{\text{phys}}(dt) \circ \mathcal{T}_{dt/2}$$
-
-Strang Splitting conserva il volume nello spazio delle fasi a $O(dt^2)$.
-
-### Genesi delle 4 Dimensioni
-
-| Livello | N       | Struttura          | Dimensione emergente |
-| ------- | ------- | ------------------ | -------------------- |
-| L1      | 24      | Anello spinoriale  | 1D curva             |
-| L2      | 576     | Foglio di anelli   | 2D piano             |
-| L3      | 13824   | Volume di fogli    | 3D spazio            |
-| L→∞     | ∞       | Continuo           | R³ + τ               |
-
-Il tempo macroscopico $t = \sum_i \tau_i / N$ è la quarta dimensione — emergente, non imposta.
-
----
-
-## Leggi Fenomenologiche Misurate
-
-### Ramo A — Invarianza di Scala della Frequenza [Eq. FSCALE-1]
-
-$$f_{\text{dom}} \approx 0.76 \cdot N_{\text{dof}}^{-0.033} \qquad (\alpha \approx 0)$$
-
-La frequenza fondamentale è invariante rispetto al numero di gradi di libertà.
-
-### Ramo B — Le 3 Leggi Peano-VQT
-
-1. **Aggregazione ferromagnetica**: solitoni iso-fase cristallizzano in cluster di 24.
-2. **Repulsione topologica**: solitoni cross-fase si frustrano; $E_\Psi$ ~2.9× più alto.
-3. **Conservazione della triade**: $dE_\chi + dE_{RX} + dE_\Psi = 0$, verificato (0 violazioni).
-
-### Predizioni Falsificabili (Ramo A)
-
-- **[P-1]** $\lambda$ doppio → $f_{\text{dom}} \times \sqrt{2} \approx 0.85$ [1/P]
-- **[P-2]** L3 esteso a 600 step → $f_{\text{dom}}(L3) \in [0.55, 0.63]$ [1/P]
-- **[P-3]** L4 → entropia spettrale $\mathcal{H}_s < 1.0$ (quasi-monocromatico)
+- **Collasso dinamico**: la materia migra/aggrega in strutture? (prova *forte* della gravità).
+- **Bounce vero** (oltre il "tetto morbido") + inversione del tempo nel core denso.
+- **Calibrazione fisica → tensione di Hubble** (da $\chi_0 = $ Planck a km/s/Mpc).
 
 ---
 
 ## Documentazione
 
-| Documento | Ramo | Contenuto |
-|-----------|------|-----------|
-| [docs/peano/INDEX.md](docs/peano/INDEX.md) | — | **Hub centrale** di navigazione |
-| [docs/peano/VQT_MANIFESTO_TEORICO.md](docs/peano/VQT_MANIFESTO_TEORICO.md) | B | Le 3 leggi Peano-VQT |
-| [docs/cosmology/TOPOLOGICAL_DYNAMICS.md](docs/cosmology/TOPOLOGICAL_DYNAMICS.md) | A | Formalizzazione variazionale (riferimento principale) |
-| [docs/cosmology/EVOLUZIONE_TEORICA.md](docs/cosmology/EVOLUZIONE_TEORICA.md) | A→B | Come il Ramo A ha generato il Ramo B |
-| [docs/reference/PHYSICS_MANIFESTO.md](docs/reference/PHYSICS_MANIFESTO.md) | — | Manifesto fisico VQT |
-| [docs/reference/PHYSICS_LOG.md](docs/reference/PHYSICS_LOG.md) | — | Mappatura vincoli software ↔ leggi fisiche |
-| [docs/history/TEORIA_FISICA_COMPLETA.md](docs/history/TEORIA_FISICA_COMPLETA.md) | — | Fondamenti Einstein-Cartan (contesto storico) |
+| Documento | Contenuto |
+|---|---|
+| [docs/peano/VQT_FORMALIZZAZIONE.md](docs/peano/VQT_FORMALIZZAZIONE.md) | **Teoria formale** (statica, dinamica, costanti, formule, direzione del tempo) + schema d'insieme |
+| [docs/peano/EDIFICIO_EINSTEIN_CARTAN.md](docs/peano/EDIFICIO_EINSTEIN_CARTAN.md) | Diario implementativo dell'edificio EC |
+| [docs/peano/MIGRAZIONE_CHECKPOINT.md](docs/peano/MIGRAZIONE_CHECKPOINT.md) | Stato lavori (blocco "PER DOMANI") |
+| [docs/TESTS_E_STRUMENTI.md](docs/TESTS_E_STRUMENTI.md) §8 | Moduli e test dell'edificio EC |
+| [docs/peano/INDEX.md](docs/peano/INDEX.md) | Hub di navigazione |
+| *(fase precedente)* [VQT_MANIFESTO_TEORICO.md](docs/peano/VQT_MANIFESTO_TEORICO.md), [docs/cosmology/](docs/cosmology/) | Substrato "doppia elica" (Ramo A/B) |
 
 ---
 
-## Citazioni
-
-> *"La materia non esiste nello spazio-tempo; la materia È spazio-tempo con topologia non triviale."*
-> — John Archibald Wheeler
-
-> *"Il manifold è auto-referenziale: ogni voxel codifica nel proprio stato il giudizio
-> sulla propria coerenza geometrica. Questa auto-referenzialità è il confine tra una
-> simulazione e un motore fisico."*
-> — TOPOLOGICAL_DYNAMICS.md
-
----
+> *"La materia non esiste nello spazio-tempo; la materia È spazio-tempo con topologia non triviale."* — J. A. Wheeler
 
 ## Autori
 
 - **Luca Peano** — ricerca, fisica, architettura
 - **Claude** (Anthropic) — implementazione, analisi, documentazione
 
----
-
-**Branch attivo**: `research-backup`
-**Ultima modifica**: 2026-05-29
-**Versione**: 3.0 — Doppia Elica (Cosmology A + Peano-VQT B)
+**Branch corrente**: `physics/einstein-cartan-saturation` · **Motore**: Einstein-Cartan integrato (torsione dallo spin)
