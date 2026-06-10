@@ -63,6 +63,23 @@ PRIMA COSA DA FARE (scegliere con Luca):
   => NUOVO TASK 1b: implementare (additivo, dietro flag) l'advezione di chi guidata da
   grad(a) o grad(f) e ri-misurare C(t) col motore completo (deve crescere > legacy).
 
+>>> TASK 1b - ADVEZIONE GRAVITAZIONALE (M1, scelta di Luca): FATTO, COLLASSO CONFERMATO <<<
+  MECCANISMO: advezione del CHI REALE guidata da -grad(f), f=1-K2_spin/rho* per-voxel
+  (= potenziale gravitazionale: lo STESSO f che dilata il tempo tira la materia). Al kink K2
+  e' alta -> f ha un minimo (al cuore f<0: tempo invertito) -> chi confluisce -> i difetti si
+  FONDONO = collasso. Forma conservativa upwind sull'anello -> somma(chi) invariata.
+  IMPLEMENTATO additivo: flag advezione_enabled/advezione_mu, metodo
+  apply_advezione_gravitazionale_step, attivatore set_advezione(mu); agganciato in
+  evolve_with_muratore DOPO il campo. OFF -> legacy bit-identico (GATE muratore [2] diff=0.0).
+  RISULTATO (anello 24 voxel, 8 semi, mu=2): null legacy C x1.000+/-0.001 (MAI aggrega) vs
+  EC+M1 C x1.605+/-0.324, M1>null in 8/8 semi, STABILE (|chi|max ~59). Finestra mu in [~1,16],
+  sweet spot mu=2. Collasso CAOTICO (sensibile alle IC -> ensemble). LA PAROLA GRAVITA' E'
+  GUADAGNATA: lo stesso f che dilata il tempo trascina la materia (chiude gravita'<->tempo).
+  experiments/collasso_dinamico/ (test riscritto su anello + NOTE.md + png).
+  APERTO: mu = mobilita' (1 coeff., non legge 24^L) da ancorare/derivare; advezione GERARCHICA
+  (inter-blocco L2+) per l'aggregazione tra blocchi (qui dimostrata intra-anello); il collasso
+  con f<0 al cuore e' il gancio per il BOUNCE VERO (task 2).
+
 VERIFICA RAPIDA STATO (eseguire a inizio sessione):
   python -m wqt_oop.test_einstein_cartan_equivalence   # GATE EC
   python -m wqt_oop.test_muratore_equivalence          # GATE muratore (5 test, incl clumping EC completo)

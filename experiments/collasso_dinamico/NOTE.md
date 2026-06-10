@@ -25,10 +25,44 @@ modula l'espansione (voxel_count, β), ma in `evolve_with_muratore` **non traspo
 blocchi**. Non esiste un canale fisico per la migrazione: l'espansione è "dipinta sopra", non
 muove la materia. Nessuna durata di run lo cambierà — manca il meccanismo.
 
-## Pezzo mancante (prossimo task concreto)
+## Pezzo mancante (poi risolto — vedi sotto)
 
 **Back-reaction metrica → campo**: l'espansione differenziale deve *retroagire* sul campo come
 termine di trasporto/advezione (coordinate comoventi), così che la materia sia trascinata verso
 le regioni dense / dal gradiente di tempo proprio. È esattamente il **trasporto di densità
 chirale** già abbozzato in `wqt_oop/reference/` (chiralita_ec.py). Senza quel termine il motore
 ha espansione ma non *aggregazione*.
+
+---
+
+# Task 1b — Advezione gravitazionale M1: COLLASSO CONFERMATO
+
+**Meccanismo (scelta di Luca):** la metrica retroagisce sul campo. χ è advettato da
+`u = -μ·∇f`, con `f = 1 - K2_spin/ρ*` **per-voxel** = potenziale gravitazionale (lo *stesso* f
+che dilata il tempo). Al kink K2 è alta → `f` ha un minimo (al cuore `f<0`: tempo invertito) →
+`-∇f` punta verso il kink da entrambi i lati → χ confluisce → i difetti si **fondono** = collasso.
+Forma conservativa upwind sull'anello → `Σχ` invariato (ridistribuzione, non creazione).
+Implementato additivo dietro flag `advezione_enabled/advezione_mu` (`set_advezione(μ)`); OFF →
+legacy bit-identico (GATE muratore [2] diff=0.0).
+
+## Risultato (anello 24 voxel, 8 semi, 600 step, μ=2)
+
+| | crescita C (media ± σ) | range | M1 > null |
+|---|---|---|---|
+| **LEGACY (null)** | **x1.000 ± 0.001** | [0.999, 1.000] | — |
+| **EC + M1 (μ=2)** | **x1.605 ± 0.324** | [1.017, 1.987] | **8/8 semi** |
+
+Finestra di mobilità (crescita C media su 8 semi): μ=1 → x1.02, **μ=2 → x1.60** (sweet spot,
+|χ|max 59), μ=4 → x1.26, μ=8 → x1.34, μ=16 → x1.58 (|χ|max 68). Sotto μ~1 la diffusione
+numerica dell'upwind vince; il collasso è **caotico** (sensibile alle IC → si misura l'ensemble).
+
+## Verdetto: POSITIVO — la parola "gravità" è guadagnata
+
+Il **null legacy non aggrega mai** (x1.000 su tutti i semi); l'advezione da `-∇f` **aggrega
+sempre** (8/8), in modo stabile (`|χ|max` bounded). Lo stesso `f` che rallenta gli orologi
+(dilatazione gravitazionale) **trascina la materia e fonde i difetti**: migrazione vera, non
+solo espansione differenziale. È la chiusura del cerchio gravità ↔ tempo proprio.
+
+**Aperto (per dopo):** μ è una mobilità di trasporto (1 coefficiente, non legge di scala) —
+derivarla/ancorarla; advezione **gerarchica** (inter-blocco L2+) per l'aggregazione tra blocchi
+(qui dimostrata intra-anello); collasso → bounce vero quando `f<0` al cuore (task 2).

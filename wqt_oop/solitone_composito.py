@@ -221,6 +221,15 @@ class SolitoneComposito(AbstractSoliton):
         # gradiente scalare di chi. Lo spin genera la torsione (EC vero). Richiede lo spinore.
         self.ec_torsion_from_spin: bool = False
 
+        # === ADVEZIONE GRAVITAZIONALE (M1, additivo, opt-in) ===
+        # La metrica retroagisce sul CAMPO: chi e' advettato da u=-mu*grad(f),
+        # f=1-K2_spin/rho* per-voxel (= potenziale gravitazionale; lo STESSO f che dilata
+        # il tempo tira la materia). Al kink K2 alta -> f minimo -> chi confluisce -> il
+        # kink si affila = COLLASSO. Forma conservativa upwind sull'anello (sum chi invariata).
+        # mu = mobilita' (1 coeff. di trasporto). Default OFF -> bit-identico. Task 1b.
+        self.advezione_enabled: bool = False
+        self.advezione_mu: float = 0.0
+
     @staticmethod
     def _build_leech_coupling(N: int) -> np.ndarray:
         """
@@ -1030,6 +1039,10 @@ class SolitoneComposito(AbstractSoliton):
             # locale RALLENTA davvero (non solo l'orologio); al bounce (K2=rho*) si ferma;
             # oltre (K2>rho*) il tempo (e l'evoluzione) si INVERTE. Parameter-free.
             self._evolve_field_proper_time(dt, external_force)
+            # M1: la metrica retroagisce sul campo -> advezione di chi verso le buche di f
+            # (la materia CADE = collasso gravitazionale). Additivo, dopo il campo.
+            if self.advezione_enabled:
+                self.apply_advezione_gravitazionale_step(dt)
         else:
             self.evolve_with_ec(dt, external_force)
 
@@ -1131,6 +1144,57 @@ class SolitoneComposito(AbstractSoliton):
         for c in self.children:
             if isinstance(c, SolitoneComposito):
                 c.set_spinore(enabled)
+
+    def apply_advezione_gravitazionale_step(self, dt: float) -> None:
+        """ADVEZIONE GRAVITAZIONALE (M1): la metrica retroagisce sul CAMPO. Per ogni blocco
+        L1 (anello di 24) calcola il tempo proprio PER-VOXEL  f_i = 1 - K2_spin_i/rho*
+        (= potenziale gravitazionale: piccolo dove c'e' massa) e advetta chi con velocita'
+            u_i = -mu * (f_{i+1} - f_{i-1})/2        (anti-gradiente: verso la buca = la massa)
+        in FORMA CONSERVATIVA upwind sull'anello:
+            F_b = u_face_b * chi_upwind_b ,   chi_i += -dt*(F_b - F_{b-1}).
+        somma(chi) invariata (la materia si RIDISTRIBUISCE, non si crea). Al kink K2 e' alta
+        -> f ha un minimo -> u punta verso il kink da entrambi i lati -> chi confluisce -> il
+        kink si affila (rho_SX cresce) = COLLASSO. Additivo: attivo solo se advezione_enabled
+        (e ec_torsion_from_spin, che fornisce lo spin per K2). Ricorre per L>=2."""
+        from .segmento_quantistico import SegmentoQuantistico
+        if not self.advezione_enabled or self.advezione_mu == 0.0:
+            return
+        if self.children and isinstance(self.children[0], SegmentoQuantistico):
+            from .motore_chirale_spinoriale import spin_torsion_K2
+            theta = np.array([c.theta_spin for c in self.children], dtype=float)
+            dphi = np.array([c.dphi_spin for c in self.children], dtype=float)
+            W = self.coupling_matrix
+            W = (W.toarray() if hasattr(W, "toarray") else np.asarray(W))
+            chi = np.array([c.chi for c in self.children], dtype=float)
+            K2 = spin_torsion_K2(theta, dphi, W, self.physics.chi_stable)
+            f = 1.0 - K2 / self.ec_k2_ref_chi               # tempo proprio per-voxel (potenziale)
+            # velocita' di deriva (anti-gradiente di f, centrato sull'anello)
+            u = -self.advezione_mu * (np.roll(f, -1) - np.roll(f, 1)) * 0.5
+            # flusso conservativo upwind sul legame b=(i, i+1)
+            u_face = 0.5 * (u + np.roll(u, -1))
+            chi_up = np.where(u_face > 0.0, chi, np.roll(chi, -1))   # upwind
+            F = u_face * chi_up                                       # flusso i -> i+1
+            dchi = -(F - np.roll(F, 1))                               # divergenza (telescopia=0)
+            for i, c in enumerate(self.children):
+                c.chi = float(c.chi + dt * dchi[i])
+        else:
+            for c in self.children:
+                if isinstance(c, SolitoneComposito):
+                    c.apply_advezione_gravitazionale_step(dt)
+
+    def set_advezione(self, mu: float) -> None:
+        """Attiva l'advezione gravitazionale (M1) su tutto l'albero: mu = mobilita' di
+        trasporto. Richiede lo spin (torsione dallo spin) per K2_spin: abilita spinore +
+        ec_torsion_from_spin se servono. mu=0 -> spenta (bit-identico)."""
+        self.advezione_mu = mu
+        self.advezione_enabled = (mu != 0.0)
+        if self.advezione_enabled:
+            if not self.spinore_enabled:
+                self.set_spinore(True)
+            self.ec_torsion_from_spin = True
+        for c in self.children:
+            if isinstance(c, SolitoneComposito):
+                c.set_advezione(mu)
 
     def set_ec_integrato(self, h_fondo_coeff: float) -> None:
         """EINSTEIN-CARTAN COMPLETAMENTE INTEGRATO: accende lo spinore (spin),

@@ -958,7 +958,7 @@ Branch `physics/einstein-cartan-saturation`. Saturazione/bounce + espansione (mu
 
 | Cartella / script | Domanda / risultato | Esecuzione |
 |---|---|---|
-| `experiments/collasso_dinamico/test_collasso_dinamico.py` | Sul motore EC completo la materia MIGRA e si AGGREGA, o c'è solo espansione differenziale? **Risultato NEGATIVO/onesto**: la concentrazione `C=Var_b(D_b)/<D_b>²` resta PIATTA (x1.001, = al null legacy) mentre `a_vuoto>a_denso` (x1.0028). Il clumping è **cinematico**: il fattore di scala `a` modula l'espansione ma NON trasporta χ tra i blocchi → niente migrazione. Pezzo mancante = back-reaction metrica→campo (trasporto di densità chirale, vedi `wqt_oop/reference/`). | `python experiments/collasso_dinamico/test_collasso_dinamico.py` (~1 min) → `collasso_dinamico.png` |
+| `experiments/collasso_dinamico/test_collasso_dinamico.py` | La materia MIGRA e si AGGREGA (collasso)? **(1)** EC senza advezione: clumping CINEMATICO, `C` piatta (`a` non trasporta χ — vedi `NOTE.md`). **(2)** EC + **advezione M1** (`set_advezione(μ)`, χ advettato da `-∇f`, f=tempo proprio per-voxel): **COLLASSO confermato** — su anello/8 semi, `C` x1.000±0.001 (null legacy) vs **x1.605±0.324 (M1 μ=2), M1>null 8/8**, stabile. Lo stesso f che dilata il tempo trascina la materia. Flag `advezione_enabled/_mu` (OFF→bit-identico). | `python experiments/collasso_dinamico/test_collasso_dinamico.py` (~1 min) → `collasso_dinamico.png` |
 
 **Flag opt-in (default OFF → comportamento legacy bit-identico)**: `ec_dynamics_enabled`,
 `muratore_enabled`, `g_emergent_active`, `kink_stiffening_active`, `muratore_h_fondo_coeff>0`.
