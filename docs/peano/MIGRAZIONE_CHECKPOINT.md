@@ -40,18 +40,37 @@ FATTO DI RECENTE (oltre quanto sopra):
   - README + INDEX RIFONDATI sul motore EC. MAIN SURCLASSATO e PUSHATO (origin/main=2ab2a6d,
     contenuto = branch). Orfani in wqt_oop/reference/ (riferimento per bounce/collasso).
 
-PRIMA COSA DA FARE (scegliere con Luca):
-  1) [CONSIGLIATO] COLLASSO DINAMICO sul motore completo: run lungo -> la materia MIGRA e
-     si AGGREGA in strutture (densita' difetti cresce nei grumi, chi migra), o solo 'a'
-     cambia? E' la prova FORTE della gravita' ("guadagna o cade la parola gravita'").
-     Si lega al trasporto di densita' chirale in wqt_oop/reference/ (il meccanismo migrazione).
-  2) BOUNCE VERO: permettere l'overshoot oltre rho* (densita' che sfora e RIMBALZA) ->
-     inversione del tempo nel core denso. Riferimento: reference/ (inversione sopra 720).
-  3) VALIDARE LO SPINORE: 180/720 + beta/alpha=pendenza producono risonanze/qubit corretti
-     (la diagnosi del primo giorno: campo complesso ridotto a scalare).
-  4) CALIBRAZIONE HUBBLE: da chi0=Planck a km/s/Mpc, gap early-vs-late (G non-monotono pronto).
-  5) OSCILLAZIONE SSB ("respiro"): meta-stabilita' (frustrazione chirale) o bagno FDT?
-  6) FLIP DI CHIRALITA' al bounce (SX<->DX = materia<->antimateria), CPT-like.
+PENDENTI - FASE DI CABLAGGIO (audit 2026-06-10: connessioni logiche, NON nuovi coupling;
+verificate nel codice riga per riga, vedi sotto >>> AUDIT CABLAGGIO <<<):
+  A) GERARCHIA CHIRALE [CONSIGLIATO - il piu' importante]: a L2+ la torsione ricade sul
+     GRADIENTE SCALARE coarse (apply_muratore_step: spin solo se figli=segmenti). Serve
+     l'OPERATORE DI PROIEZIONE CHIRALE L_n -> L_{n+1} (Bloch medio pesato dei figli ->
+     spinore del padre) => torsione DALLO SPIN a TUTTI i livelli + advezione inter-blocco
+     (collasso GERARCHICO, aggregazione TRA blocchi). Completa "EC in tutte le torsioni".
+  B) SPINORE IN TEMPO PROPRIO: apply_spinore_step usa dt NUDO -> la curvatura non rallenta
+     la dinamica della torsione (il campo chi si' via _evolve_field_proper_time, lo spinore
+     no). Cablare dt_eff = dt*f anche nel rilassamento spinoriale. Geometrico, 0 parametri.
+  C) RESPIRO SSB -> EMISSIONE: muratore_h_fondo_coeff e' l'ULTIMO parametro postulato
+     (costante). Cablarlo all'ampiezza MISURATA dell'oscillazione SSB (il respiro = la
+     temperatura del bagno) => coeff derivato dallo stato => ZERO knob totali nel motore.
+     (assorbe il vecchio pendente 5 "oscillazione SSB": prima capire il respiro, poi cablarlo)
+  D) BOUNCE VERO: overshoot oltre rho* (densita' che sfora e RIMBALZA) -> inversione del
+     tempo nel core denso (gancio: con l'advezione f<0 al cuore GIA' osservato).
+     Riferimento: wqt_oop/reference/ (inversione sopra 720). + FLIP DI CHIRALITA' al bounce
+     (SX<->DX = materia<->antimateria), CPT-like.
+  E) VALIDARE LO SPINORE: 180/720 + beta/alpha=pendenza producono risonanze/qubit corretti.
+  F) CALIBRAZIONE HUBBLE: da chi0=Planck a km/s/Mpc, gap early-vs-late (G non-monotono pronto).
+
+>>> AUDIT CABLAGGIO (Gemini/Luca 2026-06-10) - verificato contro il codice <<<
+  Proposta: 3 "accoppiamenti di retroazione" mancanti. VERIFICA:
+  1) G<->Torsione (curvatura ritorna sullo spin): PARZIALE. Gia' presenti: a diluisce
+     K2/a^2 (hubble_rate), kink-stiffening beta/(1+K2/rho*), tempo proprio attivo sul CAMPO,
+     advezione M1. MANCA: lo SPINORE evolve in dt nudo (riga ~1121) -> task B.
+  2) Respiro SSB -> H_emissione: MANCA. coeff e' costante postulata (riga ~1016) -> task C
+     (elimina l'ultimo knob).
+  3) Conservazione chiralita' tra livelli: MANCA DAVVERO. La chiralita' vive solo a L1;
+     L2+ usa torsione scalare coarse (righe ~998-1005) -> task A (proiezione chirale).
+  Conclusione: fase di RIFINITURA (cablare pezzi esistenti), nessun numero da inventare.
 
 >>> TASK 1 - COLLASSO DINAMICO: FATTO (esito NEGATIVO/onesto) <<<
   experiments/collasso_dinamico/ (test + NOTE.md + collasso_dinamico.png).
