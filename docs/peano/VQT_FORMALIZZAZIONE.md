@@ -247,6 +247,25 @@ SX=indietro / DX=avanti e' un'**interpretazione** (Feynman-Stueckelberg), non de
 dalla dinamica. "Fitta la realta'" nel senso che riproduce una freccia del tempo
 EMERGENTE dal dominio dello spazio - candidato per la freccia cosmologica, non prova.
 
+### 4bis.4 Perche' il tempo e' piu' lento dove c'e' piu' materia/gravita' [D]
+Questa struttura SPIEGA la dilatazione gravitazionale del tempo. **[D] Misurato** (tempo
+NETTO = tau_DX - tau_SX, blocco materia vs vuoto, 150 step):
+    vuoto:  tau_DX=3.000  tau_SX=0.000  ->  NETTO = 3.000
+    materia: tau_DX=1.911  tau_SX=0.161 ->  NETTO = 1.750   (42% PIU' LENTO)
+Il rallentamento del tempo netto dove c'e' materia/gravita' viene da DUE contributi, in
+ordine di peso:
+1. **fattore f = 1 - K2_spin/rho* < 1** (dominante): la MASSA (torsione da spin) dilata il
+   ritmo del tempo proprio -> anche il tempo-spazio (avanti) rallenta (tau_DX 3.0 -> 1.91).
+   E' la dilatazione gravitazionale: piu' massa -> f piu' piccolo -> tempo piu' lento.
+2. **cancellazione chirale** (meccanismo aggiuntivo): vicino alla massa c'e' piu' MATERIA
+   (SX, tempo indietro), che CANCELLA parte del tempo-spazio (avanti) -> il netto avanti
+   cala ancora (sottrazione di tau_SX=0.16).
+Quindi: **il tempo va piu' lento dove c'e' piu' materia perche' la massa dilata il ritmo
+(f<1) e perche' una parte crescente del tempo locale e' "tempo-materia" che va all'indietro
+e si sottrae al tempo-spazio.** La gravita' rallenta il tempo come integrazione di una
+componente avanti (spazio) e una indietro (materia) sempre piu' bilanciate avvicinandosi
+alla massa. [D misura; interpretazione del segno come sopra.]
+
 ---
 
 ## 5. Ipotesi ancora da verificare [H]
