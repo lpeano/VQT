@@ -24,11 +24,11 @@ DENSITA' CHIRALI derivate dallo spinore (non campi separati):
   rho_DX = |alpha|^2 = cos^2(theta/2) ("spazio"),  rho_SX = |beta|^2 = sin^2(theta/2)
   ("materia"). Sum = 1 per voxel. La materia (SX) emerge dove la pendenza (theta) e' alta.
 
-DINAMICA STABILE (rilassamento, gradiente di energia, NON esplode):
-    E = J_SLOPE  * sum (tan(theta_i/2) - |s_i|)^2          [beta/alpha -> pendenza kink]
-      + J_TWIST  * sum (1 - cos(dphi_i - tau_i))            [twist 180 per legame]
-      + K_CLOSURE* (sum dphi_i - 4pi)^2                     [chiusura 720]
-  s_i = pendenza locale del kink (gradiente di chi). (theta, dphi) <- discesa di gradiente.
+DINAMICA (stabile, NON esplode):
+  - FASE/CHIUSURA (dphi, 180/720): TOPOLOGICA, NON rilassata -> dphi_i = tau_i (twist
+    180 alternato), winding = Sum tau_i = 4pi ESATTO sempre. ZERO parametri.
+  - LATITUDINE (theta, beta/alpha=pendenza): rilassa verso |s_i| (pendenza del kink) in
+    bilancio col BOUNCE EC (vedi sotto). s_i = gradiente locale di chi / chi0.
 
 ADDITIVO: lo spinore vive ACCANTO a (chi, v). Default OFF -> non tocca la dinamica di
 campo. [DA CONFERMARE con Luca] l'aritmetica esatta 180->720 (qui: parte alternata +-pi
@@ -38,14 +38,13 @@ a somma nulla, media 4pi/N): scelta documentata.
 
 import numpy as np
 
-HALF_TWIST = np.pi            # twist 180 deg per legame (half-twist)
-CLOSURE_4PI = 4.0 * np.pi     # chiusura spinoriale 720 deg (spin-1/2)
+HALF_TWIST = np.pi            # twist 180 deg per legame (half-twist). TOPOLOGICO.
+CLOSURE_4PI = 4.0 * np.pi     # chiusura spinoriale 720 deg (spin-1/2). TOPOLOGICO.
 J_SLOPE = 1.0                 # accoppiamento beta/alpha -> pendenza del kink
-J_TWIST = 1.0                 # rigidita' del twist 180 per legame
-K_CLOSURE = 0.05              # rigidita' della chiusura 720
 RELAX_THETA = 0.10            # tasso di rilassamento di theta (stabile)
-RELAX_DPHI = 0.10            # tasso di rilassamento dei twist di legame
 RELAX_SAT = 0.50             # tasso del bounce EC sullo spin (allineamento gated)
+# La chiusura 720 NON ha parametri: dphi = tau (twist topologico), winding = 4pi esatto.
+# RIMOSSI K_CLOSURE, RELAX_DPHI, J_TWIST (la fase e' topologica, non rilassata).
 # NB: la scala della pendenza e' chi0 = physics.chi_stable, PASSATA (non hardcoded).
 # Le costanti J_*, RELAX_*, K_CLOSURE sono coefficienti NUMERICI del rilassamento
 # (come dt), non valori fisici. Le costanti topologiche pi/4pi (180/720) sono derivate.
@@ -112,7 +111,6 @@ def relax_step(theta, dphi, chi, dt, W=None, chi0=50.0, beta_sat=1e-8, rho_star=
         respinta agendo sullo spin stesso.
     Ritorna (theta_new, dphi_new, diag)."""
     N = len(chi)
-    tau = bond_twist_target(N)
     s = np.abs(kink_slope(chi, chi0))
 
     th = np.clip(theta, 1e-6, np.pi - 1e-6)
@@ -120,10 +118,11 @@ def relax_step(theta, dphi, chi, dt, W=None, chi0=50.0, beta_sat=1e-8, rho_star=
     dtheta = J_SLOPE * (t_half - s) * (0.5 / np.cos(th / 2.0) ** 2)
     theta_new = np.clip(th - RELAX_THETA * dt * dtheta, 1e-6, np.pi - 1e-6)
 
-    winding = float(np.sum(dphi))
-    closure = winding - CLOSURE_4PI
-    g = J_TWIST * np.sin(dphi - tau) + 2.0 * K_CLOSURE * closure
-    dphi_new = dphi - RELAX_DPHI * dt * g
+    # CHIUSURA 720 ESATTA E TOPOLOGICA (non rilassata): il twist per legame E' il pattern
+    # geometrico tau_i = 4pi/N + pi(-1)^i (180 alternato). Sum tau_i = 4pi per costruzione
+    # -> winding = 4pi ESATTO, sempre. Nessun parametro (rimossi K_CLOSURE/RELAX_DPHI/J_TWIST).
+    dphi_new = bond_twist_target(N)
+    winding = float(np.sum(dphi_new))
 
     # --- SATURAZIONE / BOUNCE EC SULLO SPIN ---
     if W is not None and rho_star is not None:
@@ -134,17 +133,17 @@ def relax_step(theta, dphi, chi, dt, W=None, chi0=50.0, beta_sat=1e-8, rho_star=
         theta_new = np.clip(theta_new - RELAX_SAT * dt * gate * (theta_new - theta_bar),
                             1e-6, np.pi - 1e-6)
 
-    diag = {"winding": winding, "closure_err": float(closure),
+    diag = {"winding": winding, "closure_err": float(winding - CLOSURE_4PI),
             "slope_err": float(np.mean(np.abs(t_half - s)))}
     return theta_new, dphi_new, diag
 
 
 def init_from_field(chi, chi0):
-    """Inizializza: theta da |pendenza kink| (beta/alpha=pendenza), dphi=0 (winding 0):
-    il rilassamento porta dphi->tau e il winding a 4pi. chi0 = physics.chi_stable."""
+    """Inizializza: theta da |pendenza kink| (beta/alpha=pendenza), dphi = tau (twist
+    topologico 180/720 -> winding 4pi ESATTO da subito). chi0 = physics.chi_stable."""
     s = np.abs(kink_slope(chi, chi0))
     theta = np.clip(2.0 * np.arctan(s), 1e-6, np.pi - 1e-6)
-    dphi = np.zeros_like(chi)
+    dphi = bond_twist_target(len(chi))
     return theta, dphi
 
 
