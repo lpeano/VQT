@@ -20,13 +20,14 @@ Etichette: **[D]** derivato/misurato col codice · **[P]** postulato (scelta dic
 
 ![Schema delle interazioni del sistema VQT](../figures/vqt_sistema.png)
 
-*Elementi e relazioni del motore Einstein-Cartan integrato. La fondazione (reticolo di
-Leech -> R_geo; scala di Planck) e il voxel (campo + spinore) alimentano lo SPINORE, da
-cui si calcola la **torsione sorgentata dallo spin K²_spin** (cuore). Quell'unica torsione
-guida le quattro facce tipo-RG: saturazione/bounce, espansione+gravita' (clumping), tempo
-proprio attivo, direzione del tempo (integrazione materia/spazio). Frecce piene =
-relazione (genera/guida); tratteggiate = feedback (auto-regolazione). Generato da
-`tools/rendering/genera_diagramma_vqt.py`.*
+*Quadro completo del motore Einstein-Cartan integrato. **A sinistra** il diagramma delle
+interazioni: la fondazione (reticolo di Leech -> R_geo; scala di Planck) e il voxel (campo
++ spinore) alimentano lo SPINORE, da cui si calcola la **torsione sorgentata dallo spin
+K²_spin** (cuore); quell'unica torsione guida le quattro facce tipo-RG (saturazione/bounce,
+espansione+gravita'/clumping, tempo proprio attivo, direzione del tempo). Frecce piene =
+relazione (genera/guida), tratteggiate = feedback. **A destra**: tutte le **COSTANTI**
+(con stato: derivata / topologica / fisica / postulata / eliminata) e tutte le **FORMULE
+DI DERIVAZIONE**. Generato (riproducibile) da `tools/rendering/genera_diagramma_vqt.py`.*
 
 ---
 
