@@ -44,6 +44,14 @@ Questi non sono suggerimenti: sono regole apprese da errori reali in questo prog
    commit non tuoi e processi Python attivi (run lanciati da altri). Chiedi prima
    di fermare processi altrui.
 
+8. **PIANIFICA PRIMA DI AGIRE (regola di Luca, 2026-06-10).** Prima di intraprendere
+   QUALSIASI azione non banale: **(a) PROGETTA/PIANIFICA** il passo (cosa, perche',
+   come, rischi/alternative); **(b) SEGNA i TODO nel checkpoint**
+   (`docs/peano/MIGRAZIONE_CHECKPOINT.md`, blocco "PER DOMANI"/task) — e usa anche
+   TodoWrite per il tracking della sessione; **(c) SOLO DOPO esegui.** Niente azioni
+   "a braccio": prima il piano scritto, poi il codice. Vale in particolare per
+   operazioni git (merge/push), refactor, rifondazioni doc e nuovi esperimenti.
+
 ---
 
 ## 1. COS'E' IL PROGETTO

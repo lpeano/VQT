@@ -21,15 +21,33 @@ root.evolve_with_muratore(dt). Esempio: experiments/exp3/test_gravita_clumping.p
 GRAVITA' verificata sul motore completo: vuoti espandono > materia -> CLUMPING (torsione
 dallo spin). beta/alpha=pendenza err 1.3e-3, spinore normalizzato, stabile.
 
+FATTO DI RECENTE (oltre quanto sopra):
+  - CHIUSURA 720 ESATTA e topologica (dphi=tau): winding=4pi esatto; RIMOSSI 3 parametri
+    (K_CLOSURE/RELAX_DPHI/J_TWIST). [era il "task 0", chiuso]
+  - GRAVITA' -> TEMPO PROPRIO: dilatazione gravitazionale (massa rallenta il tempo).
+  - TEMPO PROPRIO ATTIVO: il campo evolve in dt*f, f=1-K2_spin/rho* (materia ~31% piu' lenta;
+    f<0 => inversione, ma la saturazione cap-pa K2 a rho* -> f>=0 in dinamica normale).
+  - DIREZIONE DEL TEMPO (diagnostico, ipotesi Luca): tau_net=tau_DX-tau_SX=int f cos(theta).
+    ~6-8% voxel (nuclei materia, theta>pi/2) tempo INDIETRO, spazio AVANTI, netto AVANTI
+    (spazio domina). Spiega perche' il tempo e' piu' lento dove c'e' materia (42%).
+    test_inversione_tempo.py. (segno SX=indietro = interpretazione Feynman-Stueckelberg)
+  - DIAGRAMMA del sistema (docs/figures/vqt_sistema.png + tools/rendering/genera_diagramma_vqt.py):
+    interazioni + tutte le costanti + tutte le formule.
+  - README + INDEX RIFONDATI sul motore EC. MAIN SURCLASSATO e PUSHATO (origin/main=2ab2a6d,
+    contenuto = branch). Orfani in wqt_oop/reference/ (riferimento per bounce/collasso).
+
 PRIMA COSA DA FARE (scegliere con Luca):
-  0) [ritocco rapido] alzare il rateo di rilassamento spinore (RELAX_DPHI/K_CLOSURE in
-     motore_chirale_spinoriale.py) cosi' il winding chiude a 720 DENTRO il run (ora 4.4
-     vs 4pi=12.57 in 150 step; il self-test a 2000 step chiude).
-  1) [consigliato] COLLASSO DINAMICO sul motore completo: run lungo -> la materia MIGRA
-     e si aggrega in strutture? (firma forte della gravita'; finora solo differenza di a).
-  2) VALIDARE LO SPINORE: 180/720 + beta/alpha=pendenza producono la fenomenologia giusta
-     (risonanze, qubit) - la diagnosi del primo giorno (campo complesso ridotto a scalare).
-  3) CALIBRAZIONE HUBBLE: da chi0=Planck a km/s/Mpc, gap early-vs-late (G non-monotono pronto).
+  1) [CONSIGLIATO] COLLASSO DINAMICO sul motore completo: run lungo -> la materia MIGRA e
+     si AGGREGA in strutture (densita' difetti cresce nei grumi, chi migra), o solo 'a'
+     cambia? E' la prova FORTE della gravita' ("guadagna o cade la parola gravita'").
+     Si lega al trasporto di densita' chirale in wqt_oop/reference/ (il meccanismo migrazione).
+  2) BOUNCE VERO: permettere l'overshoot oltre rho* (densita' che sfora e RIMBALZA) ->
+     inversione del tempo nel core denso. Riferimento: reference/ (inversione sopra 720).
+  3) VALIDARE LO SPINORE: 180/720 + beta/alpha=pendenza producono risonanze/qubit corretti
+     (la diagnosi del primo giorno: campo complesso ridotto a scalare).
+  4) CALIBRAZIONE HUBBLE: da chi0=Planck a km/s/Mpc, gap early-vs-late (G non-monotono pronto).
+  5) OSCILLAZIONE SSB ("respiro"): meta-stabilita' (frustrazione chirale) o bagno FDT?
+  6) FLIP DI CHIRALITA' al bounce (SX<->DX = materia<->antimateria), CPT-like.
 
 VERIFICA RAPIDA STATO (eseguire a inizio sessione):
   python -m wqt_oop.test_einstein_cartan_equivalence   # GATE EC
@@ -37,11 +55,11 @@ VERIFICA RAPIDA STATO (eseguire a inizio sessione):
   python -m wqt_oop.motore_chirale_spinoriale          # self-test spinore (720, beta/alpha)
   python experiments/exp3/test_gravita_clumping.py     # gravita' sul motore completo
 
-STATO DOC: VQT_FORMALIZZAZIONE.md RIALLINEATO al motore integrato (torsione dallo spin,
-spinore 180/720, le 4 facce tipo-GR: espansione/gravita'/dilatazione tempo/direzione
-tempo). TESTS_E_STRUMENTI.md sez.8 OK. EDIFICIO_EINSTEIN_CARTAN.md: doc IMPLEMENTATIVA
-(log dei passi), ha ancora alcune cornici scalari -> da rifinire se serve, ma la teoria
-coerente e' in VQT_FORMALIZZAZIONE.md.
+STATO DOC: README.md + docs/peano/INDEX.md RIFONDATI sul motore EC (con schema d'insieme).
+VQT_FORMALIZZAZIONE.md RIALLINEATO (statica/dinamica/costanti/formule/direzione tempo) +
+figura docs/figures/vqt_sistema.png. TESTS_E_STRUMENTI.md sez.8 OK. La 'doppia elica' e'
+marcata come fase precedente/substrato. EDIFICIO_EINSTEIN_CARTAN.md: diario implementativo
+(qualche cornice scalare residua, minore). MAIN PUSHATO (origin/main = motore EC).
 
 ---
 
