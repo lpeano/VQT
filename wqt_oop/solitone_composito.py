@@ -1024,9 +1024,14 @@ class SolitoneComposito(AbstractSoliton):
             self.apply_spinore_step(dt)            # rilassa lo spinore (additivo, accanto a chi,v)
         if not self.muratore_enabled:
             self.evolve_with_ec(dt, external_force)
-            return
-        self.apply_muratore_step(dt)
-        self.evolve_with_ec(dt, external_force)
+        else:
+            self.apply_muratore_step(dt)
+            self.evolve_with_ec(dt, external_force)
+        # GRAVITA' -> TEMPO PROPRIO: la massa (torsione da spin) rallenta il tempo locale
+        # via la metrica (dilatazione gravitazionale, oltre a quella cinematica). Attiva
+        # con l'EC completo (torsione dallo spin). Additivo: OFF -> tau invariato.
+        if self.ec_torsion_from_spin:
+            self.apply_grav_time_dilation(dt)
 
     def set_muratore(self, enabled: bool) -> None:
         """Attiva/disattiva il muratore su TUTTO l'albero (ricorsivo). Abilita anche
@@ -1142,6 +1147,32 @@ class SolitoneComposito(AbstractSoliton):
                 if isinstance(c, SolitoneComposito):
                     _flag(c)
         _flag(self)
+
+    def apply_grav_time_dilation(self, dt: float) -> None:
+        """DILATAZIONE GRAVITAZIONALE del tempo proprio: la MASSA (torsione sorgentata
+        dallo spin, K2_spin) rallenta il tempo locale via la metrica. Dove c'e' materia
+        (K2_spin alta) tau_locale avanza piu' LENTO -> un orologio vicino alla massa va
+        piano (come in Relativita' Generale). Correzione ADDITIVA sopra la dilatazione
+        CINEMATICA (da velocita') gia' nel segmento: l'incremento netto diventa
+            d tau ~ dt / (1 + K2_spin/rho*)   (mass-> tempo piu' lento).
+        PARAMETER-FREE: rho* derivato (=2chi0^2), K2_spin dallo spinore. Additivo (OFF ->
+        tau invariato). E' il legame mancante gravita' -> tempo proprio."""
+        from .segmento_quantistico import SegmentoQuantistico
+        from .motore_chirale_spinoriale import spin_torsion_K2
+        if self.children and isinstance(self.children[0], SegmentoQuantistico):
+            theta = np.array([c.theta_spin for c in self.children], dtype=float)
+            dphi = np.array([c.dphi_spin for c in self.children], dtype=float)
+            W = self.coupling_matrix
+            W = (W.toarray() if hasattr(W, "toarray") else np.asarray(W))
+            K2 = spin_torsion_K2(theta, dphi, W, self.physics.chi_stable)
+            gamma_grav = 1.0 + K2 / self.ec_k2_ref_chi          # >=1: massa -> tempo lento
+            for i, c in enumerate(self.children):
+                # correzione additiva: porta il netto a ~ dt/gamma_grav (dilatazione grav.)
+                c.tau_locale += dt * (1.0 / gamma_grav[i] - 1.0)
+        else:
+            for c in self.children:
+                if isinstance(c, SolitoneComposito):
+                    c.apply_grav_time_dilation(dt)
 
     def get_spinore_state(self) -> dict:
         """Diagnostico spinoriale: winding (->4pi=720), errore beta/alpha vs pendenza kink,
