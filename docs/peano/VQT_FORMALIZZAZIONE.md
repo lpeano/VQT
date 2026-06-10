@@ -1,310 +1,239 @@
 # VQT — Formalizzazione: statica, dinamica, ipotesi aperte
 
-**Versione**: 2026-06-09 · **Branch di riferimento**: `physics/einstein-cartan-saturation`
+**Versione**: 2026-06-09 (motore Einstein-Cartan COMPLETO, torsione dallo spin)
+**Branch**: `physics/einstein-cartan-saturation`
 
-Documento di sintesi formale del modello VQT (Voxel Quantum Theory) come ricostruito
-sul settore di Einstein-Cartan. Descrive la **statica** (struttura, costanti, scala),
-la **dinamica** (equazioni e meccanismi), il **funzionamento** d'insieme, e le **ipotesi
-ancora da verificare**. Distingue rigorosamente cio' che e' *derivato/misurato* da cio'
-che e' *postulato* o *congetturato*.
+Documento di sintesi formale del modello VQT (Voxel Quantum Theory) sul settore di
+Einstein-Cartan **completamente integrato**: la torsione e' sorgentata dallo SPIN, e da
+quell'unica torsione discendono saturazione (bounce), espansione, gravita' (clumping),
+dilatazione del tempo e direzione del tempo. Distingue cio' che e' *derivato/misurato* da
+cio' che e' *postulato* o *congetturato*.
 
-Convenzione: i risultati sono etichettati **[D]** derivato/misurato col codice,
-**[P]** postulato (scelta fisica dichiarata), **[H]** ipotesi da verificare.
+Etichette: **[D]** derivato/misurato col codice · **[P]** postulato (scelta dichiarata) ·
+**[H]** ipotesi da verificare · **[I]** interpretazione (non derivata dalla dinamica).
 
-> Nota terminologica. In discussioni informali il termine di creazione di volume alla
-> scala fondamentale e' stato chiamato in modo allegorico "muratore di Planck". In questo
-> documento si usa la denominazione scientifica **termine di emissione di volume alla scala
+> Nota terminologica. Il termine di creazione di volume alla scala fondamentale, chiamato
+> informalmente "muratore di Planck", qui e': **termine di emissione di volume alla scala
 > di Planck** (o *espansione metrica di fondo*).
 
 ---
 
 ## 1. Oggetto e ontologia
 
-VQT descrive lo spaziotempo come un **manifold frattale gerarchico**: ogni livello L(n)
-e' composto da N = 24 unita' del livello inferiore (24 = numero di contatto del reticolo
-di Leech / cubottaedro). L'unita' fondamentale e' il **voxel** (livello L0).
+VQT descrive lo spaziotempo come **manifold frattale gerarchico**: ogni livello L(n) e'
+N = 24 unita' del livello inferiore (24 = numero di contatto del reticolo di Leech /
+cubottaedro). L'unita' fondamentale e' il **voxel** (livello L0).
 
-- **Voxel**: grado di liberta' di campo, stato (chi, v) — campo scalare chi e velocita'
-  coniugata v = dchi/dt — con potenziale a doppio pozzo, piu' una fase spinoriale locale
-  tau (chiusura geometrica). Un voxel isolato non possiede geometria: la **torsione e' una
-  proprieta' relazionale**, emerge solo nell'interazione tra voxel.
-- **Materia**: i difetti topologici del campo (kink, pareti di dominio) sono la materia.
-  In VQT la materia e' la **complessita' topologica dello spaziotempo emergente**: nasce
-  dalle torsioni del reticolo, non e' un'entita' separata.
+Ogni voxel porta:
+- un **campo** (chi, v): scalare chi (parte reale) e velocita' coniugata v = dchi/dt, in
+  un doppio pozzo `V(chi)=beta_pot(chi^2-chi0^2)^2`;
+- uno **SPINORE** psi = cos(theta/2)|0> + sin(theta/2) e^{i phi}|1>, con
+  **beta/alpha = tan(theta/2) e^{i phi} = PENDENZA DEL KINK** (il campo complesso di cui chi
+  e' la parte reale). theta (latitudine di Bloch) viene dalla pendenza locale del campo;
+  phi (fase) e' la torsione spinoriale.
+
+**Chiralita' = materia vs spazio** (derivata dallo spinore):
+  rho_SX = sin^2(theta/2) = "materia", rho_DX = cos^2(theta/2) = "spazio", rho_SX+rho_DX=1.
+La **materia e' la complessita' chirale/topologica** dello spaziotempo emergente (i kink,
+le pareti di dominio dove theta e' alta), non un'entita' separata. Un voxel isolato non
+ha geometria: la **torsione e' relazionale**, emerge tra voxel (vedi §3.3).
 
 ---
 
 ## 2. Statica
 
 ### 2.1 Reticolo e geometria di accoppiamento
-Ogni blocco e' un anello/cella di N = 24 nodi con matrice di accoppiamento `W` di
-simmetria Leech (cubottaedro, 12 vicini), **normalizzata per riga** (somma di riga = 1,
-diagonale nulla). Il Laplaciano del grafo
-
-    L = D - W ,   D = diag(somme di riga di W)
-
-ne codifica la rigidezza geometrica (e' l'Hessiano, a meno di un fattore, dell'energia
-di torsione).
+Ogni blocco e' una cella di N = 24 nodi con matrice di accoppiamento `W` di simmetria
+Leech (cubottaedro, 12 vicini), **normalizzata per riga** (somma riga = 1, diagonale 0).
+Il Laplaciano del grafo `L = D - W` (D = diag delle somme di riga) codifica la rigidezza
+geometrica (e' l'Hessiano, a meno di un fattore, dell'energia di torsione).
 
 ### 2.2 Scala metrica
-Il voxel acquista scala fisica per **ancoraggio [P]**: il fondo della gerarchia (L0,
-non ulteriormente suddivisibile) coincide con la scala di Planck:
+Per **ancoraggio [P]**, il fondo della gerarchia (L0) coincide con la scala di Planck:
+    ell_voxel(L0) = ell_Planck ,  t_step = t_Planck ,  E_voxel = Theta = E_Planck .
+L'auto-similarita' fissa il **rapporto** tra livelli [D]: un aggregato = 24 voxel (12
+"monti" + 12 "valli"), una mezza onda = 1 voxel = 1/24 dell'aggregato. Lunghezza per
+livello `ell_L = 24^(L/d) ell_Planck` (d=3 -> fattore 24^(1/3)~2.884, protone ~ L43).
 
-    ell_voxel(L0) = ell_Planck ,   t_step = t_Planck ,   E_voxel = Theta = E_Planck .
+### 2.3 Struttura spinoriale (180/720 topologica)
+Lo spinore avvolge sull'anello di 24: il twist per legame e'
+    tau_i = 4pi/N + pi*(-1)^i   (half-twist 180 a chiralita' alternata),
+con `sum tau_i = 4pi` per costruzione -> **chiusura 720 (spin-1/2) ESATTA e TOPOLOGICA**
+(e^{i 4pi}=1: lo spinore ritorna a se' dopo 720, non 360). Le costanti 180=pi e 720=4pi
+sono **topologiche**, non tarabili.
 
-L'auto-similarita' fissa il **rapporto** tra livelli [D]: un aggregato e' 24 voxel
-(12 "monti" + 12 "valli"), una mezza onda = 1 voxel = 1/24 dell'aggregato. La lunghezza
-per livello e' `ell_L = 24^(L/d) ell_Planck` (d = dimensione di disposizione; d=3 ->
-fattore lineare 24^(1/3) ~ 2.884, protone ~ L43).
-
-### 2.3 Rigidezza e costante gravitazionale emergente
+### 2.4 Rigidezza e costante gravitazionale emergente
 G non e' fondamentale: e' l'**inverso della rigidezza elastica dello spaziotempo**
-(gravita' indotta, Sakharov 1967; gravita' entropica, Verlinde 2011). La rigidezza
-geometrica scalare di un blocco e'
+(gravita' indotta, Sakharov 1967; entropica, Verlinde 2011). Rigidezza geometrica scalare:
+    R_geo = 4 kappa_geo <lambda_k(L) : lambda_k>0>   (modi di deformazione, esclude il modo nullo).
+**[D]** Per W normalizzata per riga, analiticamente `R_geo = 4 kappa_geo N/(N-1) = 4*24/23
+= 4.174`: dipende **solo da N=24** (topologico), **scala-invariante** (non 24^L). Quindi
+`beta = Theta/R_geo` (analogo di G). I **rapporti** beta_i/beta_j = R_j/R_i sono fissati
+dalla geometria; resta una sola unita' Theta (Planck). Rigidezza **fisica**:
+- diluizione metrica `R_phys = R_geo/a^2` (a = fattore di scala locale);
+- **irrigidimento da materia [D]**: i kink aumentano la rigidezza, `R_local = R_geo(1+K2_spin/rho*)`.
 
-    R_geo = 4 kappa_geo <lambda_k(L) : lambda_k > 0>    (modi di deformazione, esclude il modo nullo gauge).
-
-**[D]** Per W normalizzata per riga vale analiticamente `R_geo = 4 kappa_geo N/(N-1) =
-4*24/23 = 4.174`: dipende **solo da N = 24** (topologico), e' **scala-invariante** (non
-24^L). Confermato sul reticolo di Leech reale (identico a ogni livello). La costante
-gravitazionale emergente segue:
-
-    beta = Theta / R_geo .
-
-Sono i **rapporti** beta_i/beta_j = R_j/R_i ad essere determinati dalla geometria (nessun
-numero strutturale libero); resta l'unica unita' dimensionale Theta (scala di Planck).
-
-La rigidezza **fisica** include due correzioni dinamiche (vedi §3):
-- **diluizione metrica**: `R_phys = R_geo / a^2` (a = fattore di scala locale);
-- **irrigidimento da materia [D]**: i kink aumentano la rigidezza locale,
-  `R_local = R_geo (1 + K2/rho*)` (knob-free, rho* derivato §3.2).
-
-### 2.4 Inventario delle costanti
+### 2.5 Inventario delle costanti
 
 | Grandezza | Stato | Origine |
 |---|---|---|
 | N = 24 | [D] | reticolo di Leech (numero di contatto) |
 | R_geo = 4N/(N-1) = 4.174 | [D] | spettro Laplaciano (topologico) |
-| rho* = 2 chi0^2 = (sqrt2 chi0)^2 | [D] misurato | scala parete di dominio (costante sqrt2 Jitterbug) |
+| rho* = 2 chi0^2 = (sqrt2 chi0)^2 | [D] misurato | scala parete di dominio (sqrt2 Jitterbug) |
+| 180=pi, 720=4pi | topologiche | twist / chiusura spin-1/2 |
 | chi0 (VEV del campo) | fisica | minimo del doppio pozzo |
-| 4pi, pi (chiusura 720, twist 180) | topologiche | spin-1/2 |
 | Theta = E_Planck, ell_Planck | [P] ancoraggio | fondo gerarchia = scala di Planck |
-| coeff (emissione di fondo) | [P] scala | tasso di emissione (~T_eff); valore da calibrare |
-| alpha_K, kappa, lambda~24^(2L), gamma | da eliminare | leggi di scala postulate (dissolte, §4) |
+| coeff (emissione di fondo) | [P] scala | tasso di emissione (~T_eff), da calibrare |
+| alpha_K, kappa, lambda~24^(2L), gamma | ELIMINATE | leggi di scala postulate (dissolte, §4) |
+
+Le costanti numeriche del rilassamento spinoriale (ratei) sono passi d'integrazione (come
+dt), non valori fisici. Nessuna scala fisica e' hardcoded: chi0 = physics.chi_stable, rho*
+derivato, 180/720 topologici.
 
 ---
 
 ## 3. Dinamica
 
 ### 3.1 Substrato di campo
-Su ogni voxel l'evoluzione e' simplettica (Verlet) con forza di doppio pozzo
-`F = -V'(chi)`, `V(chi) = beta_pot (chi^2 - chi0^2)^2`, piu' smorzamento di
-fluttuazione-dissipazione (bagno termico effettivo). Questo nucleo e' il riferimento
-verificato; tutti i termini sotto sono **additivi** (attivabili a flag, default inattivi,
-il nucleo legacy resta bit-identico).
+Evoluzione simplettica (Verlet) con forza di doppio pozzo `F=-V'(chi)` + smorzamento di
+fluttuazione-dissipazione. Nucleo verificato; tutti i termini EC sono **additivi** (flag
+opt-in, default OFF -> legacy bit-identico).
 
-### 3.2 Settore di torsione (Einstein-Cartan)
-Densita' di torsione di gradiente per nodo:
+### 3.2 Spinore: beta/alpha = pendenza, 180/720 esatto
+Lo spinore (theta, dphi) di ogni blocco rilassa (stabile):
+- **theta**: `tan(theta/2) -> |pendenza del kink|` (= |gradiente di chi|/chi0): beta/alpha
+  segue il campo. E' il legame campo <-> spinore.
+- **dphi**: imposto = tau_i (twist topologico) -> **winding = 4pi ESATTO** (chiusura 720),
+  senza parametri.
 
-    K2_i = sum_j W_ij (chi_i - chi_j)^2 .
+### 3.3 Torsione SORGENTATA DALLO SPIN (cuore di Einstein-Cartan)
+La torsione non e' il gradiente scalare di chi, ma viene dallo SPIN (densita' di spin =
+vettore di Bloch n = <psi|sigma|psi>):
+    K2_spin_i = chi0^2 * sum_j W_ij |n_i - n_j|^2 ,   |n_i-n_j|^2 = 2 - 2 n_i.n_j .
+Scalata per chi0^2 -> stesse unita' fisiche (una parete spinoriale da' ~2 chi0^2 = rho*).
+**Lo spin genera la torsione; questa torsione guida tutto il resto** (3.4-3.8).
 
-**Saturazione a soffitto (pressione di degenerazione di spin / bounce):**
+### 3.4 Saturazione / bounce (sullo SPIN)
+Dove K2_spin > rho* gli spin si ALLINEANO (theta verso la media pesata dei vicini) ->
+riduce la torsione: e' la **pressione di degenerazione di spin / bounce** di Einstein-
+Cartan, ora agente sullo spin stesso. Soglia **derivata** `rho* = 2 chi0^2` [D] (scala
+della parete di dominio, costante sqrt(2) Ottaedro->Cubottaedro). Effetto: la densita'/
+torsione non supera rho* -> **densita' massima finita, niente singolarita'** (tetto morbido).
 
-    E_sat = beta_sat * sum_i ((K2_i - rho*)+)^2 ,   F_chi = -dE_sat/dchi ,
+### 3.5 Espansione metrica
+Ogni blocco ha un fattore di scala `a`. Torsione fisica = K2_spin/a^2. Tasso tipo-Hubble:
+    H = a'/a = H_bounce + H_emissione ,
+    H_bounce = beta_sat <(K2_spin/a^2 - rho*)+>        (relief locale dell'eccesso),
+    H_emissione = coeff / (1 + K2_spin/rho*)            (emissione di volume di fondo,
+        uniforme, modulata dalla rigidezza).
+`a <- a(1 + H dt)`. **Auto-regolante**: eccesso di torsione -> espansione -> diluisce la
+torsione -> il termine si spegne (punto fisso `a* = sqrt(maxK2_spin/rho*)`). G **attiva**:
+`beta_sat = Theta/R_phys = beta_baseline a^2 / (1+K2_spin/rho*)` (verificato stabile, la
+diluizione ~1/a^2 regola il feedback).
 
-con `(x)+` parte positiva (one-sided): sotto rho* la forza e' nulla (vuoto e domini
-stabili), sopra rho* la torsione in eccesso e' respinta (bounce, no singolarita').
-Soglia derivata `rho* = 2 chi0^2` [D]: e' la scala della parete di dominio / del campo
-disordinato (misurata: parete K2 ~ 2 chi0^2). E' la costante geometrica sqrt(2)
-(Ottaedro -> Cubottaedro).
+### 3.6 Gravita' emergente (clumping)
+Il termine di emissione **uniforme** modulato dalla rigidezza: nei vuoti (K2_spin basso)
+l'espansione e' piena; nella materia (K2_spin alto) e' soppressa. Quindi lo spazio si crea
+nei vuoti, la materia si **addensa**. **[D]** Verificato sul motore completo: a(vuoto) >
+a(materia) -> clumping, con torsione sorgentata dallo spin. Unificazione: **la stessa
+forza e' spinta espansiva (frame spaziotempo) e attrazione (frame materia)**; repulsione
+(bounce ad alta densita') e attrazione (clumping a densita' moderata) sono due regimi di
+un unico termine EC. Omogeneita' **solo locale** (FLRW locali cucite, mai globale).
 
-**Chiusura spinoriale (720 gradi):**
+### 3.7 Tempo proprio ATTIVO (gravita' -> tempo)
+Il campo (materia) evolve nel **tempo proprio locale** dt_local = dt * f, con
+    f = 1 - <K2_spin>/rho*  (proper_time_factor).
+- materia (K2 < rho*): 0 < f < 1 -> la fisica locale RALLENTA (non solo l'orologio);
+  **[D]** ~31% piu' lenta nei nuclei densi;
+- bounce (K2 = rho*): f = 0 (orizzonte); estremo (K2 > rho*): f < 0 (inversione, ma la
+  saturazione cap-pa K2 a rho* -> f non scende sotto 0 in dinamica normale).
+Parameter-free (rho* derivato). E' il legame **gravita' -> tempo proprio**: la massa
+rallenta il tempo come in Relativita' Generale.
 
-    E_clo = kappa_clo (sum_i tau_i - 4pi)^2 ,
+### 3.8 DIREZIONE DEL TEMPO (emerge dall'integrazione SX+DX)
+Decomponendo il tempo proprio per chiralita' (diagnostico, non cambia la dinamica):
+    tau_SX = int f rho_SX (materia),  tau_DX = int f rho_DX (spazio).
+**[I]** Con Feynman-Stueckelberg (antimateria = materia indietro nel tempo), la materia
+contribuisce col segno opposto: la direzione NETTA e' l'**integrazione**
+    tau_netto = tau_DX - tau_SX = int f cos(theta)   (cos theta = rho_DX - rho_SX).
+**[D] Misurato** (test_inversione_tempo.py, 600 step): ~6-8% dei voxel (nuclei di materia,
+theta>pi/2) hanno tempo netto INDIETRO; lo spazio AVANTI; il netto **globale AVANTI**.
+**Conseguenza [I]**: la freccia del tempo NON e' imposta, **emerge** dall'integrazione di
+due tempi opposti; e' in avanti perche' **lo spazio domina il volume**. Inversione globale
+-> regione materia-dominata (core densissimo). Non richiede f<0: l'inversione vive nella
+chiralita'.
 
-guida la fase spinoriale alla chiusura a 4pi (spin-1/2). Le forze EC sono gradienti di
-energie ben definite (conservative, verificate vs gradiente numerico, err ~5e-11).
+**Perche' il tempo e' piu' lento dove c'e' materia/gravita' [D].** Tempo netto: vuoto=3.000
+(tau_DX=3.0, tau_SX=0), materia=1.750 (tau_DX=1.91, tau_SX=0.16) -> **42% piu' lento**. Due
+contributi: (1) **f<1** dominante (la massa dilata il ritmo, tau_DX 3.0->1.91); (2)
+**cancellazione chirale** (piu' materia=SX indietro che si sottrae al tempo-spazio avanti).
+La dilatazione gravitazionale del tempo EMERGE da questa integrazione avanti/indietro.
 
-### 3.3 Espansione metrica
-Ogni blocco porta un **fattore di scala locale a** (default 1). La torsione *fisica*
-(per volume fisico) e' `K2/a^2`. Il tasso di espansione (analogo del parametro di Hubble)
-e' la somma di due contributi:
-
-    H = a'/a = H_bounce + H_emissione
-
-- **H_bounce** (relief locale della torsione in eccesso):
-  `H_bounce = beta_sat <(K2_i/a^2 - rho*)+>` (media per-nodo della parte positiva ->
-  risposta **locale**: pareti/difetti localizzati sorgentano espansione anche se la media
-  del blocco e' sotto rho*).
-- **H_emissione** (termine di emissione di volume alla scala di Planck, *uniforme*,
-  modulato dalla rigidezza):
-  `H_emissione = coeff / (1 + K2/rho*)`.
-
-L'aggiornamento e' `a <- a (1 + H dt)`. Il sistema e' **auto-regolante** (feedback
-negativo): un eccesso di torsione produce espansione, l'espansione diluisce la torsione
-(K2/a^2 cala), il termine si spegne. Punto fisso del bounce `a* = sqrt(maxK2/rho*)`.
-
-**Accoppiamento gravita'-rigidezza (G attiva):** il coefficiente beta_sat e' esso stesso
-funzione della rigidezza fisica, `beta_sat = Theta/R_phys = beta_baseline a^2` (eventualmente
-`/(1+K2/rho*)` con l'irrigidimento da materia): dove lo spazio e' rigido (materia),
-l'espansione e' soppressa. Verificato **stabile** (no runaway: la diluizione ~1/a^2
-regola il feedback).
-
-### 3.4 Gravita' emergente
-Combinando il termine di emissione **uniforme** con l'irrigidimento da materia
-(`H_emissione = coeff/(1+K2/rho*)`):
-
-- nei **vuoti** (K2 basso) l'espansione e' piena;
-- nella **materia** (K2 alto) e' soppressa.
-
-Quindi lo spazio si crea preferenzialmente nei vuoti, la materia si **addensa** (clumping).
-**[D]** Verificato: a(vuoto) > a(materia) -> concentrazione della materia.
-
-Interpretazione unificante: **la stessa forza e' una spinta espansiva nel riferimento
-dello spaziotempo e un'attrazione nel riferimento della materia**. Repulsione (bounce ad
-alta densita', anti-singolarita') e attrazione (clumping a densita' moderata) sono i due
-regimi di un unico termine di Einstein-Cartan.
-
-### 3.5 Omogeneita' e disomogeneita'
-L'omogeneita' non e' imposta: e' un **risultato**. Sorgente di torsione uniforme ->
-espansione uniforme (cosmologia FLRW locale); sorgente concentrata -> espansione locale
-(curvatura = gravita'). Nel manifold frattale l'omogeneita' e' **solo locale** (molte
-regioni FLRW locali cucite), mai globale.
-
-### 3.6 Cosmogenesi (condizione iniziale)
-L'origine e' lo stato **simmetrico** (chi ~ 0, massimo instabile del doppio pozzo:
-nessuna struttura) piu' un **seme stocastico** (fluttuazione del vuoto). **[D]**: con il
-seme si ha rottura spontanea di simmetria (SSB) -> domini +-chi0 -> torsioni -> materia ->
-espansione; **senza** seme il campo resta sul massimo instabile (nessuna struttura).
-L'universo nasce da una fluttuazione.
+### 3.9 Cosmogenesi (condizione iniziale)
+L'origine e' lo stato **simmetrico** (chi ~ 0, massimo instabile) + un **seme stocastico**.
+**[D]**: col seme -> rottura spontanea di simmetria (SSB) -> domini -> torsioni -> materia
+-> espansione; **senza** seme resta sul massimo instabile (niente universo). L'universo
+nasce da una fluttuazione.
 
 ---
 
 ## 4. Risultati verificati [D]
 
-- **Dissoluzione dei coupling postulati**: appiattendo le leggi di scala 24^L (incluso il
-  termine "esplosivo" lambda~24^(2L)) la fenomenologia (densita' di difetti) non cambia e
-  il sistema non diverge -> la dipendenza di scala postulata e' superflua e rimovibile.
+- **Einstein-Cartan integrato**: la torsione e' sorgentata dallo spin (K2_spin); saturazione
+  (sullo spin), espansione, gravita', dilatazione e direzione del tempo discendono tutte da
+  quell'unica torsione. Spinore normalizzato, beta/alpha=pendenza (err ~1e-3), 720 esatto.
+- **Dissoluzione dei coupling postulati**: appiattendo le leggi 24^L (incluso lambda~24^(2L))
+  la fenomenologia non cambia ne' diverge -> dipendenza di scala superflua e rimossa.
 - **G topologica e scala-invariante**: R_geo = 4.174 a ogni livello (dal 24, non 24^L).
-- **G non-monotona con la scala**: la rigidezza fisica (e quindi G) traccia la scala a cui
-  si concentra la materia -> G(L) puo' avere un massimo interno (non monotona). E' un
-  ingrediente del tipo richiesto per la tensione di Hubble (differenza early-vs-late).
-- **"Febbre" = transiente**, non legge di scala: la KE per nodo riscalda e poi raffredda
-  (FDT); il preteso esponente di scala e' un artefatto di non-equilibrio.
-- **Saturazione + scala metrica + cosmogenesi + clumping** verificati come sopra.
+- **G non-monotona con la scala**: la rigidezza fisica traccia la scala della materia ->
+  G(L) puo' avere un massimo interno (ingrediente per la tensione di Hubble).
+- **Gravita' (clumping)**: vuoti espandono > materia (torsione dallo spin).
+- **Tempo proprio attivo**: la materia ~31% piu' lenta; direzione del tempo emergente
+  (materia indietro / spazio avanti, netto avanti); dilatazione gravitazionale spiegata.
+- **"Febbre" = transiente**, non legge di scala (artefatto di non-equilibrio).
+- **Cosmogenesi**: SSB da seme stocastico; senza dadi niente universo.
 
----
-
-## 4bis. Spinore, chiralita' e DIREZIONE DEL TEMPO (motore integrato)
-
-[Aggiornamento: il motore e' stato portato a Einstein-Cartan COMPLETO, con la torsione
-sorgentata dallo SPIN. Il resto del documento (statica/dinamica) descrive ancora la fase
-scalare e va allineato; questa sezione introduce la struttura spinoriale e una sua
-conseguenza importante. Vedi docs/peano/EDIFICIO_EINSTEIN_CARTAN.md per i dettagli.]
-
-### 4bis.1 Lo spinore del voxel
-Ogni voxel porta uno spinore psi = cos(theta/2)|0> + sin(theta/2) e^{i phi}|1>, con:
-- **beta/alpha = tan(theta/2) e^{i phi} = PENDENZA DEL KINK** (il campo complesso la cui
-  parte reale e' chi; theta dalla pendenza locale del campo);
-- twist 180 alternato per legame + **chiusura 720** (winding = 4pi, spin-1/2), TOPOLOGICI;
-- **densita' chirali** derivate: rho_SX = sin^2(theta/2) ("materia"), rho_DX = cos^2(theta/2)
-  ("spazio"), rho_SX + rho_DX = 1.
-La torsione e' ora sorgentata dallo spin: K2_spin = chi0^2 * sum W |n_i - n_j|^2 (n =
-vettore di Bloch) -> guida saturazione, espansione, gravita' e dilatazione del tempo.
-
-### 4bis.2 Tempo proprio dilatato dalla massa (gravita' -> tempo) [D]
-Il tempo proprio locale e' rallentato dalla massa (torsione da spin):
-    d tau / dt = f = 1 - <K2_spin>/rho*
-- materia (K2 < rho*): 0 < f < 1 -> tempo (e fisica locale) RALLENTATI (dilatazione
-  gravitazionale, ATTIVA: il campo evolve in dt*f, verificato ~31% piu' lento nei nuclei);
-- bounce (K2 = rho*): f = 0 (orizzonte);  estremo (K2 > rho*): f < 0 (inversione, ma la
-  saturazione cap-pa K2 a rho* -> f non scende sotto 0 in dinamica normale).
-Parameter-free (rho* derivato). E' il legame gravita' -> tempo proprio.
-
-### 4bis.3 La DIREZIONE DEL TEMPO emerge dall'integrazione SX+DX [D + interpretazione]
-**Considerazione (verificata, nessuna modifica al motore necessaria).** Decomponendo il
-tempo proprio per chiralita' (diagnostico puro):
-    tau_SX = integrale di f * rho_SX   (materia),   tau_DX = integrale di f * rho_DX  (spazio).
-Con l'**interpretazione di Feynman-Stueckelberg** (antimateria = materia che va indietro
-nel tempo), la materia (SX) contribuisce con segno OPPOSTO allo spazio (DX). La direzione
-NETTA del tempo e' l'**integrazione dei due**:
-    tau_netto = tau_DX - tau_SX = integrale di f * cos(theta)   (cos theta = rho_DX - rho_SX).
-
-**[D] Misurato** (test_inversione_tempo.py, motore completo, 600 step): ~6-8% dei voxel -
-i NUCLEI DI MATERIA (theta > pi/2) - hanno tempo netto **INDIETRO** (antimateria); lo
-spazio attorno va **AVANTI**; il netto **globale e' AVANTI**.
-
-**Conseguenza (interpretazione).** La freccia del tempo NON e' imposta: **emerge**
-dall'integrazione di due tempi opposti (materia indietro / spazio avanti). Il verso netto
-osservato e' in avanti perche' **lo spazio domina il volume** (l'universo e' quasi tutto
-vuoto). Una inversione GLOBALE richiederebbe una regione materia-dominata (theta > pi/2
-ovunque), cioe' un core densissimo (bounce/buco nero). Notevole: questo **non richiede
-f < 0** (che la saturazione impedisce) - l'inversione vive nella CHIRALITA', non nel
-regime di torsione estrema.
-
-**Onesta'**: la misura (frazioni, netto) e' reale [D]; la convenzione di segno
-SX=indietro / DX=avanti e' un'**interpretazione** (Feynman-Stueckelberg), non derivata
-dalla dinamica. "Fitta la realta'" nel senso che riproduce una freccia del tempo
-EMERGENTE dal dominio dello spazio - candidato per la freccia cosmologica, non prova.
-
-### 4bis.4 Perche' il tempo e' piu' lento dove c'e' piu' materia/gravita' [D]
-Questa struttura SPIEGA la dilatazione gravitazionale del tempo. **[D] Misurato** (tempo
-NETTO = tau_DX - tau_SX, blocco materia vs vuoto, 150 step):
-    vuoto:  tau_DX=3.000  tau_SX=0.000  ->  NETTO = 3.000
-    materia: tau_DX=1.911  tau_SX=0.161 ->  NETTO = 1.750   (42% PIU' LENTO)
-Il rallentamento del tempo netto dove c'e' materia/gravita' viene da DUE contributi, in
-ordine di peso:
-1. **fattore f = 1 - K2_spin/rho* < 1** (dominante): la MASSA (torsione da spin) dilata il
-   ritmo del tempo proprio -> anche il tempo-spazio (avanti) rallenta (tau_DX 3.0 -> 1.91).
-   E' la dilatazione gravitazionale: piu' massa -> f piu' piccolo -> tempo piu' lento.
-2. **cancellazione chirale** (meccanismo aggiuntivo): vicino alla massa c'e' piu' MATERIA
-   (SX, tempo indietro), che CANCELLA parte del tempo-spazio (avanti) -> il netto avanti
-   cala ancora (sottrazione di tau_SX=0.16).
-Quindi: **il tempo va piu' lento dove c'e' piu' materia perche' la massa dilata il ritmo
-(f<1) e perche' una parte crescente del tempo locale e' "tempo-materia" che va all'indietro
-e si sottrae al tempo-spazio.** La gravita' rallenta il tempo come integrazione di una
-componente avanti (spazio) e una indietro (materia) sempre piu' bilanciate avvicinandosi
-alla massa. [D misura; interpretazione del segno come sopra.]
+Tutti i GATE/self-test PASS; legacy bit-identico con flag OFF.
 
 ---
 
 ## 5. Ipotesi ancora da verificare [H]
 
-1. **Collasso dinamico**: il clumping e' finora una *differenza di tasso di espansione*
-   (vuoti > materia). Resta da mostrare la **migrazione/aggregazione dinamica** della
-   materia in strutture in un'evoluzione lunga (firma forte della gravita').
-2. **Calibrazione fisica (Hubble)**: il valore assoluto di coeff e di Theta non e'
-   predetto (l'ancoraggio fissa l'unita', non G — `ell_Planck = sqrt(hbar G/c^3)`). Resta
-   da passare a unita' fisiche e predire il gap di espansione tra scale (early-vs-late).
-3. **Oscillazione SSB**: l'ordine non si assesta ma "respira" (sale a ~1, ridiscende).
-   Da distinguere meta-stabilita' (frustrazione chirale) vs bagno termico FDT.
-4. **Aritmetica 180/720**: la relazione esatta tra le 24 mezze onde spaziali (12 monti +
-   12 valli) e la chiusura spinoriale a 720 gradi (doppio rivestimento) e' da fissare.
-5. **Riduzione spinoriale**: il codice rappresenta il voxel come scalare reale chi + fase
-   tau, riduzione del campo spinoriale (up/down, twist alternato). La rappresentazione
-   complessa/spinoriale completa e' da formalizzare.
-6. **Termine di emissione di fondo**: l'origine fisica di coeff (tasso di emissione ~T_eff)
-   e' una scelta; va legato in modo derivato alla scala (e potrebbe rendere ridondante il
-   bagno termico separato).
-7. **Ancoraggio di Planck** [P]: che il fondo della gerarchia *sia* la scala di Planck e'
-   un postulato (l'auto-similarita' e' senza scala), non una derivazione.
-8. **rho*_geometrico == rho*_EC**: coincidenza concettuale tra la scala del reticolo di
-   Leech e la soglia di Einstein-Cartan, da dimostrare.
+1. **Collasso dinamico**: il clumping e' finora *differenza di tasso di espansione*. Resta
+   da mostrare la **migrazione/aggregazione** della materia in strutture (firma forte).
+2. **Calibrazione fisica (Hubble)**: coeff e Theta non sono predetti (`ell_Planck=
+   sqrt(hbar G/c^3)` -> ancorare = scegliere G). Passare a km/s/Mpc e predire il gap
+   early-vs-late.
+3. **Bounce vero**: il bounce e' un tetto morbido (densita' -> rho*), non un rimbalzo con
+   rovesciamento. Permettere l'overshoot (e l'inversione del tempo che ne segue).
+4. **Flip di chiralita' al bounce**: accoppiare l'inversione del tempo al flip SX<->DX
+   (materia<->antimateria), CPT-like.
+5. **Aritmetica 180/720**: relazione esatta tra le 24 mezze onde spaziali e la chiusura 4pi.
+6. **Oscillazione SSB**: l'ordine "respira" -> meta-stabilita' o bagno FDT?
+7. **Origine di coeff**: tasso di emissione ~T_eff da derivare (potrebbe deprecare il
+   termostato FDT separato).
+8. **Ancoraggio di Planck** [P]: il fondo = scala di Planck e' postulato (auto-similarita'
+   senza scala).
+9. **rho*_geometrico == rho*_EC**: coincidenza Leech / soglia EC, da dimostrare.
 
 ---
 
 ## 6. Sintesi del funzionamento
 
-Lo spaziotempo emerge dall'aggregazione di voxel (statica: reticolo di Leech, scala di
-Planck, rigidezza topologica R_geo). La sua disomogeneita' genera torsioni e quindi
-difetti = materia. Il settore di Einstein-Cartan fornisce una **pressione di torsione**
-che (i) localmente satura la densita' ad alta torsione (bounce, no singolarita') e (ii)
-globalmente sostiene un'espansione metrica. Un termine di **emissione di volume di fondo**
-alla scala di Planck, modulato dalla rigidezza (che la materia aumenta), fa espandere i
-vuoti piu' della materia: la materia si addensa. La medesima pressione e' spinta espansiva
-(spaziotempo) e attrazione (materia). La costante gravitazionale e' l'inverso della
-rigidezza, topologica e scala-dipendente solo attraverso lo stato (G non-monotona). Le
-condizioni iniziali sono lo stato simmetrico piu' una fluttuazione stocastica
-(cosmogenesi). Tutte le leggi di scala postulate del modello precedente risultano
-superflue: i coefficienti rilevanti sono derivati dalla geometria (N = 24, sqrt(2)) o
-ancorati a un'unica scala (Planck).
+Ogni voxel e' un **campo (chi) + uno spinore** (beta/alpha = pendenza del kink, twist 180
+alternato che chiude a 720). Dallo SPINORE si calcola la **densita' di spin** (vettore di
+Bloch) e quindi la **torsione** K2_spin: lo spin genera la torsione. Quell'unica torsione
+guida tutto:
+- la **saturazione/bounce** (sullo spin) mette un tetto alla densita' (rho*, niente
+  singolarita');
+- l'**espansione metrica** + l'irrigidimento da materia fanno espandere i vuoti piu' della
+  materia -> la materia si **addensa** (gravita'/clumping: spinta=attrazione, due frame);
+- la massa **rallenta il tempo proprio** (attivo: la fisica locale rallenta, ~31%), e la
+  **direzione del tempo emerge** dall'integrazione materia(indietro)+spazio(avanti) - in
+  avanti perche' lo spazio domina il volume.
+La costante gravitazionale e' l'inverso della rigidezza (topologica, R_geo=4*24/23; scala-
+dipendente solo via lo stato -> G non-monotona). La materia, chiralita' (SX), nasce dalla
+complessita' dello spaziotempo. Le condizioni iniziali: simmetrico + seme stocastico
+(cosmogenesi). Tutte le leggi di scala postulate del modello precedente sono superflue: i
+coefficienti sono derivati dalla geometria (N=24, sqrt(2)) o ancorati a un'unica scala
+(Planck). Nessun valore fisico hardcoded.
