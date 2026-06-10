@@ -42,11 +42,10 @@ FATTO DI RECENTE (oltre quanto sopra):
 
 PENDENTI - FASE DI CABLAGGIO (audit 2026-06-10: connessioni logiche, NON nuovi coupling;
 verificate nel codice riga per riga, vedi sotto >>> AUDIT CABLAGGIO <<<):
-  A) GERARCHIA CHIRALE [CONSIGLIATO - il piu' importante]: a L2+ la torsione ricade sul
-     GRADIENTE SCALARE coarse (apply_muratore_step: spin solo se figli=segmenti). Serve
-     l'OPERATORE DI PROIEZIONE CHIRALE L_n -> L_{n+1} (Bloch medio pesato dei figli ->
-     spinore del padre) => torsione DALLO SPIN a TUTTI i livelli + advezione inter-blocco
-     (collasso GERARCHICO, aggregazione TRA blocchi). Completa "EC in tutte le torsioni".
+  A) GERARCHIA CHIRALE: FATTO (vedi >>> TASK A <<< sotto: gravita' gerarchica confermata,
+     scala con la massa). NUOVO PRIORITARIO AL SUO POSTO: CASCATA GRAVITAZIONALE - run
+     lungo, C_intra e C_inter insieme: C_inter deve accendersi IN RITARDO (il collasso L1
+     costruisce la massa che accende la gravita' L2).
   B) SPINORE IN TEMPO PROPRIO: apply_spinore_step usa dt NUDO -> la curvatura non rallenta
      la dinamica della torsione (il campo chi si' via _evolve_field_proper_time, lo spinore
      no). Cablare dt_eff = dt*f anche nel rilassamento spinoriale. Geometrico, 0 parametri.
@@ -60,6 +59,40 @@ verificate nel codice riga per riga, vedi sotto >>> AUDIT CABLAGGIO <<<):
      (SX<->DX = materia<->antimateria), CPT-like.
   E) VALIDARE LO SPINORE: 180/720 + beta/alpha=pendenza producono risonanze/qubit corretti.
   F) CALIBRAZIONE HUBBLE: da chi0=Planck a km/s/Mpc, gap early-vs-late (G non-monotono pronto).
+
+>>> TASK A - GERARCHIA CHIRALE: FATTO, GRAVITA' GERARCHICA CONFERMATA <<<
+  RISULTATO (experiments/collasso_gerarchico/, 4 semi x 3 masse, GATE tutti PASS):
+  il collasso inter-blocco SCALA CON LA MASSA: C_inter x1.003 (1 parete) -> x1.003
+  (4 pareti) -> x1.045 (8 pareti); null legacy PIATTO a ogni massa; EC>null 12/12;
+  somma(chi) conservata ESATTA (err=0.0); attivazione A SOGLIA.
+  INTERPRETAZIONE (Luca): vicino a Planck LA MASSA NON ESISTE ANCORA (1 parete = blocco
+  quasi puro spazio, rho_SX~2%) -> la proiezione riporta n_z~1 -> K2_bloch~0 -> la
+  gravita' di quel livello e' CORRETTAMENTE SPENTA. La gravita' si accende dove (e
+  quando) la materia esiste. Il run a 8 pareti e' la SONDA che lo dimostra.
+  => NUOVO PENDENTE PRIORITARIO - CASCATA GRAVITAZIONALE [H]: il collasso L1 (x1.605)
+  COSTRUISCE la massa di blocco -> K2_bloch cresce -> la gravita' L2 si accende IN
+  RITARDO. Test: run LUNGO, C_intra e C_inter insieme -> C_inter deve partire piatta e
+  accendersi dopo (onset ritardato). La gravita' sale la gerarchia con la materia.
+  Doc: VQT_FORMALIZZAZIONE 3.7c + risultati 4 + ipotesi 5.1; NOTE.md nell'esperimento.
+
+>>> TASK A - GERARCHIA CHIRALE: piano originale (eseguito) <<<
+  1) OPERATORE DI PROIEZIONE CHIRALE (stateless, 0 parametri): bloch_aggregate(nodo) =
+     media ricorsiva dei vettori di Bloch dei figli (foglie: n da (theta,dphi)).
+     FISICA: n_z = <cos theta> = rho_DX - rho_SX = chiralita' NETTA del blocco che risale
+     la gerarchia; |n| < 1 = DEPOLARIZZAZIONE (disordine interno del blocco). Il twist 180
+     alternato cancella le componenti xy nella media -> il "messaggio" che sale e' proprio
+     il bilancio materia/spazio. Conservazione chiralita' tra livelli by construction.
+  2) TORSIONE DALLO SPIN A TUTTI I LIVELLI: spin_torsion_K2_bloch(n, W, chi0) per Bloch
+     ARBITRARI (|n|<=1); apply_muratore_step L2+ usa la proiezione (oggi ricade sullo
+     scalare coarse). Completa "EC in tutte le torsioni".
+  3) ADVEZIONE GERARCHICA: in apply_advezione_gravitazionale_step, ai livelli L2+ advezione
+     del chi COARSE tra i figli (stesso schema M1: f=1-K2_bloch/rho*, u=-mu grad f, upwind
+     conservativo sul ring dei 24 figli; somma chi ESATTAMENTE conservata per telescopia),
+     dchi distribuito alle foglie del sottoalbero (_shift_chi). mu = lo stesso derivato (2).
+  4) TEST: experiments/collasso_gerarchico/ - il setup INTER-BLOCCO che al task 1 dava
+     C piatta: ora C inter-blocco deve CRESCERE > null legacy (riscatto dell'esito negativo).
+  5) GATE: tutto dietro i flag esistenti (ec_torsion_from_spin, advezione_enabled) ->
+     OFF resta bit-identico; ri-eseguire GATE muratore/EC + collasso anello + clumping.
 
 >>> AUDIT CABLAGGIO (Gemini/Luca 2026-06-10) - verificato contro il codice <<<
   Proposta: 3 "accoppiamenti di retroazione" mancanti. VERIFICA:

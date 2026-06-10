@@ -993,14 +993,19 @@ class SolitoneComposito(AbstractSoliton):
         chi = np.array([self._get_child_chi(c) for c in self.children], dtype=float)
         W = self.coupling_matrix
         W = (W.toarray() if hasattr(W, "toarray") else np.asarray(W))
-        # TORSIONE: in EC completo viene sorgentata dallo SPIN (vettore di Bloch dello
-        # spinore), altrimenti dal gradiente scalare di chi (legacy).
+        # TORSIONE: in EC completo viene sorgentata dallo SPIN a OGNI livello (task A:
+        # L1 dal Bloch delle foglie; L2+ dal Bloch AGGREGATO dei figli via proiezione
+        # chirale bloch_aggregate). Altrimenti dal gradiente scalare di chi (legacy).
         if (self.ec_torsion_from_spin and self.children
                 and isinstance(self.children[0], SegmentoQuantistico)):
             from .motore_chirale_spinoriale import spin_torsion_K2
             theta = np.array([c.theta_spin for c in self.children], dtype=float)
             dphi = np.array([c.dphi_spin for c in self.children], dtype=float)
             K2 = spin_torsion_K2(theta, dphi, W, self.physics.chi_stable)
+        elif self.ec_torsion_from_spin:
+            from .motore_chirale_spinoriale import spin_torsion_K2_bloch
+            n = np.array([c.bloch_aggregate() for c in self.children])
+            K2 = spin_torsion_K2_bloch(n, W, self.physics.chi_stable)
         else:
             K2 = torsion_density_K2(chi, W)
         k2_mean = float(np.mean(K2))                             # per kink-stiffening
@@ -1177,6 +1182,26 @@ class SolitoneComposito(AbstractSoliton):
             for i, c in enumerate(self.children):
                 c.chi = float(c.chi + dt * dchi[i])
         else:
+            # ADVEZIONE GERARCHICA (task A): anche TRA i blocchi di questo livello.
+            # La proiezione chirale (bloch_aggregate) da' n per figlio -> K2_bloch coarse
+            # -> f coarse = 1 - K2/rho* -> u = -mu grad(f) -> flusso conservativo upwind
+            # del chi COARSE sul ring dei figli (somma chi ESATTAMENTE conservata per
+            # telescopia); dchi del blocco distribuito alle foglie (_shift_chi).
+            from .motore_chirale_spinoriale import spin_torsion_K2_bloch
+            n = np.array([c.bloch_aggregate() for c in self.children])
+            W = self.coupling_matrix
+            W = (W.toarray() if hasattr(W, "toarray") else np.asarray(W))
+            chi_c = np.array([self._get_child_chi(c) for c in self.children], dtype=float)
+            K2 = spin_torsion_K2_bloch(n, W, self.physics.chi_stable)
+            f = 1.0 - K2 / self.ec_k2_ref_chi
+            u = -self.advezione_mu * (np.roll(f, -1) - np.roll(f, 1)) * 0.5
+            u_face = 0.5 * (u + np.roll(u, -1))
+            chi_up = np.where(u_face > 0.0, chi_c, np.roll(chi_c, -1))
+            F = u_face * chi_up
+            dchi = -(F - np.roll(F, 1))
+            for j, c in enumerate(self.children):
+                if isinstance(c, SolitoneComposito):
+                    c._shift_chi(float(dt * dchi[j]))
             for c in self.children:
                 if isinstance(c, SolitoneComposito):
                     c.apply_advezione_gravitazionale_step(dt)
@@ -1230,6 +1255,33 @@ class SolitoneComposito(AbstractSoliton):
         (C massima, |chi|max minimo) PROPRIO a mu=2 (finestra [~1,16]). Se rho* cambia,
         mu segue."""
         return self.ec_k2_ref_chi / (self.physics.chi_stable ** 2)
+
+    def bloch_aggregate(self) -> np.ndarray:
+        """OPERATORE DI PROIEZIONE CHIRALE L_n -> L_{n+1} (task A; stateless, 0 parametri):
+        vettore di Bloch AGGREGATO del blocco = media ricorsiva dei Bloch dei figli
+        (foglie: n dallo spinore (theta, dphi)).
+        FISICA: n_z = <cos theta> = rho_DX - rho_SX = la CHIRALITA' NETTA del blocco che
+        risale la gerarchia (il twist 180 alternato cancella le componenti xy nella media:
+        il "messaggio" che sale e' il bilancio materia/spazio); |n| < 1 = DEPOLARIZZAZIONE
+        (disordine interno). Conservazione della chiralita' tra livelli by construction
+        (media = proiezione, nessuna informazione inventata)."""
+        from .segmento_quantistico import SegmentoQuantistico
+        from .motore_chirale_spinoriale import bloch_vectors
+        if self.children and isinstance(self.children[0], SegmentoQuantistico):
+            theta = np.array([c.theta_spin for c in self.children], dtype=float)
+            dphi = np.array([c.dphi_spin for c in self.children], dtype=float)
+            return bloch_vectors(theta, dphi).mean(axis=0)
+        return np.mean([c.bloch_aggregate() for c in self.children], axis=0)
+
+    def _shift_chi(self, delta: float) -> None:
+        """Trasla chi di TUTTE le foglie del sottoalbero di delta (advezione coarse ->
+        foglie: il blocco che riceve/cede materia la distribuisce uniformemente)."""
+        from .segmento_quantistico import SegmentoQuantistico
+        for c in self.children:
+            if isinstance(c, SegmentoQuantistico):
+                c.chi = float(c.chi + delta)
+            else:
+                c._shift_chi(delta)
 
     def proper_time_factor(self) -> float:
         """Fattore di tempo proprio del blocco (solitone), sorgentato dalla MASSA (torsione
