@@ -954,6 +954,12 @@ Branch `physics/einstein-cartan-saturation`. Saturazione/bounce + espansione (mu
 | `test_cosmogenesi.py` | Universo da origine simmetrica + dadi? SI (SSB; senza dadi niente). | (no args, ~2 min) |
 | `test_gravita_clumping.py` | I vuoti espandono più della materia (clumping=gravità)? SI col drive di fondo. | (no args, ~2 min) |
 
+### Esperimenti (un folder per esperimento — regola 9)
+
+| Cartella / script | Domanda / risultato | Esecuzione |
+|---|---|---|
+| `experiments/collasso_dinamico/test_collasso_dinamico.py` | Sul motore EC completo la materia MIGRA e si AGGREGA, o c'è solo espansione differenziale? **Risultato NEGATIVO/onesto**: la concentrazione `C=Var_b(D_b)/<D_b>²` resta PIATTA (x1.001, = al null legacy) mentre `a_vuoto>a_denso` (x1.0028). Il clumping è **cinematico**: il fattore di scala `a` modula l'espansione ma NON trasporta χ tra i blocchi → niente migrazione. Pezzo mancante = back-reaction metrica→campo (trasporto di densità chirale, vedi `wqt_oop/reference/`). | `python experiments/collasso_dinamico/test_collasso_dinamico.py` (~1 min) → `collasso_dinamico.png` |
+
 **Flag opt-in (default OFF → comportamento legacy bit-identico)**: `ec_dynamics_enabled`,
 `muratore_enabled`, `g_emergent_active`, `kink_stiffening_active`, `muratore_h_fondo_coeff>0`.
 Attivatori ricorsivi: `set_ec_dynamics`, `set_muratore`, `set_g_emergent`,

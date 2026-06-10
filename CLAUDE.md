@@ -52,6 +52,13 @@ Questi non sono suggerimenti: sono regole apprese da errori reali in questo prog
    "a braccio": prima il piano scritto, poi il codice. Vale in particolare per
    operazioni git (merge/push), refactor, rifondazioni doc e nuovi esperimenti.
 
+9. **UN FOLDER PER ESPERIMENTO (regola di Luca, 2026-06-10).** Ogni esperimento sta
+   in una propria cartella sotto `experiments/`, e il NOME della cartella RIFLETTE il
+   nome dell'esperimento (es. `experiments/collasso_dinamico/`, non `experiments/exp3/`
+   con dentro N test scollegati). Dentro: lo script del test + eventuali output/figure/
+   note di quell'esperimento. Vale per i NUOVI esperimenti (i vecchi `expN/` si
+   migrano solo se richiesto).
+
 ---
 
 ## 1. COS'E' IL PROGETTO

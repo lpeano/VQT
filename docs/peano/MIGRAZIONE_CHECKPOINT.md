@@ -49,6 +49,20 @@ PRIMA COSA DA FARE (scegliere con Luca):
   5) OSCILLAZIONE SSB ("respiro"): meta-stabilita' (frustrazione chirale) o bagno FDT?
   6) FLIP DI CHIRALITA' al bounce (SX<->DX = materia<->antimateria), CPT-like.
 
+>>> TASK 1 - COLLASSO DINAMICO: FATTO (esito NEGATIVO/onesto) <<<
+  experiments/collasso_dinamico/ (test + NOTE.md + collasso_dinamico.png).
+  RISULTATO: NIENTE migrazione. La concentrazione C=Var_b(D_b)/<D_b>^2 resta PIATTA
+  (x1.001) e IDENTICA al null legacy, mentre a_vuoto/a_denso=1.0028 (espansione diff. c'e').
+  => Il CLUMPING e' CINEMATICO: il fattore di scala 'a' modula l'espansione ma NON trasporta
+  chi tra i blocchi (in evolve_with_muratore). Nessuna durata di run lo cambia: manca il
+  meccanismo. Spinore sano (norma 2e-16, winding->4pi).
+  PEZZO MANCANTE (prossimo task concreto): BACK-REACTION METRICA->CAMPO. L'espansione
+  differenziale deve retroagire sul campo come termine di TRASPORTO/ADVEZIONE (coordinate
+  comoventi): la materia trascinata verso le regioni dense / dal gradiente di tempo proprio.
+  E' il trasporto di densita' chirale gia' abbozzato in wqt_oop/reference/ (chiralita_ec.py).
+  => NUOVO TASK 1b: implementare (additivo, dietro flag) l'advezione di chi guidata da
+  grad(a) o grad(f) e ri-misurare C(t) col motore completo (deve crescere > legacy).
+
 VERIFICA RAPIDA STATO (eseguire a inizio sessione):
   python -m wqt_oop.test_einstein_cartan_equivalence   # GATE EC
   python -m wqt_oop.test_muratore_equivalence          # GATE muratore (5 test, incl clumping EC completo)
