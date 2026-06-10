@@ -195,6 +195,60 @@ L'universo nasce da una fluttuazione.
 
 ---
 
+## 4bis. Spinore, chiralita' e DIREZIONE DEL TEMPO (motore integrato)
+
+[Aggiornamento: il motore e' stato portato a Einstein-Cartan COMPLETO, con la torsione
+sorgentata dallo SPIN. Il resto del documento (statica/dinamica) descrive ancora la fase
+scalare e va allineato; questa sezione introduce la struttura spinoriale e una sua
+conseguenza importante. Vedi docs/peano/EDIFICIO_EINSTEIN_CARTAN.md per i dettagli.]
+
+### 4bis.1 Lo spinore del voxel
+Ogni voxel porta uno spinore psi = cos(theta/2)|0> + sin(theta/2) e^{i phi}|1>, con:
+- **beta/alpha = tan(theta/2) e^{i phi} = PENDENZA DEL KINK** (il campo complesso la cui
+  parte reale e' chi; theta dalla pendenza locale del campo);
+- twist 180 alternato per legame + **chiusura 720** (winding = 4pi, spin-1/2), TOPOLOGICI;
+- **densita' chirali** derivate: rho_SX = sin^2(theta/2) ("materia"), rho_DX = cos^2(theta/2)
+  ("spazio"), rho_SX + rho_DX = 1.
+La torsione e' ora sorgentata dallo spin: K2_spin = chi0^2 * sum W |n_i - n_j|^2 (n =
+vettore di Bloch) -> guida saturazione, espansione, gravita' e dilatazione del tempo.
+
+### 4bis.2 Tempo proprio dilatato dalla massa (gravita' -> tempo) [D]
+Il tempo proprio locale e' rallentato dalla massa (torsione da spin):
+    d tau / dt = f = 1 - <K2_spin>/rho*
+- materia (K2 < rho*): 0 < f < 1 -> tempo (e fisica locale) RALLENTATI (dilatazione
+  gravitazionale, ATTIVA: il campo evolve in dt*f, verificato ~31% piu' lento nei nuclei);
+- bounce (K2 = rho*): f = 0 (orizzonte);  estremo (K2 > rho*): f < 0 (inversione, ma la
+  saturazione cap-pa K2 a rho* -> f non scende sotto 0 in dinamica normale).
+Parameter-free (rho* derivato). E' il legame gravita' -> tempo proprio.
+
+### 4bis.3 La DIREZIONE DEL TEMPO emerge dall'integrazione SX+DX [D + interpretazione]
+**Considerazione (verificata, nessuna modifica al motore necessaria).** Decomponendo il
+tempo proprio per chiralita' (diagnostico puro):
+    tau_SX = integrale di f * rho_SX   (materia),   tau_DX = integrale di f * rho_DX  (spazio).
+Con l'**interpretazione di Feynman-Stueckelberg** (antimateria = materia che va indietro
+nel tempo), la materia (SX) contribuisce con segno OPPOSTO allo spazio (DX). La direzione
+NETTA del tempo e' l'**integrazione dei due**:
+    tau_netto = tau_DX - tau_SX = integrale di f * cos(theta)   (cos theta = rho_DX - rho_SX).
+
+**[D] Misurato** (test_inversione_tempo.py, motore completo, 600 step): ~6-8% dei voxel -
+i NUCLEI DI MATERIA (theta > pi/2) - hanno tempo netto **INDIETRO** (antimateria); lo
+spazio attorno va **AVANTI**; il netto **globale e' AVANTI**.
+
+**Conseguenza (interpretazione).** La freccia del tempo NON e' imposta: **emerge**
+dall'integrazione di due tempi opposti (materia indietro / spazio avanti). Il verso netto
+osservato e' in avanti perche' **lo spazio domina il volume** (l'universo e' quasi tutto
+vuoto). Una inversione GLOBALE richiederebbe una regione materia-dominata (theta > pi/2
+ovunque), cioe' un core densissimo (bounce/buco nero). Notevole: questo **non richiede
+f < 0** (che la saturazione impedisce) - l'inversione vive nella CHIRALITA', non nel
+regime di torsione estrema.
+
+**Onesta'**: la misura (frazioni, netto) e' reale [D]; la convenzione di segno
+SX=indietro / DX=avanti e' un'**interpretazione** (Feynman-Stueckelberg), non derivata
+dalla dinamica. "Fitta la realta'" nel senso che riproduce una freccia del tempo
+EMERGENTE dal dominio dello spazio - candidato per la freccia cosmologica, non prova.
+
+---
+
 ## 5. Ipotesi ancora da verificare [H]
 
 1. **Collasso dinamico**: il clumping e' finora una *differenza di tasso di espansione*
