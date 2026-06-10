@@ -1163,6 +1163,28 @@ class SolitoneComposito(AbstractSoliton):
         K2 = spin_torsion_K2(theta, dphi, W, self.physics.chi_stable)
         return 1.0 - float(np.mean(K2)) / self.ec_k2_ref_chi
 
+    def measure_chirality_proper_time(self, dt: float) -> None:
+        """DIAGNOSTICO (NON cambia la dinamica): decompone il tempo proprio per chiralita'.
+        Per ogni voxel accumula
+            tau_sx += dt * f * rho_SX   (tempo proprio della MATERIA),
+            tau_dx += dt * f * rho_DX   (tempo proprio dello SPAZIO),
+        con f = proper_time_factor() (=1-K2_spin/rho*) e rho_SX/DX = sin^2/cos^2(theta/2).
+        tau_sx + tau_dx = tempo proprio globale (dt*f). Solo lettura sullo stato (theta);
+        scrive SOLO gli accumulatori diagnostici tau_sx/tau_dx. Chiamare ACCANTO a evolve."""
+        from .segmento_quantistico import SegmentoQuantistico
+        from .motore_chirale_spinoriale import chirality_densities
+        if self.children and isinstance(self.children[0], SegmentoQuantistico):
+            f = self.proper_time_factor()
+            theta = np.array([c.theta_spin for c in self.children], dtype=float)
+            rho_sx, rho_dx = chirality_densities(theta)        # materia, spazio
+            for i, c in enumerate(self.children):
+                c.tau_sx += dt * f * float(rho_sx[i])
+                c.tau_dx += dt * f * float(rho_dx[i])
+        else:
+            for c in self.children:
+                if isinstance(c, SolitoneComposito):
+                    c.measure_chirality_proper_time(dt)
+
     def _evolve_field_proper_time(self, dt: float, external_force=None) -> None:
         """TEMPO PROPRIO ATTIVO: ogni blocco L1 (solitone) evolve il campo nel suo tempo
         proprio dt_local = dt * f, con f = 1 - <K2_spin>/rho* (vedi proper_time_factor).

@@ -103,6 +103,11 @@ class SegmentoQuantistico(AbstractSoliton):
         # Default neutro; usato solo se SolitoneComposito.spinore_enabled. Non tocca (chi,v).
         self.theta_spin: float = 1e-6     # latitudine Bloch (tan(theta/2)=|pendenza kink|)
         self.dphi_spin: float = 0.0       # twist del legame i->i+1 (winding spinoriale)
+        # Tempo proprio DECOMPOSTO per chiralita' (DIAGNOSTICO, non tocca la dinamica):
+        # tau_sx = tempo proprio della MATERIA (peso rho_SX), tau_dx = dello SPAZIO (rho_DX).
+        # tau_sx + tau_dx = tempo proprio globale. Solo misura.
+        self.tau_sx: float = 0.0
+        self.tau_dx: float = 0.0
         
         # Dissipazione (mutabile, aggiornato da SolitoneComposito)
         self.gamma_damping: float = 0.0  # Coefficiente smorzamento [1/s]
