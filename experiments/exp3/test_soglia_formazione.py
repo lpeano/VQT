@@ -87,8 +87,24 @@ def make(seed, chi_mean=65.0, level=1):
                                      screening_enabled=False) for _ in range(24)]
             L2s.append(SolitoneComposito(L1s, p2, screening_enabled=False))
         sol = SolitoneComposito(L2s, p3, screening_enabled=False)
+    elif level == 4:
+        p2 = dc_replace(PhysicsContext.for_level(2, base_context=base0),
+                        zero_point_amplitude=0.0)
+        p3 = dc_replace(PhysicsContext.for_level(3, base_context=base0),
+                        zero_point_amplitude=0.0)
+        p4 = dc_replace(PhysicsContext.for_level(4, base_context=base0),
+                        zero_point_amplitude=0.0)
+        L3s = []
+        for _ in range(24):
+            L2s = []
+            for _ in range(24):
+                L1s = [SolitoneComposito(_make_segs(rng, chi_mean, base0), p1,
+                                         screening_enabled=False) for _ in range(24)]
+                L2s.append(SolitoneComposito(L1s, p2, screening_enabled=False))
+            L3s.append(SolitoneComposito(L2s, p3, screening_enabled=False))
+        sol = SolitoneComposito(L3s, p4, screening_enabled=False)
     else:
-        raise ValueError("level deve essere 1, 2 o 3")
+        raise ValueError("level deve essere 1, 2, 3 o 4")
     sol._peano_analyzer = PeanoVQTAnalyzer(chi_saturation_threshold=1e12, drain_rate=0.0)
     return sol
 

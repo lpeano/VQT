@@ -1,4 +1,220 @@
-# Checkpoint VQT - Ultimo Aggiornamento: 2026-06-04
+# Checkpoint VQT - Ultimo Aggiornamento: 2026-06-09
+
+## >>> PER DOMANI (leggi questo per primo) <<<
+
+Branch: physics/einstein-cartan-saturation.
+
+STATO: MOTORE EINSTEIN-CARTAN COMPLETAMENTE INTEGRATO. La TORSIONE e' sorgentata dallo
+SPIN (non piu' dal gradiente scalare). Ogni voxel ha uno SPINORE (theta, dphi):
+  - beta/alpha = tan(theta/2) e^{i phi} = PENDENZA DEL KINK (la richiesta storica);
+  - twist 180 alternato per legame + CHIUSURA 720 (winding -> 4pi, spin-1/2);
+  - densita' chirali SX (materia)/DX (spazio) DERIVATE dallo spinore.
+  - K2_spin = chi0^2 * sum W |n_i-n_j|^2 (n=Bloch) guida TUTTO: saturazione (bounce sullo
+    SPIN), espansione, gravita'. set_ec_integrato(coeff) accende tutto.
+NIENTE HARDCODED (chi0 da physics.chi_stable, rho*=2chi0^2 derivato, 4pi/pi topologici).
+Moduli: wqt_oop/motore_chirale_spinoriale.py (spinore), einstein_cartan/muratore_planck/
+rigidezza_geometrica/scala_planck. Tutti i GATE PASS, legacy bit-identico (flag OFF).
+
+D'ORA IN POI: TUTTI i test usano il MOTORE COMPLETO -> root.set_ec_integrato(coeff) e
+root.evolve_with_muratore(dt). Esempio: experiments/exp3/test_gravita_clumping.py.
+
+GRAVITA' verificata sul motore completo: vuoti espandono > materia -> CLUMPING (torsione
+dallo spin). beta/alpha=pendenza err 1.3e-3, spinore normalizzato, stabile.
+
+PRIMA COSA DA FARE (scegliere con Luca):
+  0) [ritocco rapido] alzare il rateo di rilassamento spinore (RELAX_DPHI/K_CLOSURE in
+     motore_chirale_spinoriale.py) cosi' il winding chiude a 720 DENTRO il run (ora 4.4
+     vs 4pi=12.57 in 150 step; il self-test a 2000 step chiude).
+  1) [consigliato] COLLASSO DINAMICO sul motore completo: run lungo -> la materia MIGRA
+     e si aggrega in strutture? (firma forte della gravita'; finora solo differenza di a).
+  2) VALIDARE LO SPINORE: 180/720 + beta/alpha=pendenza producono la fenomenologia giusta
+     (risonanze, qubit) - la diagnosi del primo giorno (campo complesso ridotto a scalare).
+  3) CALIBRAZIONE HUBBLE: da chi0=Planck a km/s/Mpc, gap early-vs-late (G non-monotono pronto).
+
+VERIFICA RAPIDA STATO (eseguire a inizio sessione):
+  python -m wqt_oop.test_einstein_cartan_equivalence   # GATE EC
+  python -m wqt_oop.test_muratore_equivalence          # GATE muratore (5 test, incl clumping EC completo)
+  python -m wqt_oop.motore_chirale_spinoriale          # self-test spinore (720, beta/alpha)
+  python experiments/exp3/test_gravita_clumping.py     # gravita' sul motore completo
+
+STATO DOC: VQT_FORMALIZZAZIONE.md RIALLINEATO al motore integrato (torsione dallo spin,
+spinore 180/720, le 4 facce tipo-GR: espansione/gravita'/dilatazione tempo/direzione
+tempo). TESTS_E_STRUMENTI.md sez.8 OK. EDIFICIO_EINSTEIN_CARTAN.md: doc IMPLEMENTATIVA
+(log dei passi), ha ancora alcune cornici scalari -> da rifinire se serve, ma la teoria
+coerente e' in VQT_FORMALIZZAZIONE.md.
+
+---
+
+## >>> EDIFICIO EC: COSA E' STATO FATTO (2026-06-09) <<<
+
+EDIFICIO EINSTEIN-CARTAN COMPLETATO (branch physics/einstein-cartan-saturation).
+Doc unica: docs/peano/EDIFICIO_EINSTEIN_CARTAN.md. Tutto ADDITIVO (legacy intatto),
+niente if-then-else, coefficienti DERIVATI. 4 moduli + 2 GATE verdi:
+  - einstein_cartan.py: saturazione (bounce) + chiusura 720 (gia' nel blocco sotto).
+  - muratore_planck.py: ESPANSIONE auto-regolante H=beta(K2/a^2-rho*)+, punto fisso
+    a*=sqrt(<K2>/rho*), H->0. Zero parametri nuovi. GATE test_muratore_equivalence.py.
+  - rigidezza_geometrica.py: G EMERGENTE (Sakharov) beta=Theta/R_geo; DERIVATO
+    R_geo=4N/(N-1)=4.174 TOPOLOGICO (dal 24, NON 24^L), scala-invariante (Leech reale).
+  - scala_planck.py: VOXEL = ell_Planck (ancoraggio); Theta=E_Planck; ladder
+    ell_L=24^(L/3)*ell_Planck -> protone~L43, atomo~L54, uomo~L76, universo~L134.
+
+RISULTATI MISURATI:
+  - DISSOLUZIONE COUPLING [VER]: scaled~flat~cura, densita' intensiva (CV 0.09-0.13),
+    no divergenza appiattendo (incluso lambda~24^2L). I coupling postulati 24^L sono
+    SUPERFLUI/rimovibili. (experiments/exp3/test_cura_coupling.py + cura_coupling.json)
+  - FEBBRE = TRANSIENTE non legge [VER]: KE/foglia riscalda-poi-raffredda; L4 non
+    equilibrato; fit R^2=0.70 -> alpha=0.165 BOCCIATO (NON codificarlo come T_c~N^alpha).
+    (experiments/exp3/test_legge_febbre.py + legge_febbre.json)
+  - G: predetta la STRUTTURA (topologica), NON il valore assoluto (ell_P=sqrt(hbarG/c^3)
+    -> ancorare lunghezza = scegliere G, e' unita'). Hubble tension NON risolta (ci sono
+    gli ingredienti: G scala-dipendente + inomogeneita' locale; manca calibrazione).
+
+TASK 1 [FATTO 2026-06-09]: NON-MONOTONIA di G CONFERMATA (ipotesi Luca corretta).
+  - test_g_nonmonotono.py (meccanismo, a* analitico): vuoto->beta(L) piatto (G topologico
+    0.240); materia a scala L -> G picca li' -> NON MONOTONO.
+  - Muratore esteso a TUTTI i livelli (apply_muratore_step su ogni composito, torsione
+    coarse via _get_child_chi); get_expansion_state riporta beta(L) per livello.
+  - test_g_dinamico.py (la DINAMICA lo genera): materia a L2 -> beta picca a L2 (non
+    monotono) da se'. Magnitudine ~beta_sat (lento); la STRUTTURA e' il risultato.
+  VERDETTO: G NON e' legge di scala universale, e' un campo che traccia la scala della
+  materia. E' l'ingrediente per la differenza early-vs-late (Hubble). GATE verdi.
+
+TASK 2 [FATTO 2026-06-09]: COSMOGENESI - SSB da origine simmetrica + dadi CONFERMATA.
+  - test_cosmogenesi.py: campo simmetrico chi~0 + seme stocastico (dadi). CON dadi
+    (anche 0.1) -> SSB (ordine->~1, domini); SENZA dadi -> resta 0 (niente universo).
+    I DADI SONO NECESSARI (l'universo nasce da una fluttuazione - intuizione Luca).
+  - Espansione muratore NON scatta: torsione domini SSB < rho* -> serve TASK 3.
+  - Ordine OSCILLA (meta-stabilita'/bagno termico, da capire).
+
+TASK 3 [FATTO 2026-06-09]: RICALIBRAZIONE rho* -> tutto il sistema si accende.
+  3 correzioni DERIVATE (misurate): (1) rho*=2chi0^2=(sqrt2 chi0)^2 (scala parete/
+  disordine, era 4chi0^2 = solo nodo isolato max); (2) saturazione A SOFFITTO one-sided
+  (K2-rho*)+ (vuoto stabile, bounce solo sopra); (3) muratore LOCALE per-nodo +
+  equilibrium_a=sqrt(maxK2/rho*). VERIFICHE: EC grad err 5e-11, GATE OFF bit-id/ON
+  stabile. COSMOGENESI ora COMPLETA (SSB+dadi -> domini -> espansione si accende);
+  G non-monotono piu' marcato (beta picca 0.91 vs base 0.24).
+
+G EMERGENTE ATTIVA [FATTO 2026-06-09]: beta_sat <- rigidezza fisica (beta=beta_baseline*
+a^2=Theta/R_phys, R_phys=R_geo/a^2). Anello rigidezza->gravita'->dinamica CHIUSO.
+Feedback STABILE (no runaway, regolato da diluizione ~1/a^2). Flag g_emergent_active
+(OFF bit-identico), GATE [4] in test_muratore_equivalence (a_max~1.0002, no NaN).
+
+KINK-STIFFENING [FATTO 2026-06-09]: la materia irrigidisce lo spaziotempo
+R_local=R_geo(1+K2/rho*) -> beta/=(1+K2/rho*). VERIFICATO (test_gravita_clumping.py):
+rallenta l'espansione dei blocchi densi (a 1.000036 vs 1.000122, ~3.4x) -> conferma
+"denso->rigido->lento" (Gemini) e l'unificazione di Luca (spinta=attrazione, una forza).
+PEZZO MANCANTE per il clumping completo: i vuoti restano a=1 (il muratore sorgenta
+l'espansione dalla torsione LOCALE, zero nei vuoti). Serve un DRIVE DI FONDO (emissione
+Planck = la "febbre") modulato dalla rigidezza: H = H_fondo/(1+K2/rho*) + bounce. Chiude
+il cerchio con la febbre. H_fondo = scala di emissione (tied a calibrazione Hubble, aperta).
+
+GRAVITA' EMERGENTE [FATTO 2026-06-09]: DRIVE DI FONDO (febbre=motore, opzione 2 Luca).
+  H = bounce + H_fondo, H_fondo = coeff/(1+K2/rho*) (emissione UNIFORME di Planck modulata
+  dalla rigidezza). VERIFICATO (GATE [5]): vuoti espandono PIU' della materia (a_vuoto
+  1.003 > a_denso 1.002) -> CLUMPING -> attrazione = controparte della spinta (una forza,
+  due frame). La febbre/termostato DIVENTA il drive (deprecato come bagno separato).
+  Iter onesto: H_fondo~T_locale FALLI' (T locale traccia materia + bounce domina);
+  fix = drive UNIFORME + materia moderata. Flag muratore_h_fondo_coeff (default 0=bit-id).
+
+TASK APERTI (aggiornati 2026-06-09 fine sessione; vedi blocco PER DOMANI in testa):
+  A. COLLASSO DINAMICO (firma forte della gravita'): run lungo, la materia MIGRA davvero
+     nei grumi? Finora mostrato solo come differenza di espansione (a_vuoto>a_denso),
+     non come collasso/aggregazione dinamica. Misurare la concentrazione nel tempo.
+  B. CALIBRAZIONE FISICA -> Hubble: da coeff/Theta=E_Planck a km/s/Mpc; predire il gap
+     early-vs-late (usa G non-monotono gia' dimostrato). coeff = tasso emissione (~T_eff).
+  C. OSCILLAZIONE SSB: l'ordine "respira" (sale a ~1, ridiscende). Meta-stabilita'
+     (frustrazione chirale) o bagno termico FDT? Caratterizzare.
+  D. ARITMETICA 180/720 [DA CONFERMARE con Luca]: 24 mezze onde (12 monti+12 valli) vs
+     chiusura spinoriale 720 (doppio rivestimento). Riconciliare fase spaziale/spinoriale.
+  E. DEPRECARE TERMOSTATO LEGACY: ora la febbre E' il drive (drive di fondo); il bagno
+     FDT come entita' separata e' ridondante? A/B per verificare e rimuovere.
+  F. rho*_Leech == rho*_EC: la pietra angolare teorica (verifica concettuale).
+
+## >>> NUOVO BRANCH 2026-06-08: physics/einstein-cartan-saturation <<<
+
+[IMPLEMENTAZIONE EC 2026-06-09] FATTA e VERIFICATA (relazione completa in
+docs/peano/RELAZIONE_IMPLEMENTAZIONE_EC.md):
+  - NUOVO wqt_oop/einstein_cartan.py: dinamica EC (saturazione settore chi = pressione
+    di spin/bounce, forza conservativa GRADIENTE VERIFICATO err 3e-8; chiusura 720 deg
+    settore tau; twist 180 alternato come diagnostico). Self-test PASS.
+  - ADDITIVO in solitone_composito: flag ec_dynamics_enabled (default OFF),
+    apply_ec_kick/evolve_with_ec (Strang)/set_ec_dynamics. evolve() legacy INTATTO.
+  - GATE wqt_oop/test_einstein_cartan_equivalence.py: flag OFF == legacy BIT-IDENTICO
+    (diff 0.0), flag ON STABILE (no NaN). TUTTI PASS.
+  - Archeologia: la fisica EC fu persa nel cleanup a5b417e (2026-05-26), NON per
+    instabilita' -> recuperata da git 5afefb9 + legacy/.
+  - INVENTARIO COSTANTI (relazione sez.3): da eliminare i coupling postulati/legacy
+    (lambda_exchange~24^2L PRIORITA'1, alpha_K~1/24^L, kappa, gamma, d_f=2); da tenere
+    chi_stable, 4pi/pi topologici, doppio pozzo, Leech, Verlet.
+  APERTI: geometria esatta 180->720 [DA CONFERMARE Luca]; dissoluzione coupling (da
+  misurare con EC ON); rho*_Leech==rho*_EC; misura febbre/saturazione con flag ON.
+
+Diagnosi + cura foundational documentate in docs/peano/DIAGNOSI_SATURAZIONE_EC.md.
+VERIFICATO oggi: il solitone di base NON ha la pressione di saturazione Einstein-
+Cartan (beta*rho^2); la dinamica e' solo doppio-pozzo + damping + coupling; la
+torsione e' un diagnostico passivo. Questa assenza = radice probabile dei coupling
+postulati + febbre. CURA [CNG]: aggiungere il termine EC additivo (flag opt-in,
+default OFF) -> saturazione fisica -> coupling derivati invece che postulati.
+PIANO in DIAGNOSI_SATURAZIONE_EC.md sez.4. Branch genealogia: perf/evolve-vectorized
+-> physics/einstein-cartan-saturation (eredita tutta la pipeline P1-P10 + docs).
+
+## >>> SVOLTA FOUNDATIONAL 2026-06-08: il "flusso di chi_c" e' una PARAMETRIZZAZIONE <<<
+
+CONTESTO: stavamo misurando il flusso RG di chi_c (L2=1.353, L3=1.237) per decidere
+"punto fisso vs emergenza". L4 lanciata (cm 54-66). SORPRESA + INDAGINE hanno
+ribaltato il quadro. L4 FERMATA (vedi sotto).
+
+SCOPERTE (in ordine):
+1. [L4 SORPRESA] cm54,57 (i piu' bassi dello sweep) nucleano AL 100% con M_tot~1e6,
+   ~5000 difetti (plasma). A L2/L3 erano vuoto. -> chi_c(L4) < 1.08 (sweep tutto
+   sopra-soglia). Il flusso NON si appiattisce a 1.23: chi_c continua a scendere.
+2. [ARTEFATTO? indagine "verifica prima di interpretare"]
+   - Temperatura per-foglia CRESCE ~15%/livello (L1=625, L2=744, L3=832 KE/foglia
+     a cm54). ROBUSTA: invariata con serbatoio OFF (hierarchical_heat_fraction=0) e
+     con lambda_exchange azzerato. CAUSA NON PINNATA (2 ipotesi sbagliate: serbatoio,
+     lambda). E' MITE e probabilmente SEPARATA dal grosso calo di chi_c.
+   - Confound dell'osservabile: chi_c via P(M_tot>1) = P(>=1 difetto OVUNQUE) scala
+     con N per STATISTICA DEI VALORI ESTREMI, non criticita' intrinseca. -> usare
+     DENSITA' n_def/N (intensiva), non il binario.
+3. [CAUSA VERA del flusso: COUPLING SCALE-DIPENDENTI POSTULATI/LEGACY] verificato in
+   physics_context.for_level + RG_FLOW_TOPOLOGICAL_SCREENING.md:
+   - alpha_K ~ 1/24^L: FIX post-hoc per instabilita' ("derivazione" nel doc ha ???
+     letterali, auto-contraddittoria). Calibrato su 1 dato empirico (K_L2/K_L1=0.185).
+   - kappa ~ 1/24^(L/2): da quell'unico rapporto empirico.
+   - lambda_exchange ~ 24^(2L): SCALING LEGACY "ESPLOSIVO", riconosciuto dal progetto
+     stesso come "instabilita' catastrofica" per alpha_K, MAI sistemato per lambda
+     ("mantiene scaling old per backward compatibility", riga 208 physics_context).
+   - gamma_damping ~ (24^L)^0.2: esponente "conservativo" scelto.
+   -> Le leggi di scala sono POSTULATE/CALIBRATE/LEGACY, NON derivate. TODO_VALIDATION
+      flaggato nel codice ma "PASS" nel doc (documentare-prima-di-verificare).
+   VERDETTO: il "flusso di chi_c" riflette questa parametrizzazione, non una legge
+   derivata ne' un'emergenza pura. Il motore E' fisico nel nucleo (simplettico
+   verificato), ma le leggi di corsa dei coupling sono un fit/rattoppo.
+4. [CLUSTERING P10] 6 campi L4 plasma (~5000 difetti): Fano~1.0 a tutte le scale ->
+   POISSON/uniforme, NO rete cosmica nel regime denso. Diluito non testato.
+
+DECISIONE: L4 FERMATA (2026-06-08). Misurava un chi_c confuso (sweep mis-centrato +
+osservabile extreme-value + coupling postulati). Preservati: resume cm54,57 + 6 campi
+in fields/. Per riprendere lo stesso comando ri-fa i mancanti.
+
+PUNTI CONCETTUALI UTENTE (da incorporare):
+- Il modello e' lo SPAZIOTEMPO INTERO (campo chi ovunque), non solo i kink/materia.
+- "Quando aumenta la materia lo spazio deve aumentare" -> il modello e' a RETICOLO
+  FISSO (24^L): manca l'accoppiamento MATERIA<->SPAZIO (espansione). lambda_exchange
+  ~24^(2L) potrebbe essere un surrogato non-principiato di questo.
+- Generazione della materia a ogni livello: dipende dai coupling -> se postulati, la
+  generazione e' parametrizzata, non predetta.
+
+PROSSIMI PASSI (riorientati):
+  (B, RACCOMANDATO) FOUNDATIONAL: le leggi di corsa dei coupling sono DERIVABILI
+    (geometria di Leech / vero calcolo RG / accoppiamento materia-spazio) o restano
+    parametrizzazione? Bersaglio n.1 = lambda_exchange legacy ~24^(2L). Qui sta la
+    differenza tra teoria predittiva e fit.
+  - Ridefinire l'osservabile RG: DENSITA' n_def/N (intensiva), non P(M_tot>1).
+  (A, opzionale) Bisezione sistematica della causa della temperatura (~15%/livello):
+    coupling scale-invarianti vs attuali -> isola struttura vs valori. Side-quest minore.
+  - Pipeline P1-P10 resta valida e committata (vedi sotto). I tool funzionano; cambia
+    cosa misuriamo e come interpretiamo.
 
 ## >>> SEI SUL BRANCH perf/evolve-vectorized <<<
 SCOPO: vettorizzare l'integrazione del motore per 20-50x (eliminare il loop Python
@@ -53,6 +269,99 @@ NB: i run L2 precedenti (Task A) NON erano seedati -> statisticamente validi ma
 non riproducibili al bit. Coerenti con L3 seedato perche' stesso ensemble.
 
 ## >>> RIPRESA PROSSIMA SESSIONE <<<
+
+[P1 IN CORSO 2026-06-05] experiments/exp3/test_osservabili_rg.py SCRITTO (primo
+  passo del piano RG, METODO_SCALING_RG.md). Strumento multi-osservabile parallelo:
+  per ogni quench (chi_mean, seed) misura M_tot, rho_M, Psi_L=M_tot/N_dof,
+  localization_ratio, E_RX, E_psi_anchored, frustration, closure_err_norm,
+  detorsion_quality, n_def, t_quench_s. Aggrega per livello -> chi_c (logistico) +
+  summary JSON in experiments/exp3/rg_summary/ (lo leggeranno P2/P3 per il fit RG).
+  STATO (2026-06-05): codice COMPILA e GIRA. Persistenza JSON propria crash-safe
+  (.tmp+os.replace, .bak; NON ResumeManager, specializzato). Worker riusa
+  freeze_and_measure_mass + compute_hierarchical_mass + compute_geometric_E_psi
+  (motore INTATTO, additivo).
+  FATTO:
+    [x] Smoke test L2 (2 seed, cm 64/68/72): PASS. M_tot bimodale (vuoto ~5e-4 vs
+        kink ~1e2-1e3), n_def 0->1->4, rho_M(cm72)=2.17, chi_c/stable=1.318
+        (vicino all'1.338 noto; barra inf perche' 3 punti/2 seed = scalino).
+        t_quench L2 ~30s.
+    [x] Documentato in TESTS_E_STRUMENTI.md sez. 5.16. Commit fdc45ee.
+  FATTO (cont. 2026-06-05):
+    [x] CAMPAGNA L2 (P1): chi_c = 67.65 +- 0.42 -> chi_c/stable = 1.353 +- 0.008.
+        rho_M(eps0=0.05)=2.07, Psi_L(eps0)=1.03. Commit a857819. PRIMO punto RG.
+        NB: il vecchio 1.338 (Task A) era ALTRO protocollo -> per la mappa RG TUTTI
+        i livelli vanno con P1 (non mescolare con il vecchio L3=1.240).
+    [x] P2 SCRITTO: experiments/exp3/analyze_rg_scaling.py (commit a6fac57).
+        Legge rg_summary/osservabili_L*.json. Fa: FSS chi_c (asintoto L->inf),
+        confronto rho_M/Psi_L a EPSILON RIDOTTO UGUALE (non media globale!),
+        test consistenza flusso. Verificato su L2. Doc: TESTS 6.4.
+    [x] CAMPAGNA L3 (P1) FATTA: chi_c = 61.86 +- 0.13 -> chi_c/stable = 1.2371
+        +- 0.0026 (sigmoide pulita cm60->66: 0.20/0.50/0.90/1.00). Coincide col
+        vecchio 1.240. t_quench L3 = 789s (~13.2 min). Commit 4e6fb2d.
+    [x] FLUSSO RG 2 punti (P2): 1.3531 (L2) -> 1.2371 (L3), calo ~14 sigma.
+        Estrapolazione lineare 1/N -> 1.232 (NON robusta, serve L4 per curvatura).
+        rho_M(eps0): 2.07 -> 0.074 ~ 1/N -> vicino soglia M_tot e' ~scale-invariante
+        (1 difetto), la densita' si diluisce. CNG A "rho_M invariante" NON regge
+        vicino soglia; invariante candidato = massa del singolo difetto.
+    [x] P1 --save-field (opt-in): salva chi+tau (.npz compresso) solo kink, per
+        winding/spettro. L2 ~3.9KB/campo, L4 stimato <1MB. fields/ in gitignore.
+    [x] make(level=4) ESTESO (commit b8d8beb): 331776 foglie, build 4.9s, RAM
+        strutture ~0.3 GB. RAM L4 verificata: 6 worker = 2.6 GB python (picco ~5-6),
+        ~12 GB liberi su 32 -> SAFE.
+    [x] P7 --local AGGIUNTO: analizza il ring L1 del difetto (24 segmenti, difetto
+        1 su 24 NON diluito) invece del top-ring globale. Verificato L2 cm74:
+        std(m_B) 0.018 (globale) -> 0.303 (locale): il probe locale VEDE il difetto.
+        xcorr +0.524 (~2.5sigma, 1 campo). [Il globale a L3 era lavato dalla diluizione.]
+  IN CORSO (LANCIATO 2026-06-08): CAMPAGNA L4 overnight (background ID bze8bd1n2):
+    --level 4 --seeds 3 --chi-means 54,57,60,63,66 --workers 6 --save-field.
+    15 quench x ~5h / 6 worker ~ 16h. Log: rg_summary/_run_L4.log; summary ->
+    osservabili_L4.json; campi (kink) -> experiments/exp3/fields/ (gitignore).
+    Sweep bracketta punto-fisso (cm~61.6) vs emergenza (cm~56).
+  DA FARE alla ripresa (a L4 finita):
+    1. RIGENERARE summary L2 se servisse (gotcha sotto), poi analyze_rg_scaling.py
+       con 3 punti -> fit FSS completo + CURVATURA: punto fisso ~1.23 (teoria chiude)
+       o continua a scendere (emergenza, "more is different"). E' LA risposta.
+    2. ENSEMBLE SPETTRO: P8 GIA' SCRITTO (analyze_spettro_ensemble.py, TESTS 6.6).
+       Legge i campi .npz, ring locale del difetto (reshape(-1,24)), DFT a due canali,
+       AGGREGA xcorr radiale-fase per livello (media+-sem, t=mean/sem). Validato su 1
+       campo L2 (xcorr 0.524 = identico a P7 --local: consistenza OK). DA FARE:
+       girarlo sui campi L4 salvati (kink) -> verdetto vero sull'accoppiamento
+       (|t|>2 = fisico; |t|<2 = compat. ortogonalita'/rumore). Comando:
+       python experiments/exp3/analyze_spettro_ensemble.py
+    2b. [NUOVO 2026-06-08] P9 RIGIDITA'->LINEWIDTH: analyze_rigidita_linewidth.py +
+       FORMALIZZAZIONE sez.9. Ipotesi (utente): i divisori Z_24 sono le portanti, la
+       larghezza con cui un difetto le spalma e' fissata da alpha_K(L)~1/24^L.
+       Predizione ANALITICA: concentr. spettrale C_L~24^(-L/2), rapporto consecutivo
+       =sqrt(24)~4.9. Smoke L2 (1 campo): C_amp=0 (single-site satura l'ampiezza ->
+       test vive in FASE+torsione), C_fase=0.966, n_eff_tors=3.68. SERVE fields a >=2
+       livelli: L2 c'e' (1), L4 in arrivo (--save-field), L3 MANCA (campagna pre-flag).
+       Per L3: python test_osservabili_rg.py --level 3 --seeds 3 --chi-means 66
+       --workers 3 --save-field (da fare quando i core si liberano, NON ora che L4 gira).
+       Primo rapporto gia' da L2+L4 (predetto sqrt(576)=24).
+    3. Decisione vettorizzazione (Strategia B) col t_quench L4 reale dal log.
+    GOTCHA: P1 sovrascrive il summary del livello ad ogni run -> per rigenerare il
+    summary completo di un livello, rilanciare con TUTTI i suoi chi_means (cached
+    = istantaneo). (Successo coi smoke test cm74 che avevano azzerato il summary L2.)
+    3. Con L4: analyze_rg_scaling completo (fit FSS 3 parametri + test flusso).
+    4. P3 mappa RG T:(L_n->L_{n+1}) + test consistenza (METODO_SCALING_RG.md).
+    5. [DOPO L4 - TEST FONDAMENTALE] P6 winding del parametro d'ordine psi:
+       cluster = campo complesso GL psi_B=m_B*exp(i*phi_B); testare se la massa e'
+       un difetto topologico (winding intero della fase + dip |psi| nel core).
+       Protocollo in FORMALIZZAZIONE_MASSA_TOPOLOGICA.md sez. 7.3. Se winding intero
+       -> massa = carica topologica quantizzata (dominio giusto per "divisori di 24":
+       un conteggio, non le energie). Origine: domanda "voxel = qubit?" 2026-06-05.
+    6. [ESEGUIBILE GIA' ORA] P7 decomposizione spettrale a due canali: canale
+       RADIALE (ampiezza m_B = massa, Higgs) vs FASE (phi_B da tau = propagazione,
+       Goldstone). DFT su Z_24: periodi 24/gcd(m,24) = divisori di 24 (struttura
+       base, esatta). NB difetto singolo si SPALMA su tutti i modi (atteso!), non e'
+       struttura. Tool: analyze_spettro_cluster.py (SpectralBasis solo diagnostica,
+       NON l'integratore spettrale buggato). FORMALIZZAZIONE sez.8. Genera campo
+       proprio (i campi delle campagne NON sono salvati). Origine: "due energie:
+       ortogonale/frequenza vs percorrenza" 2026-06-05.
+  NB: rho_M e Psi_L per CNG A/B; t_quench_s a L4 = numero che decide vettorizzazione.
+  NB2: i campi congelati NON sono persistiti da P1 -> aggiungere salvataggio opzionale
+  del profilo chi+tau a P1 per L4 (serve a winding P6 e spettro P7).
+
 
 [METODO SCALING/RG 2026-06-05] NUOVO DOCUMENTO: docs/peano/METODO_SCALING_RG.md
   Risponde a "come capire il comportamento multi-livello SENZA simulare L>7?".

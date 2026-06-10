@@ -177,6 +177,21 @@ Con L4 si passa da 2 a 3 punti -> primo vero fit di flusso.
 - [ ] **P5. Test RG-covarianza della triade.** Verificare se la conservazione
       E_chi+E_RX+E_Psi mantiene la stessa forma per i block-means coarse-grained.
       Se si', cercare una c-function di scala basata su E_Psi.
+- [ ] **P6. [DOPO L4] Test del winding del parametro d'ordine psi.** Cluster =
+      campo complesso GL `psi_B = m_B*exp(i*phi_B)`; testare se la massa e' un
+      DIFETTO TOPOLOGICO di psi (winding intero della fase + dip di |psi| nel core).
+      Protocollo completo in FORMALIZZAZIONE_MASSA_TOPOLOGICA.md sez. 7.3. Se il
+      winding e' intero -> massa = carica topologica quantizzata (il dominio GIUSTO
+      per un'eventuale "legge dei divisori": un conteggio, non le energie).
+- [ ] **P7. [eseguibile gia' ora] Decomposizione spettrale a due canali.** Campo
+      congelato -> canale RADIALE (ampiezza m_B = massa, Higgs-like) vs canale FASE
+      (phi_B dal settore tau = propagazione, Goldstone-like). DFT su Z_24 del canale
+      di fase: i periodi 24/gcd(m,24) SONO i divisori di 24 (struttura della base,
+      esatta). Test: split di energia, ortogonalita' (cross-corr ~0), dove sta la
+      potenza. NB: difetto singolo si SPALMA su tutti i modi (atteso, non struttura);
+      concentrazione su divisori solo da pattern collettivi. Protocollo:
+      FORMALIZZAZIONE_MASSA_TOPOLOGICA.md sez. 8. Tool: analyze_spettro_cluster.py
+      (usa SpectralBasis SOLO come diagnostica, NON l'integratore spettrale buggato).
 
 NB metodologico (vincolo di progetto): nessun numero/affermazione di performance o
 di fisica va scritto prima di averlo MISURATO. Questo documento e' un PIANO: i

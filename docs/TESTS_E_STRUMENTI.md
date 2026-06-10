@@ -696,6 +696,54 @@ quindi un run da' SIA densita' SIA frazione di nucleazione binaria.
 
 ---
 
+### 5.16 `experiments/exp3/test_osservabili_rg.py` (PARALLELO) — P1 programma RG
+
+**Cosa fa e perche'**: primo passo del programma RG (docs/peano/METODO_SCALING_RG.md).
+Misura, sullo STESSO ensemble di quench, TUTTI gli osservabili che "fluiscono" con
+la scala, cosi' da confrontarli tra L2, L3, L4 (i tre punti del flusso RG). Serve a
+testare CNG A (invarianza di rho_M/Gamma = punto fisso RG) e CNG B (stabilita' della
+chiusura Psi_L). Riusa freeze_and_measure_mass + compute_hierarchical_mass +
+compute_geometric_E_psi (motore INTATTO, additivo). Parallelo + seeding
+deterministico + persistenza JSON propria crash-safe (.tmp+os.replace, .bak).
+
+Osservabili per quench (su stato congelato): M_tot, rho_M (=M_tot/n_foglie),
+Psi_L (=M_tot/N_dof), localization_ratio, regime, E_RX, E_psi_anchored, frustration,
+closure_err_norm, detorsion_quality, n_def, t_quench_s.
+
+```bash
+# smoke test L2 (veloce, ~1 min con 4 worker):
+python experiments/exp3/test_osservabili_rg.py --level 2 --seeds 2 \
+  --chi-means 64,68,72 --workers 4
+# campagna L3:
+python experiments/exp3/test_osservabili_rg.py --level 3 --seeds 10 \
+  --chi-means 58,60,62,64,66,68 --workers 6
+# singolo quench L4 per t_quench_s (decide vettorizzazione Strategia B):
+python experiments/exp3/test_osservabili_rg.py --level 4 --seeds 1 \
+  --chi-means 62 --workers 1
+```
+
+| Parametro | Default | Descrizione |
+|---|---|---|
+| `--level` | 2 | Livello (24^L foglie) |
+| `--seeds` | 5 | Seed per punto |
+| `--chi-means` | `62,...,72` | Sweep chi_mean |
+| `--pre` | 40 | Step di pre-evoluzione prima del quench |
+| `--quench-steps` | 500 | Step quench |
+| `--workers` | 0 (auto) | Worker paralleli |
+
+**Output**: tabella osservabili per chi_mean (media +- sem), chi_c (fit logistico),
++ summary JSON in `experiments/exp3/rg_summary/osservabili_L{n}.json` (lo leggeranno
+P2/P3 per il fit di flusso RG). Resume in `resume/osservabili_L{n}_cm{xx}.json`.
+
+**[OSS] Smoke test L2 (2026-06-05, 2 seed, cm 64/68/72)**: strumento verificato
+funzionante. M_tot bimodale (vuoto ~5e-4 vs kink ~10^2-10^3), n_def 0->1->4,
+rho_M(cm72)=2.17, chi_c/stable=1.318 (vicino all'1.338 noto; barra infinita perche'
+3 punti/2 seed danno uno scalino: serve sweep fitto + piu' seed). t_quench L2 ~30s.
+> NOTA: per chi_c con barre vere serve sweep fitto attorno alla soglia + >=10 seed.
+> Il summary JSON e' il ponte verso P2 (fit FSS) e P3 (mappa RG).
+
+---
+
 ## Sezione 6 — Strumenti di analisi e generazione dati
 
 ### 6.1 `experiments/exp3/analyze_exp3.py`
@@ -764,11 +812,152 @@ python wqt_oop/analyze_rg_flow.py
 
 ---
 
+### 6.4 `experiments/exp3/analyze_rg_scaling.py` — P2 fit di flusso RG
+
+**Cosa fa e perche'**: secondo passo del programma RG (METODO_SCALING_RG.md). Legge
+i summary di P1 (`rg_summary/osservabili_L*.json`) e: [A] fit FSS di chi_c/stable =
+c_inf + a*24^(-lambda*L) -> valore asintotico L->inf (con >=3 livelli; con 2 stima
+lineare in 1/N); [B] confronta rho_M e Psi_L A EPSILON RIDOTTO UGUALE
+(eps=(chi-chi_c)/chi_c, interpolazione) tra livelli = confronto RG corretto, NON la
+media globale; [C] test di consistenza del flusso (g_L geometrico? punto fisso?).
+Solo analisi (nessun motore), idempotente, ~1s.
+
+```bash
+python experiments/exp3/analyze_rg_scaling.py            # eps0 default 0.05
+python experiments/exp3/analyze_rg_scaling.py --eps0 0.08
+```
+
+**Output**: tabella chi_c/stable per livello + estrapolazione, rho_M(eps0)/Psi_L(eps0)
+per livello (CV<0.1 -> CNG A invariante favorita), figura `figures/rg_flow_chi_c.png`.
+**[OSS] con solo L2 (2026-06-05)**: chi_c/stable=1.353, rho_M(eps0=0.05)=2.07,
+Psi_L(eps0)=1.03. Servono L3,L4 (con lo STESSO P1) per il fit FSS e il test di flusso.
+
+---
+
+### 6.5 `experiments/exp3/analyze_spettro_cluster.py` — P7 spettro a due canali
+
+**Cosa fa e perche'**: test di FORMALIZZAZIONE sez. 8. Decompone il parametro d'ordine
+del cluster `psi_B = m_B*exp(i*phi_B)` in canale RADIALE (ampiezza m_B=<tanh(chi/chi0)>
+= massa, Higgs-like) e canale di FASE (phi_B dal settore tau = propagazione,
+Goldstone-like). DFT su Z_24. Usa np.fft (= autobase di SpectralBasis su circolante,
+esatta) SOLO come diagnostica, MAI l'integratore spettrale (bug 38%).
+
+```bash
+python experiments/exp3/analyze_spettro_cluster.py --level 2            # solo Parte A
+python experiments/exp3/analyze_spettro_cluster.py --level 2 --quench --chi-mean 72
+```
+
+| Parametro | Default | Descrizione |
+|---|---|---|
+| `--level` | 2 | Livello |
+| `--quench` | off | genera campo congelato e fa la Parte B |
+| `--chi-mean` | 72 | chi_mean del campo (per Parte B) |
+| `--seed` | 1 | seed |
+
+**Parte A** (istantanea): struttura della base dei modi Z_24. **[OSS]** i periodi
+24/gcd(m,24) sono ESATTAMENTE i divisori di 24 {1,2,3,4,6,8,12,24}, con i loro
+autovalori di coupling (m=12 = Nyquist staggered). Struttura della base, esatta.
+**Parte B** (--quench): split di energia radiale vs fase, cross-correlazione
+(ortogonalita'), spettro di fase (concentrato vs spalmato), modi dominanti. Figura
+`figures/spettro_cluster_L{n}_cm{xx}.png`.
+**[OSS] primo campo L2 cm72 (M_tot=865, 1 seed)**: E_radiale=0.18, E_fase=0.12;
+cross-corr=+0.35 (ACCOPPIATI -> il difetto IRRAGGIA fase); spettro di fase SPALMATO
+(atteso per difetto quasi-puntuale, NON struttura sui divisori); modo dominante m=12.
+> NB: 1 seed, preliminare. A cm72 ci sono difetti multipli (n_def~6); per testare
+> l'ortogonalita' PULITA serve il regime a 1 difetto (cm68-70) + media su seed.
+
+---
+
+### 6.6 `experiments/exp3/analyze_spettro_ensemble.py` — P8 ensemble spettro
+
+**Cosa fa e perche'**: risolve il limite di P7 (un campo solo, xcorr non significativa).
+Legge TUTTI i campi `.npz` salvati da P1 (`--save-field`) in `experiments/exp3/fields/`,
+per ognuno ricostruisce i blocchi L1 (`reshape(-1,24)`, ordine DFS), trova il ring
+LOCALE del difetto, fa la DFT a due canali (ampiezza=massa, fase=tau) e la
+cross-correlazione radiale-fase; poi AGGREGA per livello (media +- sem + t=mean/sem).
+Solo cosi' si distingue accoppiamento FISICO (|t|>2) da rumore. Lo spettro |DFT|^2 e'
+invariante per traslazione -> no allineamento dei core. np.fft, MAI integratore spettrale.
+
+```bash
+python experiments/exp3/analyze_spettro_ensemble.py
+```
+
+**Output**: tabella per livello (n_campi, <xcorr>, sem, t, verdetto) + spettro di fase
+medio (IPR, modi dominanti = divisori di 24). **[OSS] su 1 campo L2**: xcorr=0.524
+(identico a P7 --local: check di consistenza OK), "no stat" (1 campo).
+> Da girare sui ~campi L4 salvati (kink) per il verdetto vero sull'accoppiamento
+> massa<->fase. |t|<2 => compatibile con canali ortogonali.
+
+---
+
+### 6.7 `experiments/exp3/analyze_rigidita_linewidth.py` — P9 linewidth vs rigidita'
+
+**Cosa fa e perche'**: test di FORMALIZZAZIONE sez. 9. Ipotesi: la larghezza di riga
+con cui un difetto spalma l'energia sui modi Z_24 e' fissata dalla RIGIDITA' di scala
+`alpha_K(L)~1/24^L`. Predizione analitica: concentrazione spettrale `C_L ~ xi_L ~
+24^(-L/2)` -> rapporto consecutivo `C_L/C_(L+1) = sqrt(24)~4.9`. Dai campi salvati
+(`--save-field`), per ogni campo prende il ring locale del difetto, misura C dei canali
+ampiezza e fase + n_eff torsione, aggrega per livello, confronta i rapporti col predetto.
+
+```bash
+python experiments/exp3/analyze_rigidita_linewidth.py
+```
+
+**Output**: tabella per livello (alpha_K, C_amp, C_fase, n_eff_tors) + confronto
+rapporti misurati vs `sqrt(alpha_K(L)/alpha_K(L+1))`. **[OSS] L2 (1 campo)**:
+C_amp=0.000 (ampiezza PIATTA: difetto single-site satura il canale -> il test vive
+nei canali FASE e torsione, non ampiezza); C_fase=0.966; n_eff_tors=3.68 (~zona di
+torsione geometrica).
+> SERVE fields a >=2 livelli. L3 manca (campagna L3 girata prima di --save-field);
+> L4 in arrivo. Primo rapporto calcolabile da L2+L4 (2 livelli, predetto sqrt(576)=24).
+
+---
+
 ## Sezione 7 — Librerie di supporto (non eseguibili)
 
 | File | Descrizione |
 |---|---|
 | `experiments/exp3/resume_manager.py` | Persistenza robusta per run lunghi. 3 file ruotanti, recovery da corruzione, salvataggio profilo chi in .npy float32. Importabile da qualsiasi script. |
+
+---
+
+## Sezione 8 — Edificio Einstein-Cartan (gravità emergente)
+
+Branch `physics/einstein-cartan-saturation`. Saturazione/bounce + espansione (muratore)
++ G emergente da rigidezza + scala metrica + gravità (clumping). Tutto ADDITIVO (legacy
+`evolve()` intatto), coefficienti DERIVATI. Doc scientifica: `docs/peano/EDIFICIO_EINSTEIN_CARTAN.md`.
+
+### Moduli (con `_self_test` eseguibile)
+
+| Modulo | Cosa fa (fisica) | Self-test |
+|---|---|---|
+| `wqt_oop/einstein_cartan.py` | Saturazione settore chi (bounce, soffitto one-sided `(K2-rho*)+`) + chiusura spinoriale 720. `rho*=2chi0^2` (parete, sqrt2 Jitterbug). | `python -m wqt_oop.einstein_cartan` (gradiente err 5e-11) |
+| `wqt_oop/muratore_planck.py` | Espansione: `H=beta<(K2/a^2-rho*)+>` (locale) + drive di fondo. Auto-regolante, `a*=sqrt(maxK2/rho*)`. | `python -m wqt_oop.muratore_planck` |
+| `wqt_oop/rigidezza_geometrica.py` | G emergente (Sakharov): `beta=Theta/R_geo`, `R_geo=4N/(N-1)=4.174` topologico. | `python -m wqt_oop.rigidezza_geometrica` |
+| `wqt_oop/scala_planck.py` | Scala metrica: `ell_voxel(L0)=ell_Planck`; ladder `24^(L/d)`; protone~L43. | `python -m wqt_oop.scala_planck` |
+
+### GATE di equivalenza (PASS obbligatorio)
+
+| Test | Verifica | Esecuzione |
+|---|---|---|
+| `wqt_oop/test_einstein_cartan_equivalence.py` | [1] gradiente conservativo, [2] flag OFF == legacy bit-identico, [3] ON stabile. | `python -m wqt_oop.test_einstein_cartan_equivalence` (~5s) |
+| `wqt_oop/test_muratore_equivalence.py` | [1] auto-regolazione, [2] OFF bit-identico, [3] espande, [4] G emergente stabile, [5] clumping (vuoto>materia). | `python -m wqt_oop.test_muratore_equivalence` (~10s) |
+
+### Esperimenti (experiments/exp3)
+
+| Script | Domanda / risultato | Esecuzione |
+|---|---|---|
+| `test_cura_coupling.py` | I coupling postulati 24^L sono superflui? SI (densità intensiva, scaled~flat~cura). | `--chi-means 66,72 --seeds 2` (~11 min) |
+| `test_legge_febbre.py` | La febbre è una legge di scala? NO, transiente (R^2=0.70, alpha=0.165 bocciato). | `--levels 1,2,3,4 --include-l4 --seeds 3` (~33 min) |
+| `test_g_nonmonotono.py` | G(scala) monotono? NO (a* analitico): G traccia la scala della materia. | (no args, ~30s) |
+| `test_g_dinamico.py` | La dinamica genera G non-monotono? SI (muratore a tutti i livelli). | (no args, ~5 min) |
+| `test_cosmogenesi.py` | Universo da origine simmetrica + dadi? SI (SSB; senza dadi niente). | (no args, ~2 min) |
+| `test_gravita_clumping.py` | I vuoti espandono più della materia (clumping=gravità)? SI col drive di fondo. | (no args, ~2 min) |
+
+**Flag opt-in (default OFF → comportamento legacy bit-identico)**: `ec_dynamics_enabled`,
+`muratore_enabled`, `g_emergent_active`, `kink_stiffening_active`, `muratore_h_fondo_coeff>0`.
+Attivatori ricorsivi: `set_ec_dynamics`, `set_muratore`, `set_g_emergent`,
+`set_kink_stiffening`, `set_drive_fondo`.
 
 ---
 

@@ -556,3 +556,235 @@ per-task (rende i run riproducibili e il parallelo identico al seriale, GATE PAS
 `compute_geometric_E_psi`, `freeze_and_measure_mass` in `wqt_oop/energy_metrics.py`;
 esperimenti in `experiments/exp3/test_quench_mass.py`,
 `test_soglia_formazione.py`.
+
+---
+
+## 7. [CNG] Parametro d'ordine complesso a livello di cluster — la massa come difetto topologico di psi
+
+> **Status**: congettura strutturale, TEST FONDAMENTALE DA ESEGUIRE *DOPO* L4
+> (serve il flusso RG calibrato su L2/L3/L4 e i campi congelati con difetti reali).
+> Origine: discussione 2026-06-05 "il voxel e' un qubit alpha|0>+beta|1>?".
+
+### 7.1 Dal voxel al cluster: cosa cambia
+
+**[OSS/DEF] Singolo voxel = pseudo-spin classica REALE.** Lo stato del voxel L0 e'
+$(\chi, v)\in\mathbb{R}^2$ (classico: niente spazio di Hilbert, niente sovrapposizione,
+niente unitarieta'). I due pozzi $\pm\chi_0$ danno una struttura a due livelli con
+ampiezza $s=\tanh(\chi/\chi_0)\in[-1,+1]$ (gia' nel coupling del motore). NON e' un
+qubit quantistico; $\alpha,\beta$ complessi NON sono nel modello. E $\beta/\alpha$ NON
+e' "la pendenza del kink": la pendenza e' una grandezza INTER-voxel (la torsione sugli
+spigoli $\rho^{\mathrm{tors}}_i=\sum_j W_{ij}(\chi_i-\chi_j)^2$), non intra-voxel.
+Confermato dal difetto PUNTUALE misurato (sez. 5.2): dentro un voxel non c'e' pendenza
+da codificare.
+
+**[CNG] Cluster = parametro d'ordine COMPLESSO (Ginzburg-Landau).** A livello di
+blocco la visione a due livelli regge MEGLIO, ma si trasforma. L'oggetto fedele e':
+$$\psi_B = m_B\,e^{i\phi_B},\qquad
+  m_B=\langle\tanh(\chi/\chi_0)\rangle_{\text{blocco}},\quad
+  \phi_B=\text{fase del modo collettivo }(f_{\mathrm{dom}}).$$
+E' un campo CLASSICO complesso (il potenziale del motore E' Landau-Ginzburg,
+$V=\beta(\chi^2-\chi_0^2)^2$), NON un qubit: $\alpha,\beta$ come ampiezza d'ORDINE, non
+di probabilita'. Il modo collettivo coerente $m_B$ coincide con la media di blocco
+$\bar\chi_B$ = la variabile RG del block-spin (TEO 2 in
+`basimatematiche/teorema_peano_vqt.md`).
+
+### 7.2 Perche' la massa NON sta nella macro-spin (di nuovo il TEO 2)
+
+La macro-spin $\bar\chi_B$ cattura il modo collettivo "quale pozzo" e BUTTA VIA la
+struttura interna. Ma la massa vive proprio nella struttura interna (il voxel girato,
+la torsione). E' il contenuto del TEO 2: $\bar\chi_B$ si chiude sotto il coupling, ma
+il termine non lineare $\Delta_B\sim\mathrm{Var}_B(\chi)$ (le fluttuazioni interne =
+i difetti) NON si chiude. Quindi:
+
+> La visione a due livelli sul cluster regge per la parte SENZA massa (modo collettivo
+> coerente) e fallisce per la parte CON massa (i difetti interni).
+
+Il linguaggio GL recupera la massa nel modo giusto: in un parametro d'ordine complesso
+i difetti sono DIFETTI TOPOLOGICI di $\psi$ — un avvolgimento della fase (winding
+number) e un crollo del modulo $|\psi|$ nel core, dove si concentra l'energia. Cioe'
+la massa riappare come difetto topologico del campo d'ordine = la tesi centrale di
+questo documento ("massa come difetto topologico congelato"). Il difetto puntuale
+misurato (sez. 5.2) sarebbe il core di questo difetto.
+
+### 7.3 IL TEST FONDAMENTALE (da eseguire DOPO L4)
+
+**Ipotesi falsificabile**: attorno a un difetto, la fase $\phi_B$ del parametro
+d'ordine fa un avvolgimento INTERO $2\pi n$ (winding number $n$ quantizzato), e il
+modulo $|\psi|$ crolla nel core.
+
+**Protocollo** (sul campo CONGELATO di un quench con difetto reale, $M_{\mathrm{tot}}>1$):
+1. Costruire $\psi_B$ per ogni blocco L1: $m_B=\langle\tanh(\chi/\chi_0)\rangle$, e
+   $\phi_B$ dalla fase del modo collettivo. NB: la definizione operativa di $\phi_B$
+   (fase dell'oscillazione dominante, o angolo in $(\bar\chi,\dot{\bar\chi})$, o
+   componente spettrale $f_{\mathrm{dom}}$) e' essa stessa da fissare e verificare —
+   e' il primo sotto-task.
+2. Calcolare il winding di $\phi_B$ lungo un cammino chiuso attorno al blocco
+   difettoso: $n=\frac{1}{2\pi}\oint \Delta\phi_B$.
+3. Verificare: $|\psi|$ crolla nel core? $n$ e' intero e stabile su piu' seed?
+
+**Predizioni e conseguenze**:
+- Se $n$ e' intero quantizzato $\to$ la massa e' una CARICA TOPOLOGICA quantizzata.
+  Qui SI' che la "legge dei divisori di 24" potrebbe avere senso, ma nel DOMINIO
+  GIUSTO: un CONTEGGIO (il winding / il numero di difetti), non sulle energie (che
+  sono continue ed estensive $\sim N$: cercarci i divisori e' numerologia, vedi gotcha
+  in CLAUDE.md).
+- Se non c'e' winding (solo dip di $|\psi|$ senza avvolgimento di fase) $\to$ il
+  difetto e' uno "scalare" (vacancy/instanton), non un vortice. Anche questo e' un
+  risultato.
+
+**Cosa abbiamo gia' e cosa manca**:
+- [OSS] Misurato: difetti PUNTUALI e torsione sugli spigoli (sez. 5).
+- [manca] Mai misurato un winding di fase. "Difetto = vortice di $\psi$" e'
+  interpretazione, NON fatto. Questo test lo decide.
+
+**Perche' DOPO L4**: (a) serve la mappa RG calibrata (L2/L3/L4 con P1) per sapere se la
+struttura del cluster e' scale-stabile prima di attribuirle una carica topologica;
+(b) servono campi congelati a L3/L4 con difetti ben localizzati per avere un "loop"
+attorno al core con abbastanza blocchi. Si aggancia al punto P5 di
+`METODO_SCALING_RG.md` (RG-covarianza della triade + c-function): il winding sarebbe un
+invariante topologico candidato a sopravvivere al coarse-graining.
+
+---
+
+## 8. [CNG] Decomposizione spettrale a due canali (ampiezza vs fase)
+
+> **Status**: congettura strutturale + analisi DIAGNOSTICA eseguibile gia' ora su un
+> campo congelato (non richiede l'integratore spettrale, che ha un bug: serve solo il
+> roundtrip DFT, esatto a 1e-15). Origine: discussione 2026-06-05 "due tipi di
+> energia: ortogonale (frequenza, cluster adiacenti) e di percorrenza (singolo voxel)".
+
+### 8.1 Le due energie = ampiezza e fase di psi (Higgs / Goldstone)
+
+Le fluttuazioni del parametro d'ordine $\psi_B=m_B e^{i\phi_B}$ (sez. 7) si separano in
+due modi ORTOGONALI nel piano complesso:
+
+| Canale | Modo di psi | Natura | Carattere fisico |
+|---|---|---|---|
+| RADIALE (ampiezza $\delta m$) | "Higgs-like" | MASSIVO (curvatura del pozzo) | localizzato sul core del difetto = la massa $E_\Psi$ |
+| FASE (angolo $\delta\phi$) | "Goldstone-like" | quasi-massless (direzione piatta) | propagante, delocalizzato sui cluster adiacenti = vibrazione |
+
+La "percorrenza del singolo voxel" = direzione radiale (massa); la "vibrazione
+ortogonale sui cluster adiacenti" = modo di fase (l'orologio collettivo $f_{\mathrm{dom}}$
+che viaggia da cluster a cluster). "Ortogonale" e' letterale: la fase e' ortogonale
+all'ampiezza nel piano di $\psi$.
+
+**[onesta'] Da dove viene la fase $\phi_B$ in un campo STATICO (congelato)?** Non da
+un'oscillazione (tutto e' fermo). Il candidato fedele e' il settore **spinoriale**:
+$\phi_B$ dalla fase $\tau$ (tempo proprio locale, gia' tracciato dal motore e gia'
+usato in `compute_geometric_E_psi` via il deficit di chiusura $720^\circ$). Quindi:
+canale ampiezza = settore $\chi$ (magnetizzazione), canale fase = settore $\tau$
+(spinoriale). Sono due campi reali distinti, non una fase inventata da un campo reale.
+
+### 8.2 I divisori di 24 nel dominio giusto: la base dei modi
+
+Il canale di fase su un anello di 24 cluster si decompone nei 24 modi di Fourier della
+matrice circolante $W$ (autovettori $\mathbf v_m=(\omega^{jm})$, autovalori $\lambda_m$).
+Ogni modo $m$ ha **periodo spaziale $24/\gcd(m,24)$** — e questi periodi sono ESATTAMENTE
+i divisori di 24: $\{1,2,3,4,6,8,12,24\}$. Quindi i 24 modi si organizzano in classi per
+periodo (= divisore). **Questa e' struttura della BASE, esatta e indipendente dal campo.**
+
+**[onesta' CRITICA] base dei modi vs occupazione.** Che la base si organizzi sui
+divisori e' un fatto esatto. Che un DATO campo CONCENTRI la sua energia sui modi-divisore
+e' tutt'altra cosa, empirica. Un difetto PUNTUALE singolo (sez. 5.2) e' una quasi-delta
+nello spazio -> la sua trasformata e' SPALMATA su tutti i 24 modi: NON e' evidenza di
+struttura, e' l'attesa per una delta. La concentrazione su modi-divisore richiederebbe un
+pattern COLLETTIVO commensurato (es. regime di plasma, o un'onda stazionaria coerente).
+Non aspettarsi "picchi nitidi sui divisori" da un singolo difetto: sarebbe un errore.
+
+### 8.3 Il test (eseguibile su campo congelato)
+
+**Predizione**: l'energia si partiziona in canale radiale (massa, localizzata sul
+difetto) e canale di fase (propagazione, delocalizzata), ORTOGONALI (cross-correlazione
+$\approx0$), accoppiati solo nei termini non lineari (l'irraggiamento del difetto).
+
+**Protocollo** (su campo congelato, anche L2/L3 generato apposta):
+1. Per ogni blocco L1: $m_B=\langle\tanh(\chi/\chi_0)\rangle$ (ampiezza), $\phi_B$ dal
+   settore $\tau$ (fase).
+2. DFT su $\mathbb{Z}_{24}$ di entrambi -> spettri di potenza $P_m^{(amp)}$, $P_m^{(fase)}$.
+3. Misure: (a) dove sta la potenza (modi bassi? divisori? spalmata?); (b) split di
+   energia radiale vs fase; (c) cross-correlazione radiale-fase (ortogonalita'?).
+4. Confronto tra regimi: difetto singolo (spalmato atteso) vs plasma (eventuale
+   concentrazione commensurata).
+
+**Tool**: `experiments/exp3/analyze_spettro_cluster.py` (P7). Usa `SpectralBasis`
+(`wqt_oop/spectral_coupling.py`) SOLO come diagnostica (roundtrip DFT esatto); NON
+l'integratore spettrale (bug deriva 38%).
+
+**[caveat]** Modi normali CLASSICI (fononi), non quantistici: Higgs/Goldstone come
+analogia strutturale, non campi quantizzati. L'orticolarita' dei due canali e' IPOTESI
+da misurare; il loro ACCOPPIAMENTO (difetto che irraggia fase) sarebbe la fisica vera.
+
+---
+
+## 9. [CNG] Legge di risonanza generalizzata: linewidth fissata dalla rigidita' di scala
+
+> **Status**: congettura con PREDIZIONE ANALITICA, test eseguibile sui campi salvati.
+> Origine: domanda 2026-06-08 "la legge di risonanza discreta viene spalmata in modo
+> proporzionale alla rigidita' locale di L?". Riscatta l'idea dei divisori (sez. 8)
+> nella forma corretta.
+
+### 9.1 L'idea: i divisori sono le PORTANTI, la rigidita' ne fissa la larghezza
+
+La sez. 8 ha (giustamente) falsificato "l'energia si concentra sui modi-divisore":
+un difetto puntuale SPALMA l'energia su tutti i 24 modi. La riformulazione fisica:
+> I modi-divisore $Z_{24}$ sono le **frequenze portanti** (base esatta a ogni $L$). Ogni
+> risonanza ha una **larghezza di riga** $\Gamma_L$ (quanto si spalma sui modi vicini),
+> e quella larghezza e' fissata dalla **rigidita' locale del livello $L$**.
+
+Come ogni sistema risonante reale: la riga non e' una delta, ha una larghezza data
+dall'accoppiamento. Qui la "rigidita'" e' il coupling scale-dipendente.
+
+### 9.2 La legge di rigidita' e' gia' analitica nel motore
+
+La rigidita' di accoppiamento e' nota in forma chiusa (verificata in
+`physics_context.py`):
+$$\alpha_K(L) = \alpha_K^{(1)}\,24^{-(L-1)}\quad\text{[rapporti consecutivi}=24\text{ esatti]},
+\qquad \beta=\text{const (doppio pozzo on-site, sempre L0)}.$$
+Valori: $\alpha_K=$ 0.0417 (L1), 1.74e-3 (L2), 7.23e-5 (L3), 3.01e-6 (L4).
+La **lunghezza di guarigione** (healing length) di Ginzburg-Landau e':
+$$\xi_L \sim \sqrt{\alpha_K(L)/\beta}\;\sim\;24^{-L/2},$$
+e $\xi_L$ fissa l'inviluppo spettrale: difetto largo ($\xi$ grande) $\to$ spettro
+stretto; difetto puntuale ($\xi$ piccolo) $\to$ spettro largo.
+
+**[PREDIZIONE ANALITICA]**
+$$\boxed{\;\Gamma_L \sim 1/\xi_L \sim 24^{+L/2}\;}\qquad
+\frac{\xi_L}{\xi_{L+1}}=\frac{\Gamma_{L+1}}{\Gamma_L}=\sqrt{24}\approx 4.9 .$$
+La concentrazione spettrale $C_L\sim\xi_L\sim 24^{-L/2}$ DECRESCE con $L$; il rapporto
+tra livelli consecutivi e' $\sqrt{24}$.
+
+### 9.3 L'indizio gia' presente (debole)
+
+Spettro di fase, probe GLOBALE 1 seed: IPR $L2=0.107$, $L3=0.073$ (floor piatto
+$=0.043$). Concentrazione in eccesso $C=(\mathrm{IPR}-\mathrm{flat})/\mathrm{flat}$:
+$C_{L2}=1.49$, $C_{L3}=0.70$, rapporto $\approx2.1$. Direzione GIUSTA (decresce con L),
+ma il valore ($2.1$) e' sotto il predetto ($4.9$): probe globale diluito + 1 seed.
+NON e' prova, e' un numero da raffinare con ensemble + ring locale.
+
+### 9.4 Caveat e osservabile corretto
+
+Trappola: a L2 il difetto e' gia' SINGLE-SITE (sez. 5.2) $\to$ il profilo $\chi$ e'
+gia' saturo (delta), la rigidita' non puo' allargarlo oltre. Quindi l'osservabile
+testabile NON e' la larghezza del profilo $\chi$ (saturo) ma la **concentrazione
+spettrale** $C_L$ del ring locale (puo' continuare ad appiattirsi verso il floor) e,
+come diagnostica secondaria, $n_{\mathrm{eff}}$ della torsione (con l'avvertenza che la
+*zona* di torsione ha larghezza ~geometrica del coupling, non ~$\alpha_K$).
+
+### 9.5 Il test (P9)
+
+Tool `experiments/exp3/analyze_rigidita_linewidth.py`: dai campi salvati
+(`--save-field`), per ogni campo prende il RING LOCALE del difetto (logica P8),
+misura $C_L$ (concentrazione spettrale ampiezza+fase) e $n_{\mathrm{eff}}$ torsione,
+AGGREGA per livello, e confronta il rapporto $C_L/C_{L+1}$ misurato col predetto
+$\sqrt{\alpha_K(L)/\alpha_K(L+1)}=\sqrt{24}$.
+
+**Esiti possibili**:
+- $C_L/C_{L+1}\approx\sqrt{24}$ entro le barre $\to$ la **legge di rigidita' regge**:
+  lo spalmamento E' fisico, fissato da $\alpha_K(L)$. Allora la legge di risonanza
+  generalizzata e': **pettine $Z_{24}$ universale + linewidth $\Gamma(L)\sim 24^{L/2}$**
+  $\to$ UNA legge per ogni $L$, due ingredienti, entrambi analitici (sez. 1
+  precedente sul punto fisso completerebbe la parte continua).
+- $C_L/C_{L+1}$ scorrelato da $\sqrt{24}$ $\to$ lo spalmamento NON e' la rigidita'
+  (e' altro: rumore termico, o linewidth saturata): ipotesi falsificata. Anche
+  questo e' un risultato.
+
+NB: predizione FALSIFICABILE con un numero analitico ($\sqrt{24}$) $\to$ test pulito.

@@ -147,7 +147,80 @@ class SolitoneComposito(AbstractSoliton):
         
         # Posizione centroide (media posizioni figli)
         self._centroid: Optional[np.ndarray] = None
-    
+
+        # === EINSTEIN-CARTAN (additivo, opt-in; legacy evolve() INTATTO) ===
+        # Dinamica EC: torsione a chiralita' alternata (180 deg) + chiusura spinoriale
+        # 720 deg + saturazione (pressione di degenerazione di spin = bounce).
+        # Recupera la fisica persa nel refactoring (commit a5b417e). Vedi
+        # wqt_oop/einstein_cartan.py e docs/peano/DIAGNOSI_SATURAZIONE_EC.md.
+        self.ec_dynamics_enabled: bool = False   # DEFAULT OFF -> comportamento legacy
+        # Coefficienti EC (tarabili). NON sono i coupling postulati scala-dipendenti:
+        # sono ancorati a scale fisiche/topologiche. beta_sat = forza della
+        # saturazione; kappa_closure = rigidita' della chiusura 720; k2_ref dalla
+        # scala del campo (sqrt(2)*chi0 Jitterbug), non un fit.
+        # beta_sat = l'analogo di G (accoppiamento gravitazionale del muratore EC).
+        # NON e' un knob libero: e' DERIVATO dalla rigidezza geometrica (gravita'
+        # indotta, Sakharov/Verlinde) -> beta_sat = Theta / R_geo, con
+        #   R_geo = 4 N/(N-1) = 4*24/23 = 4.174  (topologico, dal 24 di Leech)
+        #   Theta = scala intrinseca del voxel (da chi0, beta_pot), NON tarata.
+        # Vedi wqt_oop/rigidezza_geometrica.py e docs/peano/EDIFICIO_EINSTEIN_CARTAN.md.
+        # Il valore qui e' il placeholder in unita' di codice (Theta=1); per usare la
+        # G emergente: beta_sat <- rigidezza_geometrica.block_rigidity(...)[1].
+        self.ec_beta_sat: float = 1e-8
+        self.ec_kappa_closure: float = 1e-2
+        from .einstein_cartan import default_k2_ref_chi
+        self.ec_k2_ref_chi: float = default_k2_ref_chi(self.physics.chi_stable)
+
+        # === MURATORE DI PLANCK (additivo, opt-in; lato ESPANSIONE dell'EC) ===
+        # La stessa pressione di spin che satura (bounce) spinge lo spazio a crescere:
+        # fattore di scala a per blocco, guidato dall'eccesso di torsione fisica
+        # (K2/a^2 - rho*)+, AUTO-REGOLANTE (H->0 a equilibrio). ZERO parametri nuovi:
+        # riusa ec_beta_sat e ec_k2_ref_chi. Vedi wqt_oop/muratore_planck.py.
+        self.muratore_enabled: bool = False      # DEFAULT OFF -> nessuna espansione
+        self.scale_factor_a: float = 1.0         # metrica del blocco (a=1: nessuna)
+        self.muratore_d_f: float = 3.0           # dim. effettiva per il conteggio voxel
+        self.muratore_H_last: float = 0.0        # ultimo H = a'/a (diagnostico)
+
+        # === DRIVE DI FONDO (gravita': la FEBBRE e' il motore di espansione) ===
+        # L'espansione di fondo e' sorgentata dall'agitazione termica LOCALE (la febbre
+        # = KE/nodo), modulata dalla rigidezza (i kink la sopprimono):
+        #   H_fondo = h_fondo_coeff * T_local / (1 + K2/rho*)
+        # -> i VUOTI (T>0, K2 basso) espandono; la MATERIA (K2 alto) e' soppressa ->
+        #    la materia si addensa (CLUMPING = gravita' attrattiva, controparte della
+        #    spinta espansiva). Cosi' la febbre/termostato DIVENTA il motore (non un
+        #    bagno separato). coeff=0 (default) -> nessun drive (GATE bit-identico).
+        self.muratore_h_fondo_coeff: float = 0.0
+
+        # === G EMERGENTE ATTIVA (additivo, opt-in): beta_sat <- rigidezza FISICA ===
+        # La rigidezza fisica e' R_phys = R_geo/a^2 (diluita dall'espansione), quindi
+        # beta = Theta/R_phys = beta_baseline * a^2 per blocco: dove lo spazio si e'
+        # espanso, G e' MAGGIORE (gravita' indotta). Feedback espansione->G->espansione,
+        # regolato dalla diluizione della torsione (~1/a^2). Flag OFF -> beta costante
+        # (GATE bit-identico). Vedi wqt_oop/rigidezza_geometrica.py.
+        self.g_emergent_active: bool = False
+
+        # === KINK-STIFFENING (additivo, opt-in): la MATERIA irrigidisce lo spaziotempo ===
+        # In VQT i kink SONO complessita' dello spaziotempo (la materia nasce dalla
+        # torsione). Quindi i kink aumentano la rigidezza locale:
+        #   R_local = R_geo * (1 + K2/rho*)   (knob-free: usa il rho* derivato)
+        #   beta_local = Theta/R_local = beta_geom / (1 + K2/rho*)
+        # -> dove c'e' materia (K2 alto) beta cala -> espansione SOPPRESSA li'; i VUOTI
+        #    (soffici) espandono -> la materia si addensa (grumi). La spinta espansiva
+        #    (frame spaziotempo) E' attrazione (frame materia): UNA sola forza.
+        self.kink_stiffening_active: bool = False
+
+        # === MOTORE CHIRALE SPINORIALE (additivo, opt-in) ===
+        # Da' ai voxel lo spinore (theta, dphi): beta/alpha = pendenza del kink, twist 180
+        # alternato + chiusura 720. Le densita' chirali SX/DX derivano dallo spinore.
+        # Vive ACCANTO a (chi,v); default OFF -> bit-identico. Vedi motore_chirale_spinoriale.py.
+        self.spinore_enabled: bool = False
+
+        # === EINSTEIN-CARTAN COMPLETO: la TORSIONE e' sorgentata dallo SPIN ===
+        # Quando attivo: la torsione K2 usata in saturazione/espansione/gravita' viene dal
+        # vettore di Bloch dello spinore (K2_spin = chi0^2 * sum W |n_i-n_j|^2), NON dal
+        # gradiente scalare di chi. Lo spin genera la torsione (EC vero). Richiede lo spinore.
+        self.ec_torsion_from_spin: bool = False
+
     @staticmethod
     def _build_leech_coupling(N: int) -> np.ndarray:
         """
@@ -817,6 +890,397 @@ class SolitoneComposito(AbstractSoliton):
                 c.vel = float(vv)
             self.E_zero_point_injected += E_inj
             self._cache_valid = False  # le velocita' sono cambiate
+
+    # =======================================================================
+    # EINSTEIN-CARTAN (additivo, opt-in). NON modifica evolve() legacy.
+    # =======================================================================
+    def apply_ec_kick(self, dt: float) -> None:
+        """Applica il kick di Einstein-Cartan a OGNI blocco L1 dell'albero.
+
+        Su un blocco L1 (figli = SegmentoQuantistico, anello Z_24) calcola le forze EC
+        (saturazione settore chi + chiusura 720 settore tau) e le applica come kick
+        additivo: vel += F_chi*dt (settore campo), tau_locale += F_tau*dt (settore
+        spinoriale). Ricorre nei sotto-compositi per i livelli L>=2.
+
+        Conservativo (le forze sono gradienti di einstein_cartan.ec_energy) e stabile
+        (forze limitate). Attivo solo se ec_dynamics_enabled.
+        """
+        from .segmento_quantistico import SegmentoQuantistico
+        from .einstein_cartan import ec_forces, torsion_density_K2
+        # EC completo: se la torsione e' sorgentata dallo SPIN, la saturazione/bounce e'
+        # gia' applicata sullo spinore (relax_step) -> NON applicare il settore scalare su
+        # chi (evita doppio conteggio). La torsione e' tutta dello spin.
+        if self.ec_torsion_from_spin:
+            for c in self.children:
+                if isinstance(c, SolitoneComposito):
+                    c.apply_ec_kick(dt)
+            return
+        if self.children and isinstance(self.children[0], SegmentoQuantistico):
+            # blocco L1: i 24 figli sono segmenti
+            chi = np.array([c.chi for c in self.children], dtype=float)
+            tau = np.array([c.tau_locale for c in self.children], dtype=float)
+            W = self.coupling_matrix
+            W = (W.toarray() if hasattr(W, "toarray") else np.asarray(W))
+            # Muratore ON: la soglia di saturazione si dilata con lo spazio
+            # (K2 vs rho**a^2  <=>  K2_fisica vs rho*) -> l'espansione ALLEVIA il
+            # bounce. OFF (o a=1): soglia invariata -> EC identico (GATE).
+            k2_ref_eff = self.ec_k2_ref_chi
+            if self.muratore_enabled:
+                k2_ref_eff = self.ec_k2_ref_chi * (self.scale_factor_a ** 2)
+            k2_mean = float(np.mean(torsion_density_K2(chi, W)))   # per kink-stiffening
+            F_chi, F_tau = ec_forces(chi, tau, W, self.physics.chi_stable,
+                                     self._beta_eff(k2_mean), self.ec_kappa_closure,
+                                     k2_ref_eff)
+            for i, c in enumerate(self.children):
+                c.vel += float(F_chi[i]) * dt          # forza EC sul campo
+                c.tau_locale += float(F_tau[i]) * dt   # chiusura spinoriale 720
+            self._cache_valid = False
+        else:
+            for c in self.children:
+                if isinstance(c, SolitoneComposito):
+                    c.apply_ec_kick(dt)
+
+    def evolve_with_ec(self, dt: float, external_force: np.ndarray = None) -> None:
+        """Evoluzione con dinamica Einstein-Cartan ADDITIVA (opt-in).
+
+        Strang splitting conservativo: half-kick EC, passo simplettico legacy,
+        half-kick EC. NON modifica evolve(): se ec_dynamics_enabled=False e' identico
+        a evolve() (path legacy verificato). Propaga il flag ai sotto-compositi.
+        """
+        if not self.ec_dynamics_enabled:
+            self.evolve(dt, external_force)            # legacy puro
+            return
+        self.apply_ec_kick(0.5 * dt)
+        self.evolve(dt, external_force)
+        self.apply_ec_kick(0.5 * dt)
+
+    def set_ec_dynamics(self, enabled: bool, beta_sat: float = None,
+                        kappa_closure: float = None) -> None:
+        """Attiva/disattiva la dinamica EC su TUTTO l'albero (ricorsivo)."""
+        from .segmento_quantistico import SegmentoQuantistico
+        self.ec_dynamics_enabled = enabled
+        if beta_sat is not None:
+            self.ec_beta_sat = beta_sat
+        if kappa_closure is not None:
+            self.ec_kappa_closure = kappa_closure
+        for c in self.children:
+            if isinstance(c, SolitoneComposito):
+                c.set_ec_dynamics(enabled, beta_sat, kappa_closure)
+
+    def apply_muratore_step(self, dt: float) -> None:
+        """Un tick di Planck del MURATORE: OGNI blocco (a ogni livello) espande il
+        proprio fattore di scala a in proporzione all'ECCESSO di torsione fisica
+        COARSE del suo livello sopra rho*. Auto-regolante (knob-free): riusa
+        ec_beta_sat e ec_k2_ref_chi. Attivo solo se muratore_enabled.
+
+        La torsione e' calcolata sulla chi COARSE-GRAINED dei figli (foglia -> chi;
+        composito -> chi medio via _get_child_chi): cosi' l'espansione puo' nascere a
+        QUALSIASI scala dove la materia si concentra (gradiente coarse tra i figli),
+        non solo a L1. -> G(scala) puo' diventare non-monotono dalla dinamica stessa.
+        Poi ricorre nei sotto-compositi (che espandono il loro a)."""
+        from .segmento_quantistico import SegmentoQuantistico
+        from .muratore_planck import hubble_rate, expand
+        from .einstein_cartan import torsion_density_K2
+        # chi coarse del livello = rappresentativo di ciascun figlio
+        chi = np.array([self._get_child_chi(c) for c in self.children], dtype=float)
+        W = self.coupling_matrix
+        W = (W.toarray() if hasattr(W, "toarray") else np.asarray(W))
+        # TORSIONE: in EC completo viene sorgentata dallo SPIN (vettore di Bloch dello
+        # spinore), altrimenti dal gradiente scalare di chi (legacy).
+        if (self.ec_torsion_from_spin and self.children
+                and isinstance(self.children[0], SegmentoQuantistico)):
+            from .motore_chirale_spinoriale import spin_torsion_K2
+            theta = np.array([c.theta_spin for c in self.children], dtype=float)
+            dphi = np.array([c.dphi_spin for c in self.children], dtype=float)
+            K2 = spin_torsion_K2(theta, dphi, W, self.physics.chi_stable)
+        else:
+            K2 = torsion_density_K2(chi, W)
+        k2_mean = float(np.mean(K2))                             # per kink-stiffening
+        # (1) BOUNCE locale: relief della torsione in eccesso (K2-rho*)+
+        H = hubble_rate(chi, W, self.scale_factor_a,
+                        self.ec_k2_ref_chi, self._beta_eff(k2_mean), K2=K2)
+        # (2) DRIVE DI FONDO (febbre = motore): emissione di Planck UNIFORME (ogni voxel
+        # emette uguale = il bagno/febbre globale, NON la KE locale che traccia la materia),
+        # modulata dalla rigidezza: H_fondo = coeff / (1 + K2/rho*). I vuoti (K2 basso)
+        # espandono PIENO; la materia (K2 alto) e' soppressa -> i vuoti spingono, la materia
+        # si addensa (CLUMPING = gravita'). coeff = tasso di emissione di fondo (~T_eff).
+        if self.muratore_h_fondo_coeff > 0.0:
+            H += self.muratore_h_fondo_coeff / (1.0 + k2_mean / self.ec_k2_ref_chi)
+        self.muratore_H_last = float(H)
+        self.scale_factor_a = float(expand(self.scale_factor_a, H, dt))
+        # ricorre: anche i sotto-compositi espandono il loro a
+        for c in self.children:
+            if isinstance(c, SolitoneComposito):
+                c.apply_muratore_step(dt)
+
+    def evolve_with_muratore(self, dt: float, external_force: np.ndarray = None) -> None:
+        """Evoluzione con EC + MURATORE (espansione) ADDITIVI (opt-in).
+
+        Se muratore_enabled=False -> evolve_with_ec(dt) (che a sua volta e' legacy se
+        EC off): NESSUN effetto. Se ON: prima espande (a cresce dall'eccesso di
+        torsione), poi passo EC (la cui soglia di saturazione e' ora dilatata da a:
+        l'espansione allevia il bounce). Il muratore richiede l'EC come sorgente."""
+        if self.spinore_enabled:
+            self.apply_spinore_step(dt)            # rilassa lo spinore (additivo, accanto a chi,v)
+        if self.muratore_enabled:
+            self.apply_muratore_step(dt)
+        if self.ec_torsion_from_spin:
+            # TEMPO PROPRIO ATTIVO: il campo (materia) evolve nel TEMPO PROPRIO locale
+            # dt_local = dt * (1 - K2_spin/rho*). Dove c'e' massa (K2_spin alta) la fisica
+            # locale RALLENTA davvero (non solo l'orologio); al bounce (K2=rho*) si ferma;
+            # oltre (K2>rho*) il tempo (e l'evoluzione) si INVERTE. Parameter-free.
+            self._evolve_field_proper_time(dt, external_force)
+        else:
+            self.evolve_with_ec(dt, external_force)
+
+    def set_muratore(self, enabled: bool) -> None:
+        """Attiva/disattiva il muratore su TUTTO l'albero (ricorsivo). Abilita anche
+        l'EC (la torsione e' la sorgente dell'espansione)."""
+        self.muratore_enabled = enabled
+        if enabled and not self.ec_dynamics_enabled:
+            self.set_ec_dynamics(True)
+        for c in self.children:
+            if isinstance(c, SolitoneComposito):
+                c.set_muratore(enabled)
+
+    def _beta_eff(self, k2_mean: float = 0.0) -> float:
+        """beta_sat EFFETTIVO del blocco (G emergente + kink-stiffening).
+        - g_emergent_active: beta = beta_baseline * a^2 = Theta/R_phys (R_phys=R_geo/a^2):
+          dove a>1 (espanso) G maggiore.
+        - kink_stiffening_active: beta /= (1 + K2/rho*): dove c'e' materia (K2 alto) la
+          rigidezza sale e beta cala -> espansione soppressa (i vuoti espandono, la materia
+          si addensa = gravita'). Knob-free (usa rho*).
+        Flag OFF (o a=1, K2=0) -> beta_baseline (GATE bit-identico)."""
+        b = self.ec_beta_sat
+        if self.g_emergent_active:
+            b = b * (self.scale_factor_a ** 2)
+            if self.kink_stiffening_active:
+                b = b / (1.0 + k2_mean / self.ec_k2_ref_chi)
+        return b
+
+    def set_g_emergent(self, enabled: bool) -> None:
+        """Attiva/disattiva la G emergente attiva (beta<-rigidezza fisica) su tutto
+        l'albero. Richiede il muratore (a varia)."""
+        self.g_emergent_active = enabled
+        if enabled and not self.muratore_enabled:
+            self.set_muratore(True)
+        for c in self.children:
+            if isinstance(c, SolitoneComposito):
+                c.set_g_emergent(enabled)
+
+    def set_kink_stiffening(self, enabled: bool) -> None:
+        """Attiva/disattiva il kink-stiffening (la materia irrigidisce lo spaziotempo:
+        beta /= 1+K2/rho*) su tutto l'albero. Richiede la G emergente (modifica beta)."""
+        self.kink_stiffening_active = enabled
+        if enabled and not self.g_emergent_active:
+            self.set_g_emergent(True)
+        for c in self.children:
+            if isinstance(c, SolitoneComposito):
+                c.set_kink_stiffening(enabled)
+
+    def set_drive_fondo(self, coeff: float) -> None:
+        """Imposta il drive di fondo (febbre = motore di espansione) su tutto l'albero:
+        H_fondo = coeff * T_local / (1+K2/rho*). Abilita muratore + kink-stiffening
+        (la rigidezza modula il drive -> clumping). coeff=0 -> spento (bit-identico)."""
+        self.muratore_h_fondo_coeff = coeff
+        if coeff > 0.0:
+            if not self.muratore_enabled:
+                self.set_muratore(True)
+            self.kink_stiffening_active = True
+        for c in self.children:
+            if isinstance(c, SolitoneComposito):
+                c.set_drive_fondo(coeff)
+
+    def apply_spinore_step(self, dt: float) -> None:
+        """Un passo del MOTORE CHIRALE SPINORIALE su ogni blocco L1 (anello di 24): rilassa
+        lo spinore (theta = pendenza kink via beta/alpha; dphi = twist 180 + chiusura 720)
+        usando il campo chi dei figli. Additivo (non tocca chi,v). Ricorre per L>=2."""
+        from .segmento_quantistico import SegmentoQuantistico
+        from .motore_chirale_spinoriale import relax_step
+        if self.children and isinstance(self.children[0], SegmentoQuantistico):
+            chi = np.array([c.chi for c in self.children], dtype=float)
+            theta = np.array([c.theta_spin for c in self.children], dtype=float)
+            dphi = np.array([c.dphi_spin for c in self.children], dtype=float)
+            W = self.coupling_matrix
+            W = (W.toarray() if hasattr(W, "toarray") else np.asarray(W))
+            # scale fisiche dal physics (NON hardcoded): chi0, rho*, beta_sat.
+            # La saturazione EC sullo spin si attiva con ec_torsion_from_spin (bounce).
+            ec = self.ec_torsion_from_spin
+            theta, dphi, _ = relax_step(
+                theta, dphi, chi, dt, W=(W if ec else None),
+                chi0=self.physics.chi_stable, beta_sat=self.ec_beta_sat,
+                rho_star=(self.ec_k2_ref_chi if ec else None))
+            for i, c in enumerate(self.children):
+                c.theta_spin = float(theta[i]); c.dphi_spin = float(dphi[i])
+        else:
+            for c in self.children:
+                if isinstance(c, SolitoneComposito):
+                    c.apply_spinore_step(dt)
+
+    def set_spinore(self, enabled: bool) -> None:
+        """Attiva/disattiva il motore chirale spinoriale su tutto l'albero. Inizializza
+        lo spinore dal campo (theta da |pendenza kink|) quando lo accende."""
+        from .segmento_quantistico import SegmentoQuantistico
+        from .motore_chirale_spinoriale import init_from_field
+        self.spinore_enabled = enabled
+        if enabled and self.children and isinstance(self.children[0], SegmentoQuantistico):
+            chi = np.array([c.chi for c in self.children], dtype=float)
+            theta, dphi = init_from_field(chi, self.physics.chi_stable)
+            for i, c in enumerate(self.children):
+                c.theta_spin = float(theta[i]); c.dphi_spin = float(dphi[i])
+        for c in self.children:
+            if isinstance(c, SolitoneComposito):
+                c.set_spinore(enabled)
+
+    def set_ec_integrato(self, h_fondo_coeff: float) -> None:
+        """EINSTEIN-CARTAN COMPLETAMENTE INTEGRATO: accende lo spinore (spin),
+        rende la TORSIONE sorgentata dallo spin (ec_torsion_from_spin), e accende
+        l'espansione/gravita' (drive di fondo). Un solo EC: lo spin genera la torsione
+        che satura (bounce sullo spin), espande e fa gravita'. Ricorsivo. h_fondo_coeff =
+        tasso di emissione di fondo (l'unica scala; le altre sono derivate da chi0)."""
+        self.set_spinore(True)
+        self.set_drive_fondo(h_fondo_coeff)
+        # torsione dallo spin su TUTTO l'albero (ricorsivo)
+        def _flag(node):
+            node.ec_torsion_from_spin = True
+            for c in node.children:
+                if isinstance(c, SolitoneComposito):
+                    _flag(c)
+        _flag(self)
+
+    def proper_time_factor(self) -> float:
+        """Fattore di tempo proprio del blocco (solitone), sorgentato dalla MASSA (torsione
+        dallo spin):  f = 1 - <K2_spin>/rho* .
+          - materia normale (K2 < rho*):  0 < f < 1   -> tempo RALLENTATO (gravita');
+          - bounce (K2 = rho*):           f = 0        -> tempo FERMO (orizzonte);
+          - torsione estrema (K2 > rho*): f < 0        -> tempo INVERTITO (bounce/antimateria).
+        Bounded in [-1, 1] (K2_spin max = 2 rho*). Parameter-free (rho* derivato)."""
+        from .motore_chirale_spinoriale import spin_torsion_K2
+        theta = np.array([c.theta_spin for c in self.children], dtype=float)
+        dphi = np.array([c.dphi_spin for c in self.children], dtype=float)
+        W = self.coupling_matrix
+        W = (W.toarray() if hasattr(W, "toarray") else np.asarray(W))
+        K2 = spin_torsion_K2(theta, dphi, W, self.physics.chi_stable)
+        return 1.0 - float(np.mean(K2)) / self.ec_k2_ref_chi
+
+    def measure_chirality_proper_time(self, dt: float) -> None:
+        """DIAGNOSTICO (NON cambia la dinamica): decompone il tempo proprio per chiralita'.
+        Per ogni voxel accumula
+            tau_sx += dt * f * rho_SX   (tempo proprio della MATERIA),
+            tau_dx += dt * f * rho_DX   (tempo proprio dello SPAZIO),
+        con f = proper_time_factor() (=1-K2_spin/rho*) e rho_SX/DX = sin^2/cos^2(theta/2).
+        tau_sx + tau_dx = tempo proprio globale (dt*f). Solo lettura sullo stato (theta);
+        scrive SOLO gli accumulatori diagnostici tau_sx/tau_dx. Chiamare ACCANTO a evolve."""
+        from .segmento_quantistico import SegmentoQuantistico
+        from .motore_chirale_spinoriale import chirality_densities
+        if self.children and isinstance(self.children[0], SegmentoQuantistico):
+            f = self.proper_time_factor()
+            theta = np.array([c.theta_spin for c in self.children], dtype=float)
+            rho_sx, rho_dx = chirality_densities(theta)        # materia, spazio
+            for i, c in enumerate(self.children):
+                c.tau_sx += dt * f * float(rho_sx[i])
+                c.tau_dx += dt * f * float(rho_dx[i])
+        else:
+            for c in self.children:
+                if isinstance(c, SolitoneComposito):
+                    c.measure_chirality_proper_time(dt)
+
+    def _evolve_field_proper_time(self, dt: float, external_force=None) -> None:
+        """TEMPO PROPRIO ATTIVO: ogni blocco L1 (solitone) evolve il campo nel suo tempo
+        proprio dt_local = dt * f, con f = 1 - <K2_spin>/rho* (vedi proper_time_factor).
+        La massa rallenta la FISICA locale (non solo l'orologio); al bounce si ferma; oltre
+        inverte (il campo evolve all'indietro = il bounce EC). tau_locale avanza nel tempo
+        proprio (via evolve con dt_local). Additivo: usato solo con ec_torsion_from_spin."""
+        from .segmento_quantistico import SegmentoQuantistico
+        if self.children and isinstance(self.children[0], SegmentoQuantistico):
+            f = self.proper_time_factor()
+            self.evolve(dt * f, external_force)        # il solitone evolve nel tempo proprio
+        else:
+            for c in self.children:
+                if isinstance(c, SolitoneComposito):
+                    c._evolve_field_proper_time(dt, external_force)
+
+    def get_spinore_state(self) -> dict:
+        """Diagnostico spinoriale: winding (->4pi=720), errore beta/alpha vs pendenza kink,
+        densita' chirali medie SX (materia)/DX (spazio), norma."""
+        from .segmento_quantistico import SegmentoQuantistico
+        from .motore_chirale_spinoriale import (spinor_components, chirality_densities,
+                                                kink_slope, CLOSURE_4PI)
+        windings, slope_errs, sx, dx, norms = [], [], [], [], []
+        def walk(n):
+            if n.children and isinstance(n.children[0], SegmentoQuantistico):
+                chi = np.array([c.chi for c in n.children], dtype=float)
+                theta = np.array([c.theta_spin for c in n.children], dtype=float)
+                dphi = np.array([c.dphi_spin for c in n.children], dtype=float)
+                a, b = spinor_components(theta, dphi)
+                rsx, rdx = chirality_densities(theta)
+                ratio = np.abs(b) / (np.abs(a) + 1e-12)
+                windings.append(float(np.sum(dphi)))
+                slope_errs.append(float(np.mean(np.abs(ratio - np.abs(kink_slope(chi, n.physics.chi_stable))))))
+                sx.append(float(rsx.mean())); dx.append(float(rdx.mean()))
+                norms.append(float(np.max(np.abs(np.abs(a)**2 + np.abs(b)**2 - 1.0))))
+            else:
+                for c in n.children:
+                    if isinstance(c, SolitoneComposito):
+                        walk(c)
+        walk(self)
+        n = max(len(windings), 1)
+        return {"winding_mean": float(np.mean(windings)) if windings else 0.0,
+                "closure_err_mean": float(np.mean(windings) - CLOSURE_4PI) if windings else 0.0,
+                "slope_err_mean": float(np.mean(slope_errs)) if slope_errs else 0.0,
+                "rho_sx_mean": float(np.mean(sx)) if sx else 0.0,
+                "rho_dx_mean": float(np.mean(dx)) if dx else 0.0,
+                "norm_err_max": float(np.max(norms)) if norms else 0.0,
+                "n_blocks": len(windings)}
+
+    def get_expansion_state(self) -> dict:
+        """Diagnostico dell'espansione PER LIVELLO (a vive a ogni livello). Ritorna
+        aggregati globali + per_level[L] = {a_mean, a_max, H_mean, beta} con
+        beta(L)=Theta/(R_geo/<a^2>) = (Theta/R_geo)*<a^2> (G emergente, Theta=1).
+        Cosi' si vede se G(L) e' monotono o no (task 1). a=1 ovunque -> nessuna espansione."""
+        from .segmento_quantistico import SegmentoQuantistico
+        from .muratore_planck import voxel_count
+        from .rigidezza_geometrica import geometric_rigidity
+        W = self.coupling_matrix
+        W = (W.toarray() if hasattr(W, "toarray") else np.asarray(W))
+        R_geo = geometric_rigidity(W)
+
+        per_lev = {}   # depth -> lists
+        vox = [0.0]
+
+        def depth(node):
+            if not node.children or isinstance(node.children[0], SegmentoQuantistico):
+                return 1
+            return 1 + depth(node.children[0])
+
+        def walk(node):
+            # registra OGNI composito al suo livello (L1 incluso: depth=1)
+            L = depth(node)
+            d = per_lev.setdefault(L, {"a": [], "H": []})
+            d["a"].append(node.scale_factor_a)
+            d["H"].append(node.muratore_H_last)
+            vox[0] += voxel_count(node.scale_factor_a, node.muratore_d_f)
+            for c in node.children:
+                if isinstance(c, SolitoneComposito):
+                    walk(c)
+        walk(self)
+
+        per_level = {}
+        all_a, all_H = [], []
+        for L, d in per_lev.items():
+            a = np.array(d["a"]); all_a.extend(d["a"]); all_H.extend(d["H"])
+            a2m = float((a ** 2).mean())
+            per_level[L] = {"a_mean": float(a.mean()), "a_max": float(a.max()),
+                            "H_mean": float(np.mean(d["H"])),
+                            "beta": a2m / R_geo, "n_blocks": len(d["a"])}
+        return {
+            "a_mean": float(np.mean(all_a)) if all_a else 1.0,
+            "a_max": float(np.max(all_a)) if all_a else 1.0,
+            "H_mean": float(np.mean(all_H)) if all_H else 0.0,
+            "voxel_total": float(vox[0]),
+            "R_geo": R_geo,
+            "per_level": per_level,
+        }
 
     def evolve_fast(self, dt: float, external_force: np.ndarray = None) -> None:
         """
