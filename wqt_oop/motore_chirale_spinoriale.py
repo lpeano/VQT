@@ -96,8 +96,19 @@ def spin_torsion_K2(theta, dphi, W, chi0):
     Scalata per chi0^2 -> STESSE unita' della torsione scalare (una parete spinoriale, n
     quasi antipodali, da' ~2 chi0^2 = rho*). Include la fase (twist 180/720): lo spin
     (incluso il suo avvolgimento) genera la torsione che guida saturazione/espansione."""
-    n = bloch_vectors(theta, dphi)
-    diff2 = 2.0 - 2.0 * (n @ n.T)                          # |n_i - n_j|^2 (N,N)
+    return spin_torsion_K2_bloch(bloch_vectors(theta, dphi), W, chi0)
+
+
+def spin_torsion_K2_bloch(n, W, chi0):
+    """Torsione dallo spin per vettori di Bloch ARBITRARI (anche |n| < 1):
+        K2_i = chi0^2 * sum_j W_ij |n_i - n_j|^2,  |n_i-n_j|^2 = |n_i|^2+|n_j|^2-2 n_i.n_j.
+    Per |n|=1 (foglie) coincide con spin_torsion_K2 (2 - 2 n.n). Per gli AGGREGATI
+    GERARCHICI (bloch_aggregate: media dei Bloch dei figli) |n| < 1 codifica la
+    DEPOLARIZZAZIONE (disordine interno del blocco): anche la differenza di purezza
+    tra blocchi e' torsione coarse. E' l'operatore che porta EC a TUTTI i livelli."""
+    n = np.asarray(n, dtype=float)
+    sq = np.sum(n * n, axis=1)                             # |n_i|^2
+    diff2 = sq[:, None] + sq[None, :] - 2.0 * (n @ n.T)    # |n_i - n_j|^2 (N,N)
     return chi0 ** 2 * np.sum(W * diff2, axis=1)
 
 

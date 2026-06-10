@@ -44,6 +44,29 @@ Questi non sono suggerimenti: sono regole apprese da errori reali in questo prog
    commit non tuoi e processi Python attivi (run lanciati da altri). Chiedi prima
    di fermare processi altrui.
 
+8. **PIANIFICA PRIMA DI AGIRE (regola di Luca, 2026-06-10).** Prima di intraprendere
+   QUALSIASI azione non banale: **(a) PROGETTA/PIANIFICA** il passo (cosa, perche',
+   come, rischi/alternative); **(b) SEGNA i TODO nel checkpoint**
+   (`docs/peano/MIGRAZIONE_CHECKPOINT.md`, blocco "PER DOMANI"/task) — e usa anche
+   TodoWrite per il tracking della sessione; **(c) SOLO DOPO esegui.** Niente azioni
+   "a braccio": prima il piano scritto, poi il codice. Vale in particolare per
+   operazioni git (merge/push), refactor, rifondazioni doc e nuovi esperimenti.
+
+9. **UN FOLDER PER ESPERIMENTO (regola di Luca, 2026-06-10).** Ogni esperimento sta
+   in una propria cartella sotto `experiments/`, e il NOME della cartella RIFLETTE il
+   nome dell'esperimento (es. `experiments/collasso_dinamico/`, non `experiments/exp3/`
+   con dentro N test scollegati). Dentro: lo script del test + eventuali output/figure/
+   note di quell'esperimento. Vale per i NUOVI esperimenti (i vecchi `expN/` si
+   migrano solo se richiesto).
+
+10. **IL MOTORE E' LA STELLA POLARE (regola di Luca, 2026-06-10).** Quando un test
+    CONFERMA una caratteristica fisica, quella caratteristica va INTEGRATA SUBITO nel
+    motore completo (`set_ec_integrato` la deve accendere), nello STESSO ciclo di
+    lavoro: test confermato = motore aggiornato + GATE ri-eseguiti. Il motore deve
+    rimanere SEMPRE coerente alla teoria validata; non deve mai servire un attivatore
+    separato per una fisica gia' confermata. Tutti i test successivi usano il motore
+    cosi' integrato (mai versioni parziali). Luca NON deve doverlo chiedere.
+
 ---
 
 ## 1. COS'E' IL PROGETTO

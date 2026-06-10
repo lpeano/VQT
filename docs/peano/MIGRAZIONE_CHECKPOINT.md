@@ -10,7 +10,11 @@ SPIN (non piu' dal gradiente scalare). Ogni voxel ha uno SPINORE (theta, dphi):
   - twist 180 alternato per legame + CHIUSURA 720 (winding -> 4pi, spin-1/2);
   - densita' chirali SX (materia)/DX (spazio) DERIVATE dallo spinore.
   - K2_spin = chi0^2 * sum W |n_i-n_j|^2 (n=Bloch) guida TUTTO: saturazione (bounce sullo
-    SPIN), espansione, gravita'. set_ec_integrato(coeff) accende tutto.
+    SPIN), espansione, gravita', COLLASSO (advezione M1: chi advettato da -mu*grad(f),
+    f=1-K2_spin/rho* = tempo proprio; mu DERIVATO = rho*/chi0^2 = 2 = Jitterbug^2,
+    mu_advezione_derivata: NIENTE hardcoded, lo sweep CONFERMA il sweet spot a mu=2).
+    set_ec_integrato(coeff[, mu_advezione]) accende tutto (regola 10: il motore e' SEMPRE
+    integrato con ogni fisica confermata).
 NIENTE HARDCODED (chi0 da physics.chi_stable, rho*=2chi0^2 derivato, 4pi/pi topologici).
 Moduli: wqt_oop/motore_chirale_spinoriale.py (spinore), einstein_cartan/muratore_planck/
 rigidezza_geometrica/scala_planck. Tutti i GATE PASS, legacy bit-identico (flag OFF).
@@ -21,15 +25,118 @@ root.evolve_with_muratore(dt). Esempio: experiments/exp3/test_gravita_clumping.p
 GRAVITA' verificata sul motore completo: vuoti espandono > materia -> CLUMPING (torsione
 dallo spin). beta/alpha=pendenza err 1.3e-3, spinore normalizzato, stabile.
 
-PRIMA COSA DA FARE (scegliere con Luca):
-  0) [ritocco rapido] alzare il rateo di rilassamento spinore (RELAX_DPHI/K_CLOSURE in
-     motore_chirale_spinoriale.py) cosi' il winding chiude a 720 DENTRO il run (ora 4.4
-     vs 4pi=12.57 in 150 step; il self-test a 2000 step chiude).
-  1) [consigliato] COLLASSO DINAMICO sul motore completo: run lungo -> la materia MIGRA
-     e si aggrega in strutture? (firma forte della gravita'; finora solo differenza di a).
-  2) VALIDARE LO SPINORE: 180/720 + beta/alpha=pendenza producono la fenomenologia giusta
-     (risonanze, qubit) - la diagnosi del primo giorno (campo complesso ridotto a scalare).
-  3) CALIBRAZIONE HUBBLE: da chi0=Planck a km/s/Mpc, gap early-vs-late (G non-monotono pronto).
+FATTO DI RECENTE (oltre quanto sopra):
+  - CHIUSURA 720 ESATTA e topologica (dphi=tau): winding=4pi esatto; RIMOSSI 3 parametri
+    (K_CLOSURE/RELAX_DPHI/J_TWIST). [era il "task 0", chiuso]
+  - GRAVITA' -> TEMPO PROPRIO: dilatazione gravitazionale (massa rallenta il tempo).
+  - TEMPO PROPRIO ATTIVO: il campo evolve in dt*f, f=1-K2_spin/rho* (materia ~31% piu' lenta;
+    f<0 => inversione, ma la saturazione cap-pa K2 a rho* -> f>=0 in dinamica normale).
+  - DIREZIONE DEL TEMPO (diagnostico, ipotesi Luca): tau_net=tau_DX-tau_SX=int f cos(theta).
+    ~6-8% voxel (nuclei materia, theta>pi/2) tempo INDIETRO, spazio AVANTI, netto AVANTI
+    (spazio domina). Spiega perche' il tempo e' piu' lento dove c'e' materia (42%).
+    test_inversione_tempo.py. (segno SX=indietro = interpretazione Feynman-Stueckelberg)
+  - DIAGRAMMA del sistema (docs/figures/vqt_sistema.png + tools/rendering/genera_diagramma_vqt.py):
+    interazioni + tutte le costanti + tutte le formule.
+  - README + INDEX RIFONDATI sul motore EC. MAIN SURCLASSATO e PUSHATO (origin/main=2ab2a6d,
+    contenuto = branch). Orfani in wqt_oop/reference/ (riferimento per bounce/collasso).
+
+PENDENTI - FASE DI CABLAGGIO (audit 2026-06-10: connessioni logiche, NON nuovi coupling;
+verificate nel codice riga per riga, vedi sotto >>> AUDIT CABLAGGIO <<<):
+  A) GERARCHIA CHIRALE: FATTO (vedi >>> TASK A <<< sotto: gravita' gerarchica confermata,
+     scala con la massa). NUOVO PRIORITARIO AL SUO POSTO: CASCATA GRAVITAZIONALE - run
+     lungo, C_intra e C_inter insieme: C_inter deve accendersi IN RITARDO (il collasso L1
+     costruisce la massa che accende la gravita' L2).
+  B) SPINORE IN TEMPO PROPRIO: apply_spinore_step usa dt NUDO -> la curvatura non rallenta
+     la dinamica della torsione (il campo chi si' via _evolve_field_proper_time, lo spinore
+     no). Cablare dt_eff = dt*f anche nel rilassamento spinoriale. Geometrico, 0 parametri.
+  C) RESPIRO SSB -> EMISSIONE: muratore_h_fondo_coeff e' l'ULTIMO parametro postulato
+     (costante). Cablarlo all'ampiezza MISURATA dell'oscillazione SSB (il respiro = la
+     temperatura del bagno) => coeff derivato dallo stato => ZERO knob totali nel motore.
+     (assorbe il vecchio pendente 5 "oscillazione SSB": prima capire il respiro, poi cablarlo)
+  D) BOUNCE VERO: overshoot oltre rho* (densita' che sfora e RIMBALZA) -> inversione del
+     tempo nel core denso (gancio: con l'advezione f<0 al cuore GIA' osservato).
+     Riferimento: wqt_oop/reference/ (inversione sopra 720). + FLIP DI CHIRALITA' al bounce
+     (SX<->DX = materia<->antimateria), CPT-like.
+  E) VALIDARE LO SPINORE: 180/720 + beta/alpha=pendenza producono risonanze/qubit corretti.
+  F) CALIBRAZIONE HUBBLE: da chi0=Planck a km/s/Mpc, gap early-vs-late (G non-monotono pronto).
+
+>>> TASK A - GERARCHIA CHIRALE: FATTO, GRAVITA' GERARCHICA CONFERMATA <<<
+  RISULTATO (experiments/collasso_gerarchico/, 4 semi x 3 masse, GATE tutti PASS):
+  il collasso inter-blocco SCALA CON LA MASSA: C_inter x1.003 (1 parete) -> x1.003
+  (4 pareti) -> x1.045 (8 pareti); null legacy PIATTO a ogni massa; EC>null 12/12;
+  somma(chi) conservata ESATTA (err=0.0); attivazione A SOGLIA.
+  INTERPRETAZIONE (Luca): vicino a Planck LA MASSA NON ESISTE ANCORA (1 parete = blocco
+  quasi puro spazio, rho_SX~2%) -> la proiezione riporta n_z~1 -> K2_bloch~0 -> la
+  gravita' di quel livello e' CORRETTAMENTE SPENTA. La gravita' si accende dove (e
+  quando) la materia esiste. Il run a 8 pareti e' la SONDA che lo dimostra.
+  => NUOVO PENDENTE PRIORITARIO - CASCATA GRAVITAZIONALE [H]: il collasso L1 (x1.605)
+  COSTRUISCE la massa di blocco -> K2_bloch cresce -> la gravita' L2 si accende IN
+  RITARDO. Test: run LUNGO, C_intra e C_inter insieme -> C_inter deve partire piatta e
+  accendersi dopo (onset ritardato). La gravita' sale la gerarchia con la materia.
+  Doc: VQT_FORMALIZZAZIONE 3.7c + risultati 4 + ipotesi 5.1; NOTE.md nell'esperimento.
+
+>>> TASK A - GERARCHIA CHIRALE: piano originale (eseguito) <<<
+  1) OPERATORE DI PROIEZIONE CHIRALE (stateless, 0 parametri): bloch_aggregate(nodo) =
+     media ricorsiva dei vettori di Bloch dei figli (foglie: n da (theta,dphi)).
+     FISICA: n_z = <cos theta> = rho_DX - rho_SX = chiralita' NETTA del blocco che risale
+     la gerarchia; |n| < 1 = DEPOLARIZZAZIONE (disordine interno del blocco). Il twist 180
+     alternato cancella le componenti xy nella media -> il "messaggio" che sale e' proprio
+     il bilancio materia/spazio. Conservazione chiralita' tra livelli by construction.
+  2) TORSIONE DALLO SPIN A TUTTI I LIVELLI: spin_torsion_K2_bloch(n, W, chi0) per Bloch
+     ARBITRARI (|n|<=1); apply_muratore_step L2+ usa la proiezione (oggi ricade sullo
+     scalare coarse). Completa "EC in tutte le torsioni".
+  3) ADVEZIONE GERARCHICA: in apply_advezione_gravitazionale_step, ai livelli L2+ advezione
+     del chi COARSE tra i figli (stesso schema M1: f=1-K2_bloch/rho*, u=-mu grad f, upwind
+     conservativo sul ring dei 24 figli; somma chi ESATTAMENTE conservata per telescopia),
+     dchi distribuito alle foglie del sottoalbero (_shift_chi). mu = lo stesso derivato (2).
+  4) TEST: experiments/collasso_gerarchico/ - il setup INTER-BLOCCO che al task 1 dava
+     C piatta: ora C inter-blocco deve CRESCERE > null legacy (riscatto dell'esito negativo).
+  5) GATE: tutto dietro i flag esistenti (ec_torsion_from_spin, advezione_enabled) ->
+     OFF resta bit-identico; ri-eseguire GATE muratore/EC + collasso anello + clumping.
+
+>>> AUDIT CABLAGGIO (Gemini/Luca 2026-06-10) - verificato contro il codice <<<
+  Proposta: 3 "accoppiamenti di retroazione" mancanti. VERIFICA:
+  1) G<->Torsione (curvatura ritorna sullo spin): PARZIALE. Gia' presenti: a diluisce
+     K2/a^2 (hubble_rate), kink-stiffening beta/(1+K2/rho*), tempo proprio attivo sul CAMPO,
+     advezione M1. MANCA: lo SPINORE evolve in dt nudo (riga ~1121) -> task B.
+  2) Respiro SSB -> H_emissione: MANCA. coeff e' costante postulata (riga ~1016) -> task C
+     (elimina l'ultimo knob).
+  3) Conservazione chiralita' tra livelli: MANCA DAVVERO. La chiralita' vive solo a L1;
+     L2+ usa torsione scalare coarse (righe ~998-1005) -> task A (proiezione chirale).
+  Conclusione: fase di RIFINITURA (cablare pezzi esistenti), nessun numero da inventare.
+
+>>> TASK 1 - COLLASSO DINAMICO: FATTO (esito NEGATIVO/onesto) <<<
+  experiments/collasso_dinamico/ (test + NOTE.md + collasso_dinamico.png).
+  RISULTATO: NIENTE migrazione. La concentrazione C=Var_b(D_b)/<D_b>^2 resta PIATTA
+  (x1.001) e IDENTICA al null legacy, mentre a_vuoto/a_denso=1.0028 (espansione diff. c'e').
+  => Il CLUMPING e' CINEMATICO: il fattore di scala 'a' modula l'espansione ma NON trasporta
+  chi tra i blocchi (in evolve_with_muratore). Nessuna durata di run lo cambia: manca il
+  meccanismo. Spinore sano (norma 2e-16, winding->4pi).
+  PEZZO MANCANTE (prossimo task concreto): BACK-REACTION METRICA->CAMPO. L'espansione
+  differenziale deve retroagire sul campo come termine di TRASPORTO/ADVEZIONE (coordinate
+  comoventi): la materia trascinata verso le regioni dense / dal gradiente di tempo proprio.
+  E' il trasporto di densita' chirale gia' abbozzato in wqt_oop/reference/ (chiralita_ec.py).
+  => NUOVO TASK 1b: implementare (additivo, dietro flag) l'advezione di chi guidata da
+  grad(a) o grad(f) e ri-misurare C(t) col motore completo (deve crescere > legacy).
+
+>>> TASK 1b - ADVEZIONE GRAVITAZIONALE (M1, scelta di Luca): FATTO, COLLASSO CONFERMATO <<<
+  MECCANISMO: advezione del CHI REALE guidata da -grad(f), f=1-K2_spin/rho* per-voxel
+  (= potenziale gravitazionale: lo STESSO f che dilata il tempo tira la materia). Al kink K2
+  e' alta -> f ha un minimo (al cuore f<0: tempo invertito) -> chi confluisce -> i difetti si
+  FONDONO = collasso. Forma conservativa upwind sull'anello -> somma(chi) invariata.
+  IMPLEMENTATO additivo: flag advezione_enabled/advezione_mu, metodo
+  apply_advezione_gravitazionale_step, attivatore set_advezione(mu); agganciato in
+  evolve_with_muratore DOPO il campo. OFF -> legacy bit-identico (GATE muratore [2] diff=0.0).
+  RISULTATO (anello 24 voxel, 8 semi, mu=2): null legacy C x1.000+/-0.001 (MAI aggrega) vs
+  EC+M1 C x1.605+/-0.324, M1>null in 8/8 semi, STABILE (|chi|max ~59). Finestra mu in [~1,16],
+  sweet spot mu=2. Collasso CAOTICO (sensibile alle IC -> ensemble). LA PAROLA GRAVITA' E'
+  GUADAGNATA: lo stesso f che dilata il tempo trascina la materia (chiude gravita'<->tempo).
+  experiments/collasso_dinamico/ (test riscritto su anello + NOTE.md + png).
+  INTEGRATO NEL MOTORE (regola 10): set_ec_integrato accende anche l'advezione; mu non e'
+  piu' hardcoded ma DERIVATO: mu = rho*/chi0^2 = 2 = Jitterbug^2 (mu_advezione_derivata;
+  lo sweep conferma il sweet spot proprio a mu=2 -> verifica falsificabile della derivazione).
+  APERTO: advezione GERARCHICA (inter-blocco L2+) per l'aggregazione tra blocchi (qui
+  dimostrata intra-anello); il collasso con f<0 al cuore e' il gancio per il BOUNCE VERO (task 2).
 
 VERIFICA RAPIDA STATO (eseguire a inizio sessione):
   python -m wqt_oop.test_einstein_cartan_equivalence   # GATE EC
@@ -37,11 +144,11 @@ VERIFICA RAPIDA STATO (eseguire a inizio sessione):
   python -m wqt_oop.motore_chirale_spinoriale          # self-test spinore (720, beta/alpha)
   python experiments/exp3/test_gravita_clumping.py     # gravita' sul motore completo
 
-STATO DOC: VQT_FORMALIZZAZIONE.md RIALLINEATO al motore integrato (torsione dallo spin,
-spinore 180/720, le 4 facce tipo-GR: espansione/gravita'/dilatazione tempo/direzione
-tempo). TESTS_E_STRUMENTI.md sez.8 OK. EDIFICIO_EINSTEIN_CARTAN.md: doc IMPLEMENTATIVA
-(log dei passi), ha ancora alcune cornici scalari -> da rifinire se serve, ma la teoria
-coerente e' in VQT_FORMALIZZAZIONE.md.
+STATO DOC: README.md + docs/peano/INDEX.md RIFONDATI sul motore EC (con schema d'insieme).
+VQT_FORMALIZZAZIONE.md RIALLINEATO (statica/dinamica/costanti/formule/direzione tempo) +
+figura docs/figures/vqt_sistema.png. TESTS_E_STRUMENTI.md sez.8 OK. La 'doppia elica' e'
+marcata come fase precedente/substrato. EDIFICIO_EINSTEIN_CARTAN.md: diario implementativo
+(qualche cornice scalare residua, minore). MAIN PUSHATO (origin/main = motore EC).
 
 ---
 

@@ -954,6 +954,13 @@ Branch `physics/einstein-cartan-saturation`. Saturazione/bounce + espansione (mu
 | `test_cosmogenesi.py` | Universo da origine simmetrica + dadi? SI (SSB; senza dadi niente). | (no args, ~2 min) |
 | `test_gravita_clumping.py` | I vuoti espandono più della materia (clumping=gravità)? SI col drive di fondo. | (no args, ~2 min) |
 
+### Esperimenti (un folder per esperimento — regola 9)
+
+| Cartella / script | Domanda / risultato | Esecuzione |
+|---|---|---|
+| `experiments/collasso_dinamico/test_collasso_dinamico.py` | La materia MIGRA e si AGGREGA (collasso)? **(1)** EC senza advezione: clumping CINEMATICO, `C` piatta (`a` non trasporta χ — vedi `NOTE.md`). **(2)** EC + **advezione M1** (`set_advezione(μ)`, χ advettato da `-∇f`, f=tempo proprio per-voxel): **COLLASSO confermato** — su anello/8 semi, `C` x1.000±0.001 (null legacy) vs **x1.605±0.324 (M1 μ=2), M1>null 8/8**, stabile. Lo stesso f che dilata il tempo trascina la materia. **Nel motore** (regola 10): `set_ec_integrato` accende l'advezione; μ DERIVATO `= ρ*/χ₀² = 2` (Jitterbug², `mu_advezione_derivata`; lo sweep conferma il sweet spot proprio lì). Flag `advezione_enabled/_mu` (OFF→bit-identico). | `python experiments/collasso_dinamico/test_collasso_dinamico.py` (~1 min) → `collasso_dinamico.png` |
+| `experiments/collasso_gerarchico/test_collasso_gerarchico.py` | La gravità agisce anche TRA i blocchi (L2)? **GERARCHIA CHIRALE confermata**: proiezione `bloch_aggregate` (n_z=⟨cosθ⟩ = chiralità netta che risale, \|n\|<1 = depolarizzazione) + `spin_torsion_K2_bloch` + advezione gerarchica (conservazione Σχ ESATTA). Il collasso inter-blocco **SCALA CON LA MASSA** (x1.003→x1.003→x1.045, attivazione a soglia; null piatto; 12/12): a ~Planck la massa non esiste → gravità di livello correttamente spenta (intuizione di Luca); dove la massa c'è si accende. Predizione aperta: cascata gravitazionale (onset ritardato di C_inter). | `python experiments/collasso_gerarchico/test_collasso_gerarchico.py` (~6 min) → `collasso_gerarchico.png` |
+
 **Flag opt-in (default OFF → comportamento legacy bit-identico)**: `ec_dynamics_enabled`,
 `muratore_enabled`, `g_emergent_active`, `kink_stiffening_active`, `muratore_h_fondo_coeff>0`.
 Attivatori ricorsivi: `set_ec_dynamics`, `set_muratore`, `set_g_emergent`,

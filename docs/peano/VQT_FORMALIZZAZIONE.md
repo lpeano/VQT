@@ -163,6 +163,41 @@ Il campo (materia) evolve nel **tempo proprio locale** dt_local = dt * f, con
 Parameter-free (rho* derivato). E' il legame **gravita' -> tempo proprio**: la massa
 rallenta il tempo come in Relativita' Generale.
 
+### 3.7b COLLASSO GRAVITAZIONALE: -grad(f) trascina la materia (advezione M1)
+La metrica **retroagisce sul campo**: chi e' advettato dalla deriva
+    u = -mu grad(f),   f = 1 - K2_spin/rho* per-voxel  (lo STESSO f del tempo proprio),
+in forma conservativa sull'anello (somma chi invariata: la materia si ridistribuisce, non
+si crea). Al kink K2 e' alta -> f ha un **minimo** (il potenziale gravitazionale) -> chi
+confluisce da entrambi i lati -> i difetti si **fondono**. La mobilita' e' **derivata [D]**:
+    mu = rho*/chi0^2 = 2 chi0^2/chi0^2 = **2 = (sqrt(2))^2  (Jitterbug^2)**:
+la stessa costante che fissa la soglia di saturazione fissa la risposta della materia al
+gradiente di tempo proprio; lo sweep sperimentale trova il sweet spot del collasso PROPRIO
+a mu=2 (verifica falsificabile). **[D] Misurato** (experiments/collasso_dinamico/, anello,
+8 semi): concentrazione C x1.605+/-0.324 col motore completo vs x1.000+/-0.001 del null
+legacy (che NON aggrega mai), M1>null in 8/8 semi, stabile. Senza questo termine il
+clumping e' solo **cinematico** (a_vuoto>a_denso senza migrazione: misurato e documentato).
+Chiude il cerchio **gravita' <-> tempo**: lo stesso f che dilata il tempo (3.7) fa CADERE
+la materia. Parte del motore completo (set_ec_integrato).
+
+### 3.7c GERARCHIA CHIRALE: la gravita' sale di livello con la materia
+La chiralita' RISALE la gerarchia con l'**operatore di proiezione** (stateless, 0 parametri):
+    n_blocco = media ricorsiva dei vettori di Bloch dei figli   (bloch_aggregate).
+Il twist 180 alternato cancella le componenti xy nella media -> il "messaggio" che sale e'
+    n_z = <cos theta> = rho_DX - rho_SX  (il bilancio materia/spazio del blocco),
+e |n| < 1 = **depolarizzazione** (disordine interno). La torsione coarse a OGNI livello:
+    K2_bloch = chi0^2 sum_j W_ij |n_i - n_j|^2   (Bloch aggregati, anche non unitari),
+e l'advezione gerarchica advetta il chi coarse TRA i blocchi (upwind conservativo: somma chi
+esattamente invariata), distribuendo alle foglie. Stesso mu derivato (rho*/chi0^2 = 2).
+**[D] Misurato** (experiments/collasso_gerarchico/, 4 semi x 3 masse): il collasso
+inter-blocco **SCALA CON LA MASSA** (C_inter x1.003 -> x1.003 -> x1.045 con 1 -> 4 -> 8
+pareti; null piatto a ogni massa; EC>null 12/12; attivazione **a soglia**).
+**Interpretazione [I] (Luca)**: vicino alla scala di Planck **la massa non esiste ancora**
+(un blocco con 1 parete e' quasi puro spazio, rho_SX~2%): la proiezione riporta n_z~1 ->
+K2_bloch~0 -> la gravita' di quel livello e' correttamente SPENTA. La gravita' si accende
+dove (e quando) la materia esiste. **Predizione [H]**: la CASCATA GRAVITAZIONALE - il
+collasso L1 costruisce la massa di blocco -> K2_bloch cresce -> la gravita' L2 si accende
+in RITARDO (onset ritardato di C_inter in un run lungo).
+
 ### 3.8 DIREZIONE DEL TEMPO (emerge dall'integrazione SX+DX)
 Decomponendo il tempo proprio per chiralita' (diagnostico, non cambia la dinamica):
     tau_SX = int f rho_SX (materia),  tau_DX = int f rho_DX (spazio).
@@ -201,6 +236,13 @@ nasce da una fluttuazione.
 - **G non-monotona con la scala**: la rigidezza fisica traccia la scala della materia ->
   G(L) puo' avere un massimo interno (ingrediente per la tensione di Hubble).
 - **Gravita' (clumping)**: vuoti espandono > materia (torsione dallo spin).
+- **COLLASSO (advezione M1)**: -grad(f) trascina chi -> la materia MIGRA e si fonde
+  (C x1.605 vs null x1.000, 8/8 semi); mu = rho*/chi0^2 = 2 DERIVATO (Jitterbug^2),
+  sweet spot confermato dallo sweep. Senza advezione il clumping e' solo cinematico.
+- **GERARCHIA CHIRALE**: la chiralita' risale (proiezione di Bloch, 0 parametri); il
+  collasso inter-blocco SCALA CON LA MASSA (x1.003->x1.045, soglia; null piatto, 12/12;
+  somma chi conservata esatta). A ~Planck la massa non esiste -> gravita' di livello
+  correttamente spenta; si accende dove la materia esiste.
 - **Tempo proprio attivo**: la materia ~31% piu' lenta; direzione del tempo emergente
   (materia indietro / spazio avanti, netto avanti); dilatazione gravitazionale spiegata.
 - **"Febbre" = transiente**, non legge di scala (artefatto di non-equilibrio).
@@ -212,8 +254,10 @@ Tutti i GATE/self-test PASS; legacy bit-identico con flag OFF.
 
 ## 5. Ipotesi ancora da verificare [H]
 
-1. **Collasso dinamico**: il clumping e' finora *differenza di tasso di espansione*. Resta
-   da mostrare la **migrazione/aggregazione** della materia in strutture (firma forte).
+1. **CASCATA GRAVITAZIONALE**: il collasso e' verificato intra-anello (3.7b) e
+   inter-blocco (3.7c, scala con la massa). Predizione da testare: il collasso L1
+   COSTRUISCE la massa di blocco -> la gravita' L2 si accende IN RITARDO (onset
+   ritardato di C_inter in un run lungo): la gravita' sale la gerarchia con la materia.
 2. **Calibrazione fisica (Hubble)**: coeff e Theta non sono predetti (`ell_Planck=
    sqrt(hbar G/c^3)` -> ancorare = scegliere G). Passare a km/s/Mpc e predire il gap
    early-vs-late.
