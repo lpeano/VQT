@@ -37,10 +37,11 @@ VERIFICA RAPIDA STATO (eseguire a inizio sessione):
   python -m wqt_oop.motore_chirale_spinoriale          # self-test spinore (720, beta/alpha)
   python experiments/exp3/test_gravita_clumping.py     # gravita' sul motore completo
 
-DEBITO DOC [APERTO]: VQT_FORMALIZZAZIONE.md e EDIFICIO_EINSTEIN_CARTAN.md descrivono
-ancora la versione SCALARE (settori paralleli). Vanno aggiornati al motore INTEGRATO
-(torsione dallo spin, spinore 180/720). Farlo PRIMA di nuova scienza (oggi la deriva
-doc->codice e' costata tempo).
+STATO DOC: VQT_FORMALIZZAZIONE.md RIALLINEATO al motore integrato (torsione dallo spin,
+spinore 180/720, le 4 facce tipo-GR: espansione/gravita'/dilatazione tempo/direzione
+tempo). TESTS_E_STRUMENTI.md sez.8 OK. EDIFICIO_EINSTEIN_CARTAN.md: doc IMPLEMENTATIVA
+(log dei passi), ha ancora alcune cornici scalari -> da rifinire se serve, ma la teoria
+coerente e' in VQT_FORMALIZZAZIONE.md.
 
 ---
 
