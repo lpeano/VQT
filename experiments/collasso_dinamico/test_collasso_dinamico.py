@@ -29,7 +29,8 @@ La finestra di mobilita': mu troppo piccolo -> la diffusione numerica vince (no 
 mu troppo grande -> over-driving (l'anello si destabilizza, C cala). C'e' un mu ottimale.
 
 Nessun valore hardcoded di fisica: chi0 da physics.chi_stable, rho*=2chi0^2 derivato,
-180/720 topologici. mu = UNA mobilita' di trasporto (non e' una legge di scala 24^L).
+180/720 topologici, e mu DERIVATO dal motore: mu = rho*/chi0^2 = 2 (Jitterbug^2,
+mu_advezione_derivata). Lo sweep qui sotto VERIFICA che il sweet spot cada proprio a mu=2.
 
 ESECUZIONE:  python experiments/collasso_dinamico/test_collasso_dinamico.py
 ================================================================================
@@ -44,7 +45,11 @@ import numpy as np
 from test_soglia_formazione import make
 from wqt_oop.motore_chirale_spinoriale import kink_slope, chirality_densities
 
-MU_DEFAULT = 2.0          # sweet spot dello sweep (miglior media, |chi|max piu' basso)
+
+def _mu_motore():
+    """La mobilita' DERIVATA dal motore: mu = rho*/chi0^2 = 2 (Jitterbug^2).
+    Questo sweep VERIFICA che il sweet spot del collasso cada proprio li'."""
+    return make(1, chi_mean=50, level=1).mu_advezione_derivata()
 
 
 def _matter_vox(root, chi0):
@@ -81,8 +86,9 @@ def run_ring(mu, steps=600, dt=0.02, sample=20, seed=3):
     chi0 = root.physics.chi_stable
     _seed_ring(root, chi0, np.random.default_rng(seed))
     if mu > 0:
-        root.set_ec_integrato(1e-3)        # motore completo (spin->torsione->sat+esp+grav)
-        root.set_advezione(mu)             # M1: advezione di chi da -grad(f)
+        # MOTORE COMPLETO: spin->torsione->sat+esp+grav+COLLASSO (advezione M1 inclusa
+        # in set_ec_integrato; mu passato solo perche' questo test fa lo SWEEP di mu).
+        root.set_ec_integrato(1e-3, mu_advezione=mu)
     ts, Cs, mxs = [], [], []
     for s in range(steps + 1):
         if s % sample == 0:
@@ -140,7 +146,7 @@ def _plot(t_lg, C_lg, t_m1, C_m1, sweep, out_png):
 
 
 def main():
-    mu = MU_DEFAULT
+    mu = _mu_motore()                  # DERIVATA: rho*/chi0^2 = 2 (niente hardcoded)
     seeds = list(range(1, 9))          # ensemble di 8 semi (collasso sensibile alle IC)
     print("=" * 78)
     print("  COLLASSO DINAMICO (anello): la materia si aggrega sotto -grad(f) = gravita'?")

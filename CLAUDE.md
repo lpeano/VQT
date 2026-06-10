@@ -59,6 +59,14 @@ Questi non sono suggerimenti: sono regole apprese da errori reali in questo prog
    note di quell'esperimento. Vale per i NUOVI esperimenti (i vecchi `expN/` si
    migrano solo se richiesto).
 
+10. **IL MOTORE E' LA STELLA POLARE (regola di Luca, 2026-06-10).** Quando un test
+    CONFERMA una caratteristica fisica, quella caratteristica va INTEGRATA SUBITO nel
+    motore completo (`set_ec_integrato` la deve accendere), nello STESSO ciclo di
+    lavoro: test confermato = motore aggiornato + GATE ri-eseguiti. Il motore deve
+    rimanere SEMPRE coerente alla teoria validata; non deve mai servire un attivatore
+    separato per una fisica gia' confermata. Tutti i test successivi usano il motore
+    cosi' integrato (mai versioni parziali). Luca NON deve doverlo chiedere.
+
 ---
 
 ## 1. COS'E' IL PROGETTO

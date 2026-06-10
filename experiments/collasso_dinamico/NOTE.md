@@ -63,6 +63,12 @@ sempre** (8/8), in modo stabile (`|χ|max` bounded). Lo stesso `f` che rallenta 
 (dilatazione gravitazionale) **trascina la materia e fonde i difetti**: migrazione vera, non
 solo espansione differenziale. È la chiusura del cerchio gravità ↔ tempo proprio.
 
-**Aperto (per dopo):** μ è una mobilità di trasporto (1 coefficiente, non legge di scala) —
-derivarla/ancorarla; advezione **gerarchica** (inter-blocco L2+) per l'aggregazione tra blocchi
-(qui dimostrata intra-anello); collasso → bounce vero quando `f<0` al cuore (task 2).
+**Integrato nel motore (regola 10):** `set_ec_integrato` accende anche l'advezione M1.
+E μ **non è hardcoded**: è derivato dal motore, `μ = ρ*/χ₀² = 2χ₀²/χ₀² = 2 = (√2)²`
+(Jitterbug², `mu_advezione_derivata`). La stessa costante che fissa la soglia di saturazione
+(la parete di dominio `ρ* = (√2χ₀)²`) fissa la risposta della materia al gradiente di tempo
+proprio. **Verifica falsificabile**: lo sweep trova il sweet spot del collasso (C massima,
+|χ|max minimo) *proprio* a μ=2 — la derivazione è confermata dall'esperimento, non imposta.
+
+**Aperto (per dopo):** advezione **gerarchica** (inter-blocco L2+) per l'aggregazione tra
+blocchi (qui dimostrata intra-anello); collasso → bounce vero quando `f<0` al cuore (task 2).

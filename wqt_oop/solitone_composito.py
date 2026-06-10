@@ -36,7 +36,6 @@ from .sparse_coupling import (
 from .energy_metrics import PeanoVQTAnalyzer, EnergyTriad
 from .zero_point_motor import enforce_nyquist_zero_point, E_zp_from_amplitude
 
-
 class SolitoneComposito(AbstractSoliton):
     """
     Solitone composto da N sotto-solitoni (tipicamente N=24).
@@ -1196,12 +1195,18 @@ class SolitoneComposito(AbstractSoliton):
             if isinstance(c, SolitoneComposito):
                 c.set_advezione(mu)
 
-    def set_ec_integrato(self, h_fondo_coeff: float) -> None:
+    def set_ec_integrato(self, h_fondo_coeff: float,
+                         mu_advezione: float = None) -> None:
         """EINSTEIN-CARTAN COMPLETAMENTE INTEGRATO: accende lo spinore (spin),
-        rende la TORSIONE sorgentata dallo spin (ec_torsion_from_spin), e accende
-        l'espansione/gravita' (drive di fondo). Un solo EC: lo spin genera la torsione
-        che satura (bounce sullo spin), espande e fa gravita'. Ricorsivo. h_fondo_coeff =
-        tasso di emissione di fondo (l'unica scala; le altre sono derivate da chi0)."""
+        rende la TORSIONE sorgentata dallo spin (ec_torsion_from_spin), accende
+        l'espansione/gravita' (drive di fondo) e l'ADVEZIONE GRAVITAZIONALE M1
+        (collasso: chi advettato da -mu*grad(f), confermato in
+        experiments/collasso_dinamico/). Un solo EC: lo spin genera la torsione che
+        satura (bounce sullo spin), espande, fa gravita' e fa COLLASSARE la materia.
+        Ricorsivo. h_fondo_coeff = tasso di emissione di fondo (l'unica scala; le altre
+        derivate da chi0). mu_advezione = mobilita' di trasporto (None -> DERIVATA dal
+        motore, vedi mu_advezione_derivata; 0.0 per escludere esplicitamente il collasso,
+        es. test di ablazione)."""
         self.set_spinore(True)
         self.set_drive_fondo(h_fondo_coeff)
         # torsione dallo spin su TUTTO l'albero (ricorsivo)
@@ -1211,6 +1216,20 @@ class SolitoneComposito(AbstractSoliton):
                 if isinstance(c, SolitoneComposito):
                     _flag(c)
         _flag(self)
+        # collasso gravitazionale M1 (parte del motore: confermato, sempre attivo)
+        self.set_advezione(self.mu_advezione_derivata()
+                           if mu_advezione is None else mu_advezione)
+
+    def mu_advezione_derivata(self) -> float:
+        """Mobilita' dell'advezione gravitazionale DERIVATA (niente hardcoded):
+            mu = rho* / chi0^2 = 2 chi0^2 / chi0^2 = 2 = (sqrt(2))^2  (Jitterbug^2).
+        E' la scala della parete di dominio (rho*=(sqrt(2) chi0)^2) misurata in unita'
+        del voxel (chi0^2): la stessa costante che fissa la soglia di saturazione fissa
+        la risposta della materia al gradiente di tempo proprio. VERIFICA FALSIFICABILE:
+        lo sweep di experiments/collasso_dinamico/ trova il sweet spot del collasso
+        (C massima, |chi|max minimo) PROPRIO a mu=2 (finestra [~1,16]). Se rho* cambia,
+        mu segue."""
+        return self.ec_k2_ref_chi / (self.physics.chi_stable ** 2)
 
     def proper_time_factor(self) -> float:
         """Fattore di tempo proprio del blocco (solitone), sorgentato dalla MASSA (torsione

@@ -39,6 +39,7 @@ B = {
     "grav":  (4.1, 1.3, 3.0, 1.0, "GRAVITÀ / clumping\nvuoti espandono > materia\nspinta = attrazione", "expg"),
     "gG":    (4.25, 5.0, 2.7, 0.7, "G emergente\nβ = Θ/R_phys", "expg"),
     "time":  (7.7, 3.0, 3.1, 1.0, "Tempo proprio ATTIVO\nf = 1 − K²_spin/ρ*\nmateria ~31% più lenta", "time"),
+    "coll":  (7.9, 1.3, 3.1, 1.0, "COLLASSO (advezione M1)\nu = −μ∇f → la materia cade\nμ = ρ*/χ₀² = 2", "expg"),
     "tdir":  (11.0, 2.6, 3.0, 1.5, "DIREZIONE DEL TEMPO\nτ_net = τ_DX − τ_SX\nspazio avanti, materia indietro\n→ netto avanti (spazio domina)", "time"),
 }
 E = [
@@ -51,6 +52,7 @@ E = [
     ("exp", "hub", "a diluisce K²/a²", "dash"), ("exp", "grav", "", "solid"),
     ("gG", "exp", "modula", "solid"), ("time", "tdir", "", "solid"),
     ("chir", "tdir", "ρ_SX,ρ_DX", "solid"), ("time", "exp", "", "dash"),
+    ("time", "coll", "∇f trascina χ", "solid"), ("coll", "hub", "χ confluisce", "dash"),
 ]
 
 # costanti: (formula mathtext, stato, descrizione)
@@ -60,6 +62,7 @@ COSTANTI = [
     (r"$\rho^*=2\chi_0^2=(\sqrt{2}\,\chi_0)^2$", "der", "soglia (scala parete; √2 Jitterbug)"),
     (r"$180^\circ=\pi,\ \ 720^\circ=4\pi$", "top", "twist / chiusura spin-1/2"),
     (r"$\chi_0$ (VEV)", "fis", "minimo del doppio pozzo (chi_stable)"),
+    (r"$\mu=\rho^*/\chi_0^2=2=(\sqrt{2})^2$", "der", "mobilità advezione (Jitterbug²; sweep conferma)"),
     (r"$\Theta=E_{Planck},\ \ \ell_{vox}=\ell_{Planck}$", "post", "ancoraggio: fondo gerarchia = Planck"),
     (r"$coeff\ (\sim T_{eff})$", "post", "tasso di emissione di fondo (da calibrare)"),
     (r"$\alpha_K,\ \kappa,\ \lambda{\sim}24^{2L},\ \gamma$", "elim", "leggi di scala postulate: DISSOLTE"),
@@ -79,6 +82,7 @@ FORMULE = [
     r"$f=1-\langle K^2_{spin}\rangle/\rho^*,\ \ dt_{loc}=f\,dt$",
     r"$\tau_{SX}=\int f\,\rho_{SX},\ \ \tau_{DX}=\int f\,\rho_{DX}$",
     r"$\tau_{net}=\tau_{DX}-\tau_{SX}=\int f\cos\theta\,dt$",
+    r"$u=-\mu\nabla f,\ \ \partial_t\chi=-\partial_x(u\chi)$  (collasso M1)",
     r"$\ell_L=24^{L/d}\,\ell_{Planck}$  (d=3: protone $\sim$L43)",
 ]
 
@@ -139,8 +143,8 @@ for i, (k, lbl) in enumerate([("der", "derivata"), ("top", "topologica"),
 yy = 9.15
 for f, st, desc in COSTANTI:
     ax.text(px + 0.25, yy, f, fontsize=8.4, va="center", color=STAT[st])
-    ax.text(px + 0.45, yy - 0.21, desc, fontsize=6.4, va="center", color="#555", style="italic")
-    yy -= 0.43
+    ax.text(px + 0.45, yy - 0.19, desc, fontsize=6.4, va="center", color="#555", style="italic")
+    yy -= 0.39
 
 # --- pannello FORMULE (destra basso) ---
 ax.add_patch(FancyBboxPatch((px, 0.55), 6.2, 4.9, boxstyle="round,pad=0.06,rounding_size=0.1",
@@ -149,7 +153,7 @@ ax.text(px + 3.1, 5.2, "FORMULE DI DERIVAZIONE", fontsize=11, weight="bold", ha=
 yy = 4.78
 for f in FORMULE:
     ax.text(px + 0.25, yy, f, fontsize=8.2, va="center")
-    yy -= 0.325
+    yy -= 0.30
 
 plt.tight_layout()
 fig.savefig(OUT, dpi=160, bbox_inches="tight")

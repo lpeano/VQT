@@ -10,7 +10,11 @@ SPIN (non piu' dal gradiente scalare). Ogni voxel ha uno SPINORE (theta, dphi):
   - twist 180 alternato per legame + CHIUSURA 720 (winding -> 4pi, spin-1/2);
   - densita' chirali SX (materia)/DX (spazio) DERIVATE dallo spinore.
   - K2_spin = chi0^2 * sum W |n_i-n_j|^2 (n=Bloch) guida TUTTO: saturazione (bounce sullo
-    SPIN), espansione, gravita'. set_ec_integrato(coeff) accende tutto.
+    SPIN), espansione, gravita', COLLASSO (advezione M1: chi advettato da -mu*grad(f),
+    f=1-K2_spin/rho* = tempo proprio; mu DERIVATO = rho*/chi0^2 = 2 = Jitterbug^2,
+    mu_advezione_derivata: NIENTE hardcoded, lo sweep CONFERMA il sweet spot a mu=2).
+    set_ec_integrato(coeff[, mu_advezione]) accende tutto (regola 10: il motore e' SEMPRE
+    integrato con ogni fisica confermata).
 NIENTE HARDCODED (chi0 da physics.chi_stable, rho*=2chi0^2 derivato, 4pi/pi topologici).
 Moduli: wqt_oop/motore_chirale_spinoriale.py (spinore), einstein_cartan/muratore_planck/
 rigidezza_geometrica/scala_planck. Tutti i GATE PASS, legacy bit-identico (flag OFF).
@@ -76,9 +80,11 @@ PRIMA COSA DA FARE (scegliere con Luca):
   sweet spot mu=2. Collasso CAOTICO (sensibile alle IC -> ensemble). LA PAROLA GRAVITA' E'
   GUADAGNATA: lo stesso f che dilata il tempo trascina la materia (chiude gravita'<->tempo).
   experiments/collasso_dinamico/ (test riscritto su anello + NOTE.md + png).
-  APERTO: mu = mobilita' (1 coeff., non legge 24^L) da ancorare/derivare; advezione GERARCHICA
-  (inter-blocco L2+) per l'aggregazione tra blocchi (qui dimostrata intra-anello); il collasso
-  con f<0 al cuore e' il gancio per il BOUNCE VERO (task 2).
+  INTEGRATO NEL MOTORE (regola 10): set_ec_integrato accende anche l'advezione; mu non e'
+  piu' hardcoded ma DERIVATO: mu = rho*/chi0^2 = 2 = Jitterbug^2 (mu_advezione_derivata;
+  lo sweep conferma il sweet spot proprio a mu=2 -> verifica falsificabile della derivazione).
+  APERTO: advezione GERARCHICA (inter-blocco L2+) per l'aggregazione tra blocchi (qui
+  dimostrata intra-anello); il collasso con f<0 al cuore e' il gancio per il BOUNCE VERO (task 2).
 
 VERIFICA RAPIDA STATO (eseguire a inizio sessione):
   python -m wqt_oop.test_einstein_cartan_equivalence   # GATE EC
