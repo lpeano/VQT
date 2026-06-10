@@ -1,10 +1,29 @@
 # Indice Documentazione VQT — Hub Centrale
 
+> ## ⚠️ Linea di ricerca ATTUALE (2026-06-09): motore Einstein-Cartan integrato
+>
+> La linea **corrente** (branch `physics/einstein-cartan-saturation`) e' il motore EC
+> completamente integrato: torsione sorgentata dallo **spin** (voxel = campo + spinore,
+> `beta/alpha=pendenza`, 180/720) -> gravita'/clumping, espansione, dilatazione e
+> direzione del tempo. Documentazione corrente:
+>
+> | Documento | Contenuto |
+> |---|---|
+> | **[VQT_FORMALIZZAZIONE.md](VQT_FORMALIZZAZIONE.md)** | Teoria formale + schema d'insieme (`../figures/vqt_sistema.png`): statica, dinamica, costanti, formule, direzione del tempo |
+> | **[EDIFICIO_EINSTEIN_CARTAN.md](EDIFICIO_EINSTEIN_CARTAN.md)** | Diario implementativo dell'edificio EC |
+> | **[MIGRAZIONE_CHECKPOINT.md](MIGRAZIONE_CHECKPOINT.md)** | Stato lavori (blocco "PER DOMANI") |
+> | **[../TESTS_E_STRUMENTI.md](../TESTS_E_STRUMENTI.md) sez.8** | Moduli e test dell'edificio EC |
+>
+> Le sezioni "doppia elica" sotto sono la **fase precedente/substrato** (ancora valide
+> ma non la linea corrente).
+
+---
+
 La documentazione segue la struttura a **doppia elica** della ricerca:
 il **Ramo A (Cosmology/RG-flow)** è l'impalcatura scientifica da cui è emerso
 il **Ramo B (Peano-VQT)**. Entrambi condividono lo stesso motore (`wqt_oop/`).
 
-**Ultima riorganizzazione**: 2026-05-29
+**Ultima riorganizzazione**: 2026-05-29 (substrato) · **Linea attuale**: vedi banner sopra (2026-06-09)
 
 ---
 

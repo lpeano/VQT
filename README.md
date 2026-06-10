@@ -9,6 +9,27 @@
 
 ---
 
+> ## ⚠️ Linea di ricerca ATTUALE: motore Einstein-Cartan integrato
+>
+> Questo README descrive la fase **v3.0 "doppia elica"** (Ramo A cosmology + Ramo B
+> Peano-VQT), che e' il **substrato/fase precedente**. La linea di ricerca **corrente**
+> (branch `physics/einstein-cartan-saturation`) e' il **motore Einstein-Cartan
+> completamente integrato**: la torsione e' sorgentata dallo **spin** (ogni voxel ha uno
+> spinore con `beta/alpha = pendenza del kink`, twist 180/720), e da quell'unica torsione
+> emergono **gravita'** (clumping), **espansione metrica**, **dilatazione gravitazionale
+> del tempo** e **direzione del tempo** (integrazione materia/spazio). Tutto additivo
+> (flag opt-in, default OFF -> legacy bit-identico).
+>
+> **Riferimento attuale:**
+> - Teoria formale + schema d'insieme: **[docs/peano/VQT_FORMALIZZAZIONE.md](docs/peano/VQT_FORMALIZZAZIONE.md)** (con figura `docs/figures/vqt_sistema.png`)
+> - Stato lavori: **[docs/peano/MIGRAZIONE_CHECKPOINT.md](docs/peano/MIGRAZIONE_CHECKPOINT.md)** (blocco "PER DOMANI")
+> - Moduli/test: **[docs/TESTS_E_STRUMENTI.md](docs/TESTS_E_STRUMENTI.md) sez. 8**
+>
+> *Le sezioni sotto (doppia elica) restano valide come fase precedente; il README
+> verra' rifondato sul motore integrato.*
+
+---
+
 ## Panoramica
 
 **VQT** è un framework di simulazione numerica per lo studio della gravità
